@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Live target observation and still capture of the shot target. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <!-- External camera feeds: RTSP/HTTP-MJPEG spotting cameras downrange
+         and scope Wi-Fi streams. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- Acoustic shot gating: the report timestamps the frame in which a new
+         hole should appear, which suppresses false positives from target
+         movement and light changes. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Reading a user-supplied target image on API 26-32. Scoped storage
+         from 33 uses the photo picker, which needs no permission. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <application
+        android:name="com.rfsat.sts.StsApp"
+        android:largeHeap="true"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.STS"
+        android:supportsRtl="true">
+
+        <activity
+            android:name="com.rfsat.sts.ui.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name="com.rfsat.sts.detect.SessionActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.results.ResultsActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.targets.TargetActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.profiles.ProfileActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.rules.RulesActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.log.LogActivity" android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+</manifest>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selected tab takes the theme accent, unselected the dimmed text colour.
+     Referenced by include_bottom_nav for BOTH icon tint and label colour so
+     the two can never drift apart. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="?attr/colorAccent" android:state_checked="true" />
+    <item android:color="?android:attr/textColorSecondary" />
+</selector>

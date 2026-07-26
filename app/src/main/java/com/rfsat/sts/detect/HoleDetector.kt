@@ -1,0 +1,422 @@
+package com.rfsat.sts.detect
+
+import com.rfsat.sts.log.Logger
+import kotlin.math.abs
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
+
+/**
+ * A hole found in the rectified face, in target-plane millimetres.
+ *
+ * [confidence] is a 0..1 summary of how hole-like the detection was —
+ * contrast against the local background, roundness, and size agreement with
+ * the gauge. It is used to order detections, to mark the doubtful ones on the
+ * plot, and to decide what a live detector will accept without a second look.
+ * It is NOT a probability; it is a monotone score, and the thresholds it is
+ * compared against were chosen by what they reject, not by calibration.
+ */
+data class DetectedHole(
+    val xMm: Double,
+    val yMm: Double,
+    /** Apparent diameter of the dark (or, inside the black, light) region, mm. */
+    val diameterMm: Double,
+    /** Local contrast that produced the detection, in luma levels. */
+    val contrast: Double,
+    val confidence: Double,
+    /** Longer extent / shorter extent of the region. Near 1 for a hole; large
+     *  for a stretch of printed ring line that survived the other tests. */
+    val elongation: Double
+) {
+    val distanceFromCentreMm: Double get() = hypot(xMm, yMm)
+}
+
+/**
+ * ============================================================================
+ *  FINDING HOLES
+ * ============================================================================
+ *
+ * Two detectors, because they solve genuinely different problems and the
+ * better one is not always available.
+ *
+ *  [detectByDifference] — a rectified BEFORE frame and a rectified AFTER
+ *      frame. What changed is what was shot. This is the accurate path: it is
+ *      immune to the printed rings, to paper texture, to staple shadows and
+ *      to the black aiming mark, because all of those are in both frames. It
+ *      is what the live session uses continuously, and what the photo
+ *      workflow uses whenever the shooter remembered to photograph the clean
+ *      target first. Use it whenever you can.
+ *
+ *  [detectAbsolute] — one frame, nothing to compare against. Now the printed
+ *      geometry IS the difficulty: a ring line is dark, a hole is dark, and
+ *      the aiming mark is darker than either. This detector separates them on
+ *      shape and scale rather than on brightness, and it is honest about
+ *      being the weaker of the two. Use it for a target someone hands you at
+ *      the end of a relay.
+ *
+ * Both work in the rectified plane, so a hole is the same size in pixels
+ * wherever it lands and the scale is known exactly — see [TargetRegistration].
+ */
+object HoleDetector {
+
+    /** Robust noise scaling: 1 MAD = 0.6745 sigma for Gaussian noise. */
+    private const val MAD_TO_SIGMA = 1.4826
+
+    /** How many robust sigmas above the background a response must sit. Six
+     *  is deliberately conservative: a false hole is worse than a missed one,
+     *  because a missed one is visibly missing from the count and a false one
+     *  quietly costs the shooter a point. */
+    private const val SIGMA_THRESHOLD = 6.0
+
+    /** Absolute floor, luma levels. Under about 8 levels of contrast the
+     *  detection is inside the sensor's own noise on a phone at ISO 400. */
+    private const val MIN_CONTRAST = 8.0
+
+    /** A hole may measure between these fractions of the gauge and still be
+     *  accepted. The generous upper bound covers overlapping shots and torn
+     *  paper; anything above it is a tear or a shadow, not a hole. */
+    private const val MIN_SIZE_RATIO = 0.45
+    private const val MAX_SIZE_RATIO = 2.6
+
+    /** Above this ratio of long to short extent the region is a line, not a
+     *  hole — which is what a printed ring looks like to a blob detector. */
+    private const val MAX_ELONGATION = 2.2
+
+    // =====================================================================
+    //  Differential detection
+    // =====================================================================
+
+    /**
+     * Finds what appeared in [after] that was not in [before]. Both must be
+     * rectified through the SAME [reg], which is what makes them comparable
+     * pixel for pixel even if the camera moved between them.
+     *
+     * EXPOSURE NORMALISATION. A cloud crossing the sun shifts every pixel at
+     * once, and a naive subtraction then reports the whole target as new.
+     * Before differencing, the median of (after - before) is removed. The
+     * median rather than the mean, because a handful of genuinely new holes
+     * must not be allowed to drag the correction: with fewer than half the
+     * pixels changed — always true — the median is exactly the illumination
+     * shift and nothing else.
+     */
+    fun detectByDifference(
+        reg: TargetRegistration,
+        before: LumaFrame,
+        after: LumaFrame,
+        gaugeDiameterMm: Double,
+        maxHoles: Int = 200
+    ): List<DetectedHole> {
+        if (before.width != after.width || before.height != after.height) {
+            Logger.w("HoleDetector", "Rectified frames differ in size; refusing to difference them")
+            return emptyList()
+        }
+        val w = before.width
+        val h = before.height
+        val n = w * h
+
+        // ---- illumination shift, from the median of the differences ----
+        val offset = medianDifference(before, after)
+
+        // ---- signed difference, with the shift removed ----
+        val diff = IntArray(n)
+        var valid = 0
+        for (i in 0 until n) {
+            val b = before.data[i].toInt() and 0xFF
+            val a = after.data[i].toInt() and 0xFF
+            if (b == OUT || a == OUT) { diff[i] = 0; continue }
+            diff[i] = (a - b - offset).roundToInt()
+            valid++
+        }
+        if (valid < n / 20) {
+            Logger.w("HoleDetector", "Almost the whole rectified frame is out of view; nothing to compare")
+            return emptyList()
+        }
+
+        // ---- robust threshold from the difference field itself ----
+        val sigma = robustSigma(diff)
+        val threshold = max(MIN_CONTRAST, SIGMA_THRESHOLD * sigma)
+
+        // A new hole is a LOCAL change of either sign: darker on white paper,
+        // lighter inside the black aiming mark where the pellet exposes the
+        // backing. Magnitude is the right test here precisely because the
+        // reference removes everything that was legitimately dark already.
+        val mask = BooleanArray(n)
+        for (i in 0 until n) mask[i] = abs(diff[i]) >= threshold
+
+        val gaugePx = gaugeDiameterMm / reg.mmPerPx
+        val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
+
+        return components(mask, w, h, maxComponents = maxHoles * 4)
+            .mapNotNull { comp -> holeFromComponent(comp, diff, w, reg, gaugePx, expectedArea) }
+            .sortedByDescending { it.confidence }
+            .take(maxHoles)
+    }
+
+    // =====================================================================
+    //  Absolute (single-frame) detection
+    // =====================================================================
+
+    /**
+     * Finds holes in a single rectified frame, with no clean reference.
+     *
+     * The core operator is a centre-surround contrast: for every pixel,
+     * compare the mean over a disc of the gauge's own size against the mean
+     * over the annulus immediately outside it. That is scale-selective by
+     * construction — a feature much smaller than the disc barely moves the
+     * inner mean, and a feature much larger moves the inner and outer means
+     * together and cancels. A printed ring line, being long and thin, cancels
+     * almost exactly; that is the main reason this works at all.
+     *
+     * The disc and annulus are evaluated as squares through an integral
+     * image. A square is a poor circle, but it is a 4-array-read circle, and
+     * the shape error is a constant bias on both means that largely cancels
+     * in the difference. Exactness comes later, from the weighted centroid.
+     *
+     * SIGN. On white paper a hole is dark, so the contrast is
+     * annulus-minus-disc and positive. Inside the black aiming mark the paper
+     * is already at floor and a hole exposes the lighter backing, so the sign
+     * flips. The detector therefore looks for a dark spot outside the black
+     * and for a spot of EITHER sign inside it, which is the honest reading of
+     * the physics: what a hole in the black looks like depends on what is
+     * behind the target, and the app does not know that.
+     */
+    fun detectAbsolute(
+        reg: TargetRegistration,
+        frame: LumaFrame,
+        gaugeDiameterMm: Double,
+        maxHoles: Int = 200
+    ): List<DetectedHole> {
+        val w = frame.width
+        val h = frame.height
+        val n = w * h
+        val integral = IntegralImage(frame)
+
+        val gaugePx = gaugeDiameterMm / reg.mmPerPx
+        val rIn = max(1, (gaugePx / 2.0).roundToInt())
+        val rOut = max(rIn + 2, (gaugePx * 1.6).roundToInt())
+
+        val blackRadiusMm = reg.face.blackDiameterMm / 2.0
+
+        // ---- centre-surround response over the whole rectified face ----
+        val response = IntArray(n)
+        for (j in 0 until h) {
+            for (i in 0 until w) {
+                val idx = j * w + i
+                if ((frame.data[idx].toInt() and 0xFF) == OUT) continue
+
+                val inner = integral.mean(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
+                val outerSum = integral.sum(i - rOut, j - rOut, i + rOut + 1, j + rOut + 1) -
+                    integral.sum(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
+                val outerN = integral.count(i - rOut, j - rOut, i + rOut + 1, j + rOut + 1) -
+                    integral.count(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
+                if (inner.isNaN() || outerN <= 0) continue
+                val annulus = outerSum.toDouble() / outerN
+
+                val darkSpot = annulus - inner   // positive when the centre is darker
+                val (u, v) = reg.rectToMm(i, j)
+                val inBlack = blackRadiusMm > 0.0 && hypot(u, v) <= blackRadiusMm
+                response[idx] = (if (inBlack) abs(darkSpot) else darkSpot).roundToInt()
+            }
+        }
+
+        val sigma = robustSigma(response)
+        val threshold = max(MIN_CONTRAST, SIGMA_THRESHOLD * sigma)
+        val mask = BooleanArray(n)
+        for (i in 0 until n) mask[i] = response[i] >= threshold
+
+        val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
+
+        return components(mask, w, h, maxComponents = maxHoles * 4)
+            .mapNotNull { comp -> holeFromComponent(comp, response, w, reg, gaugePx, expectedArea) }
+            .sortedByDescending { it.confidence }
+            .take(maxHoles)
+    }
+
+    // =====================================================================
+    //  Shared machinery
+    // =====================================================================
+
+    private const val OUT = 1 // TargetRegistration.OUT_OF_FRAME as an Int
+
+    /** One connected run of above-threshold pixels. */
+    private class Component {
+        var count = 0
+        var minX = Int.MAX_VALUE; var maxX = Int.MIN_VALUE
+        var minY = Int.MAX_VALUE; var maxY = Int.MIN_VALUE
+        val pixels = ArrayList<Int>()
+    }
+
+    /**
+     * Four-connected labelling with an explicit stack.
+     *
+     * Explicit rather than recursive: a large blown-out region on a
+     * 2000-pixel-wide rectified frame can chain hundreds of thousands of
+     * pixels deep, and recursion there is a StackOverflowError on a real
+     * device — reliably, and only for the users with the worst lighting.
+     */
+    private fun components(mask: BooleanArray, w: Int, h: Int, maxComponents: Int): List<Component> {
+        val seen = BooleanArray(mask.size)
+        val out = ArrayList<Component>()
+        val stack = ArrayDeque<Int>()
+        for (start in mask.indices) {
+            if (!mask[start] || seen[start]) continue
+            val comp = Component()
+            stack.addLast(start)
+            seen[start] = true
+            while (stack.isNotEmpty()) {
+                val p = stack.removeLast()
+                val x = p % w
+                val y = p / w
+                comp.count++
+                comp.pixels.add(p)
+                if (x < comp.minX) comp.minX = x
+                if (x > comp.maxX) comp.maxX = x
+                if (y < comp.minY) comp.minY = y
+                if (y > comp.maxY) comp.maxY = y
+                if (x > 0) push(p - 1, mask, seen, stack)
+                if (x < w - 1) push(p + 1, mask, seen, stack)
+                if (y > 0) push(p - w, mask, seen, stack)
+                if (y < h - 1) push(p + w, mask, seen, stack)
+            }
+            out.add(comp)
+            if (out.size >= maxComponents) {
+                Logger.w("HoleDetector", "Component cap ($maxComponents) reached — the frame is very noisy")
+                break
+            }
+        }
+        return out
+    }
+
+    private fun push(p: Int, mask: BooleanArray, seen: BooleanArray, stack: ArrayDeque<Int>) {
+        if (!seen[p] && mask[p]) { seen[p] = true; stack.addLast(p) }
+    }
+
+    /**
+     * Turns a connected component into a hole, or rejects it.
+     *
+     * The centroid is weighted by the response magnitude rather than being
+     * the plain pixel mean. That matters: a hole is a smooth blob, its
+     * response peaks at the centre, and weighting recovers the centre to
+     * roughly a fifth of a pixel — which at the working resolution is a
+     * couple of tenths of a millimetre, comfortably finer than the ring
+     * boundaries it is compared against.
+     */
+    private fun holeFromComponent(
+        comp: Component,
+        response: IntArray,
+        w: Int,
+        reg: TargetRegistration,
+        gaugePx: Double,
+        expectedArea: Double
+    ): DetectedHole? {
+        if (comp.count < 3) return null
+
+        val areaRatio = comp.count / expectedArea
+        if (areaRatio < MIN_SIZE_RATIO * MIN_SIZE_RATIO) return null
+        if (areaRatio > MAX_SIZE_RATIO * MAX_SIZE_RATIO) return null
+
+        val bw = (comp.maxX - comp.minX + 1).toDouble()
+        val bh = (comp.maxY - comp.minY + 1).toDouble()
+        val elongation = max(bw, bh) / max(1.0, min(bw, bh))
+        if (elongation > MAX_ELONGATION) return null
+
+        var wsum = 0.0
+        var xs = 0.0
+        var ys = 0.0
+        var peak = 0.0
+        for (p in comp.pixels) {
+            val v = abs(response[p]).toDouble()
+            if (v > peak) peak = v
+            wsum += v
+            xs += (p % w) * v
+            ys += (p / w) * v
+        }
+        if (wsum <= 0.0) return null
+        val ci = xs / wsum
+        val cj = ys / wsum
+
+        // Sub-pixel rect coordinates back to millimetres. rectToMm takes
+        // integers, so the fractional part is applied afterwards by hand
+        // rather than by rounding away the precision just recovered.
+        val (u0, v0) = reg.rectToMm(ci.toInt(), cj.toInt())
+        val uMm = u0 + (ci - ci.toInt()) * reg.mmPerPx
+        val vMm = v0 - (cj - cj.toInt()) * reg.mmPerPx
+
+        // Equivalent-circle diameter of the component, in millimetres.
+        val diameterPx = 2.0 * sqrt(comp.count / Math.PI)
+        val diameterMm = diameterPx * reg.mmPerPx
+
+        // Confidence: three independent agreements, multiplied so that
+        // failing any one of them pulls the result down rather than being
+        // averaged away by the other two.
+        val contrastScore = (peak / (4.0 * MIN_CONTRAST)).coerceIn(0.0, 1.0)
+        val sizeScore = 1.0 - (abs(diameterPx - gaugePx) / gaugePx).coerceIn(0.0, 1.0)
+        val roundScore = (1.0 - (elongation - 1.0) / (MAX_ELONGATION - 1.0)).coerceIn(0.0, 1.0)
+        val confidence = contrastScore * sizeScore * roundScore
+
+        return DetectedHole(
+            xMm = uMm,
+            yMm = vMm,
+            diameterMm = diameterMm,
+            contrast = peak,
+            confidence = confidence,
+            elongation = elongation
+        )
+    }
+
+    /** Median of (after - before) over pixels valid in both frames. */
+    private fun medianDifference(before: LumaFrame, after: LumaFrame): Double {
+        val n = before.width * before.height
+        // A histogram rather than a sort: the values live in [-255, 255], so
+        // this is a 511-bucket count and one pass, instead of sorting several
+        // million elements on the UI thread's timescale.
+        val hist = IntArray(511)
+        var total = 0
+        for (i in 0 until n) {
+            val b = before.data[i].toInt() and 0xFF
+            val a = after.data[i].toInt() and 0xFF
+            if (b == OUT || a == OUT) continue
+            hist[a - b + 255]++
+            total++
+        }
+        if (total == 0) return 0.0
+        var acc = 0
+        for (k in hist.indices) {
+            acc += hist[k]
+            if (acc * 2 >= total) return (k - 255).toDouble()
+        }
+        return 0.0
+    }
+
+    /**
+     * Robust standard deviation of a field, from the median absolute
+     * deviation about zero.
+     *
+     * The plain standard deviation is useless here: the holes themselves are
+     * large outliers, so including them inflates the estimate and raises the
+     * threshold until the holes no longer pass it — the detector suppresses
+     * exactly what it is looking for, more strongly the more there is to
+     * find. The MAD ignores anything past the median and is unmoved by up to
+     * half the field being signal.
+     */
+    private fun robustSigma(field: IntArray): Double {
+        val hist = IntArray(512)
+        var total = 0
+        for (v in field) {
+            val a = abs(v)
+            if (a == 0) continue          // untouched pixels carry no information
+            hist[min(a, 511)]++
+            total++
+        }
+        if (total == 0) return 0.0
+        var acc = 0
+        var mad = 0
+        for (k in hist.indices) {
+            acc += hist[k]
+            if (acc * 2 >= total) { mad = k; break }
+        }
+        return mad * MAD_TO_SIGMA
+    }
+}

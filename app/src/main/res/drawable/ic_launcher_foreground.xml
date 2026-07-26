@@ -1,0 +1,18 @@
+<!-- Adaptive-icon foreground: a five-ring target with a shot group in the
+     upper right, drawn in the app accent gold on the dark green background
+     defined by ic_launcher_background. Kept inside the 66dp safe zone of
+     the 108dp adaptive canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:strokeColor="#C9A24B" android:strokeWidth="3" android:fillColor="#00000000"
+        android:pathData="M54,22 A32,32 0 1,1 53.9,22" />
+    <path android:strokeColor="#C9A24B" android:strokeWidth="2.5" android:fillColor="#00000000"
+        android:pathData="M54,32 A22,22 0 1,1 53.9,32" />
+    <path android:strokeColor="#C9A24B" android:strokeWidth="2.5" android:fillColor="#00000000"
+        android:pathData="M54,42 A12,12 0 1,1 53.9,42" />
+    <path android:fillColor="#C9A24B" android:pathData="M54,50 A4,4 0 1,1 53.9,50 Z" />
+    <path android:fillColor="#D32F2F" android:pathData="M64,42 A3.2,3.2 0 1,1 63.9,42 Z" />
+    <path android:fillColor="#D32F2F" android:pathData="M60,37 A3.2,3.2 0 1,1 59.9,37 Z" />
+    <path android:fillColor="#D32F2F" android:pathData="M67,48 A3.2,3.2 0 1,1 66.9,48 Z" />
+</vector>

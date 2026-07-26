@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material caps BottomNavigationView at 5 items (a 6th throws at inflate
+     time), so Exit lives outside the menu in include_bottom_nav, and the
+     Rules and Log screens are reached from Settings. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_home" android:icon="@drawable/ic_nav_home" android:title="@string/nav_home" />
+    <item android:id="@+id/nav_session" android:icon="@drawable/ic_nav_session" android:title="@string/nav_session" />
+    <item android:id="@+id/nav_results" android:icon="@drawable/ic_nav_results" android:title="@string/nav_results" />
+    <item android:id="@+id/nav_targets" android:icon="@drawable/ic_nav_targets" android:title="@string/nav_targets" />
+    <item android:id="@+id/nav_settings" android:icon="@drawable/ic_nav_settings" android:title="@string/nav_settings" />
+</menu>

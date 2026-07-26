@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <!-- ===== Display ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Display and units" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Theme" />
+            <Spinner android:id="@+id/spTheme"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Units" />
+            <Spinner android:id="@+id/spUnits"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <CheckBox android:id="@+id/cbFullScreen"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Full screen (hide the system bars)" />
+
+            <!-- ===== Profile sets ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Profile sets" />
+
+            <Spinner android:id="@+id/spSets"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="6dp">
+                <Button android:id="@+id/btnApplySet"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Apply" />
+                <Button android:id="@+id/btnSaveSet"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Save as…"
+                    style="?android:attr/borderlessButtonStyle" />
+                <Button android:id="@+id/btnDeleteSet"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Delete"
+                    style="?android:attr/borderlessButtonStyle" />
+            </LinearLayout>
+
+            <!-- ===== Firearm ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Firearm" />
+            <Button android:id="@+id/btnRifleCatalog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Pick from the catalogue…" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Name" />
+            <EditText android:id="@+id/etRifleName" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Type" />
+            <Spinner android:id="@+id/spFirearmType"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Chambering" />
+            <EditText android:id="@+id/etCaliber" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Barrel length (in)" />
+            <EditText android:id="@+id/etBarrel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Twist rate (1 turn in … in)" />
+            <EditText android:id="@+id/etTwist" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Sight height above bore (in)" />
+            <EditText android:id="@+id/etSightHeight" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Zero distance (m)" />
+            <EditText android:id="@+id/etZero" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <!-- ===== Load ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Load" />
+            <Button android:id="@+id/btnAmmoCatalog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Pick from the catalogue…" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Name" />
+            <EditText android:id="@+id/etBulletName" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Projectile diameter (in)" />
+            <EditText android:id="@+id/etDiameter" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Weight (gr)" />
+            <EditText android:id="@+id/etWeight" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Muzzle velocity (fps)" />
+            <EditText android:id="@+id/etMv" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Ballistic coefficient (G1)" />
+            <EditText android:id="@+id/etBc" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView android:id="@+id/tvPowerFactor" style="@style/Sts.Value"
+                android:layout_marginTop="6dp" android:textSize="12sp" />
+
+            <!-- ===== Sight ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Sight" />
+            <Button android:id="@+id/btnScopeCatalog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Pick from the catalogue…" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Name" />
+            <EditText android:id="@+id/etScopeName" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="text" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Sight type" />
+            <Spinner android:id="@+id/spSightType"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Click unit" />
+            <Spinner android:id="@+id/spClickUnit"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView android:id="@+id/lblClickMm" style="@style/Sts.FieldLabel"
+                android:text="Click movement (mm) at the reference distance" />
+            <EditText android:id="@+id/etClickMm" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView android:id="@+id/lblClickRef" style="@style/Sts.FieldLabel"
+                android:text="Reference distance (m)" />
+            <EditText android:id="@+id/etClickRef" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Sight radius (mm, iron sights only; 0 = unknown)" />
+            <EditText android:id="@+id/etSightRadius" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Elevation travel (MOA)" />
+            <EditText android:id="@+id/etElevTravel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Windage travel (MOA)" />
+            <EditText android:id="@+id/etWindTravel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
+
+            <CheckBox android:id="@+id/cbInvertElev"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Elevation drum is marked the opposite way round" />
+            <CheckBox android:id="@+id/cbInvertWind"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Windage drum is marked the opposite way round" />
+
+            <TextView android:id="@+id/tvClickSummary" style="@style/Sts.Value"
+                android:layout_marginTop="8dp" android:textSize="12sp" />
+
+            <Button android:id="@+id/btnSave"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Save the active profiles" />
+
+            <!-- ===== Elsewhere ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Elsewhere" />
+            <Button android:id="@+id/btnRules"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Competition rules…" />
+            <Button android:id="@+id/btnLog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Diagnostic log…" />
+            <Button android:id="@+id/btnBackup"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Export a backup of everything" />
+            <Button android:id="@+id/btnRestore"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Restore from a backup" />
+            <Button android:id="@+id/btnReset"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Reset the active profiles to defaults" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <include layout="@layout/include_bottom_nav" />
+
+</LinearLayout>

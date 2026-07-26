@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark (default): OLED-friendly, low-light suitable -->
+    <color name="dark_bg">#0B2818</color>
+    <color name="dark_surface">#124024</color>
+    <color name="dark_text">#F2F7F0</color>
+    <color name="dark_accent">#C9A24B</color>
+
+    <!-- Day: bright, high contrast for direct sunlight -->
+    <color name="day_bg">#FFFFFF</color>
+    <color name="day_surface">#EDEDE6</color>
+    <color name="day_text">#000000</color>
+    <color name="day_accent">#1B5E20</color>
+
+    <!-- Night Green: monochrome green to preserve dark adaptation -->
+    <color name="ngreen_bg">#000000</color>
+    <color name="ngreen_surface">#0A140A</color>
+    <color name="ngreen_text">#3CF03C</color>
+    <color name="ngreen_accent">#40FF40</color>
+
+    <!-- Night Red: monochrome red, least impact on scotopic vision -->
+    <color name="nred_bg">#000000</color>
+    <color name="nred_surface">#140A0A</color>
+    <color name="nred_text">#FF4A4A</color>
+    <color name="nred_accent">#FF4040</color>
+
+    <!-- Text drawn ON the accent colour (button labels etc). Material's
+         default is white, which is low-contrast on the gold dark accent. -->
+    <color name="dark_on_accent">#141008</color>
+    <color name="day_on_accent">#FFFFFF</color>
+    <color name="ngreen_on_accent">#001400</color>
+    <color name="nred_on_accent">#140000</color>
+
+    <color name="dark_text_dim">#C9D4C6</color>
+    <color name="day_text_dim">#3D4A3D</color>
+    <color name="ngreen_text_dim">#2BB82B</color>
+    <color name="nred_text_dim">#C93A3A</color>
+
+    <!-- Target plot palette. Deliberately theme-independent: the plot is a
+         scoring document, and a shot marker that changed hue with the theme
+         would be unreadable in a shared screenshot. -->
+    <color name="plot_paper">#FAFAF5</color>
+    <color name="plot_ink">#1A1A1A</color>
+    <color name="plot_black_area">#111111</color>
+    <color name="plot_shot">#D32F2F</color>
+    <color name="plot_shot_last">#FF9800</color>
+    <color name="plot_group">#1565C0</color>
+    <color name="plot_poa">#00897B</color>
+</resources>

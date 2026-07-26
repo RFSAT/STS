@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Viewfinder. The PreviewView and the RTSP TextureView are stacked and
+         swapped by visibility: only one source is ever live, and keeping both
+         inflated avoids re-laying out the whole screen on a source change. -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000">
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextureView
+            android:id="@+id/streamView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <com.rfsat.sts.detect.RegistrationOverlayView
+            android:id="@+id/overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="#AA000000"
+            android:padding="8dp"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:maxLines="4" />
+    </FrameLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Course of fire" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Rules" />
+            <Spinner android:id="@+id/spRules"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Target face" />
+            <Spinner android:id="@+id/spTarget"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView android:id="@+id/lblDistance" style="@style/Sts.FieldLabel" android:text="Distance" />
+            <EditText android:id="@+id/etDistance"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:autofillHints="" />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Frame source" />
+            <Spinner android:id="@+id/spSource"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <EditText android:id="@+id/etStreamUrl"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="http://192.168.1.50:8080/video  or  rtsp://…"
+                android:inputType="textUri"
+                android:visibility="gone"
+                android:autofillHints="" />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Registration" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Tap the four corners of the target card in the viewfinder, going clockwise from the top left. Registration ties image pixels to millimetres on the face; without it nothing can be scored." />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="8dp">
+                <Button android:id="@+id/btnRegister"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Register" />
+                <Button android:id="@+id/btnUndoCorner"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Undo tap"
+                    style="?android:attr/borderlessButtonStyle" />
+            </LinearLayout>
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Scoring" />
+
+            <Button android:id="@+id/btnReference"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Capture clean target (reference)" />
+
+            <Button android:id="@+id/btnLive"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Start live detection" />
+
+            <Button android:id="@+id/btnScoreNow"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Score the target now (single frame)" />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="6dp">
+                <Button android:id="@+id/btnUndoShot"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Undo shot"
+                    style="?android:attr/borderlessButtonStyle" />
+                <Button android:id="@+id/btnResults"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Results" />
+            </LinearLayout>
+
+            <CheckBox android:id="@+id/cbSighter"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Record the next shots as sighters" />
+
+            <CheckBox android:id="@+id/cbAcoustic"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:checked="false"
+                android:text="Use the microphone to time shots (helps outdoors; turn off on a busy indoor range)" />
+
+            <TextView android:id="@+id/tvShots"
+                style="@style/Sts.Value"
+                android:layout_marginTop="12dp"
+                android:typeface="monospace"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <include layout="@layout/include_bottom_nav" />
+
+</LinearLayout>
