@@ -247,6 +247,33 @@ every push.
 
 ---
 
+## Play Store listing
+
+Everything the console asks for lives in `play/`:
+
+| File | What it is |
+|---|---|
+| `play_store_icon.png` | 512x512 app icon, full bleed |
+| `feature_graphic.png` | 1024x500 feature graphic, RGB with no alpha |
+| `short_description.txt` | 79 of the 80 characters allowed |
+| `full_description.txt` | 3742 of the 4000 characters allowed |
+
+`tools/generate_feature_graphic.py` imports the icon's own drawing rather
+than redrawing a target, so the banner and the home screen cannot drift
+apart. It also asserts its own layout before rendering — that the text
+cannot reach the artwork and that nothing strays into the edge band Play
+crops — because a collision is invisible in code and obvious in the store.
+
+Two traps worth knowing if you revise the graphic. Play **rejects a feature
+graphic with an alpha channel**, so the surface is `FORMAT_RGB24`, which has
+none by construction rather than by remembering to flatten. And the icon
+artwork knocks its bullet holes out with `OPERATOR_CLEAR` — on a surface
+with no alpha, "clear" means BLACK, not transparent, so the artwork is
+composited from an ARGB32 surface instead of being drawn straight onto the
+background. Drawing it directly puts a heavy black ring around every hole.
+
+The histogram in the graphic is an illustrative motif, not real data.
+
 ## Versioning and packaging
 
 `<brand>.<major>.<minor>` — the same scheme VTB uses.
@@ -266,6 +293,10 @@ Each release ships as a **single ZIP** holding the whole project —
 `STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
 
 ### Changelog
+
+**1.3.0** — feature. Google Play listing material in `play/`: short and full
+descriptions, and a 1024x500 feature graphic generated from the same drawing
+as the launcher icon.
 
 **1.2.1** — correction. `applicationId` is now `com.STS`. CI builds release
 artefacts only: unit tests run against the release variant and the workflow

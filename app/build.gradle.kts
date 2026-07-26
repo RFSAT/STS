@@ -32,6 +32,11 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.3.0 — feature: Play Store listing material — short and full
+        //         descriptions and the 1024x500 feature graphic, in play/.
+        //         The graphic is generated from the SAME drawing as the icon
+        //         (tools/generate_feature_graphic.py imports the icon's
+        //         artwork), so the listing and the home screen cannot drift.
         // 1.2.1 — correction: applicationId is now com.STS, and CI builds
         //         release artefacts only (no debug APK). Signing degrades to
         //         unsigned rather than failing when no keystore is present.
@@ -49,8 +54,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 5
-        versionName = "1.2.1"
+        versionCode = 6
+        versionName = "1.3.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

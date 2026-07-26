@@ -1,0 +1,43 @@
+STS turns your phone into a scoring gauge for the range.
+
+Photograph the target when the relay is over, or point the camera at it while you shoot. STS finds every hole, measures it against the ring geometry of the competition target you selected, and scores it under the rules of the match you are shooting. You get the total, the shot-by-shot breakdown, the shape of your group, and the sight correction that would put the next group in the middle.
+
+HOW IT WORKS
+• Pick the course of fire — the target face and the distance follow from it
+• Tap the four corners of the card, which is what ties pixels to millimetres
+• Score from a photograph, or live from the camera as the string builds
+• Photograph the clean target first and scoring becomes a difference: the printed rings, the paper grain and the black aiming mark are in both images and cancel out, leaving only holes
+
+WHAT YOU GET
+• A value for every shot, and a subtotal for every series, with inner tens and X count
+• A distribution histogram — how many tens, how many nines, where the string actually sat. A 95 shot as ten 9s and 10s needs a sight correction; the same 95 with two 7s in it needs work on the shot process, and the total alone cannot tell them apart
+• Group centre, extreme spread, mean radius, R50, and separate horizontal and vertical dispersion, in millimetres, MOA and mils
+• The sight correction in clicks for your scope, red dot or match diopter — or in millimetres of rear-sight movement for open sights that have no clicks
+• A plain-text report and a CSV you can send to a coach
+
+DISCIPLINES
+Air rifle and air pistol at 10 m. Rimfire rifle and pistol at 25 m and 50 m. Centrefire rifle in .223, .308 and the 6.5 mm class, out to 1000 yards. Practical pistol.
+
+TARGETS
+21 competition faces built in: ISSF 10 m air rifle and air pistol, 50 m rifle, 25 and 50 m precision pistol, 25 m rapid fire, 300 m rifle; NRA and CMP high power and smallbore; F-Class at 600 and 1000 yards; German DSB and BDS faces; IPSC and IDPA; steel plates. Add your own from a photograph.
+
+RULES
+31 courses of fire: ISSF qualification and finals, NRA National Match Course, NRA smallbore prone, CMP Games, F-Class, NRL22 and PRS stages, IPSC hit factor, IDPA time-plus-penalty, PZSS classification courses, DSB and BDS including Auflage, and free training modes with no shot or time limit.
+
+EQUIPMENT
+Firearm, load and sight profiles with built-in catalogues: 37 firearms from match air guns to F-TR rifles, 31 loads from match pellets to .308 match ammunition, and 19 sights covering scopes, red dots and match diopters. Profile sets move between STS and VTB Vapor-Trail Ballistics.
+
+CAMERAS
+The phone's own camera, or an external feed: an MJPEG stream from a downrange or action camera, or an RTSP stream from a digital scope.
+
+BEING STRAIGHT WITH YOU
+STS is a training and practice aid. Official results are decided by the jury under the rulebook in force. ISSF target dimensions come from the published tables; the American, F-Class, practical and national-federation figures are the commonly published ones, are marked in the app as needing a check, and are all editable. The detector cannot see a shot that missed the target altogether, and it can be fooled — every hole can be corrected by hand, and doubtful ones are flagged rather than quietly counted.
+
+PRIVACY
+Everything happens on the device. No account, no sign-in, no upload, no analytics, no advertising. Your photographs and your scores stay on your phone.
+
+Four display themes, including red and green night modes for a dim firing point.
+
+Safety first: operate the app only from behind the firing line, with the firearm made safe and the range in a condition the range officer permits.
+
+developed by Dr Artur Krukowski
