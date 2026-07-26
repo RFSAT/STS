@@ -68,6 +68,14 @@
                     android:text="Start a scoring session" />
 
                 <Button
+                    android:id="@+id/btnImport"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:text="Score a photo of a shot target" />
+
+                <Button
                     android:id="@+id/btnResume"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

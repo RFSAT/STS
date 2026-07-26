@@ -25,6 +25,7 @@ import com.rfsat.sts.rules.RuleRepository
 import com.rfsat.sts.rules.RuleSet
 import com.rfsat.sts.scoring.ScoringEngine
 import com.rfsat.sts.scoring.ScoringSession
+import com.rfsat.sts.scoring.ShotDistribution
 import com.rfsat.sts.targets.TargetFace
 import com.rfsat.sts.targets.TargetRepository
 import com.rfsat.sts.ui.BaseActivity
@@ -166,6 +167,9 @@ class SessionActivity : BaseActivity() {
         binding.btnScoreNow.setOnClickListener { doScoreNow() }
         binding.btnUndoShot.setOnClickListener {
             ScoringSession.undoLast(); refreshShotList(); refreshStatus()
+        }
+        binding.btnImport.setOnClickListener {
+            startActivity(Intent(this, ImportActivity::class.java))
         }
         binding.btnResults.setOnClickListener {
             startActivity(Intent(this, ResultsActivity::class.java)); finish()
@@ -454,12 +458,23 @@ class SessionActivity : BaseActivity() {
 
     private fun refreshShotList() {
         val rules = currentRules()
+        val face = currentFace()
         val shots = ScoringSession.state.shots
+
+        // The distribution updates on every accepted shot, so the shooter can
+        // see the shape of the string forming rather than waiting for the
+        // Results screen. It is the same computation and the same view as
+        // Results uses — one implementation, so the two can never disagree.
+        val dist = ShotDistribution.of(shots, face, rules)
+        binding.tvDistribution.text = dist.summary()
+        binding.histogram.hideEmptyBuckets = face.zones.isNotEmpty()
+        binding.histogram.distribution = dist
+
         if (shots.isEmpty()) {
             binding.tvShots.text = "No shots recorded yet."
             return
         }
-        val res = ScoringEngine.aggregate(shots, currentFace(), rules, ScoringSession.state.stageSeconds)
+        val res = ScoringEngine.aggregate(shots, face, rules, ScoringSession.state.stageSeconds)
         binding.tvShots.text = buildString {
             appendLine("Total ${res.displayTotal}" + if (res.maxScore > 0) " / ${"%.0f".format(res.maxScore)}" else "")
             if (rules.countInnerTens) appendLine("Inner tens ${res.innerTens}")

@@ -115,6 +115,12 @@
                 android:layout_marginTop="6dp"
                 android:text="Score the target now (single frame)" />
 
+            <Button android:id="@+id/btnImport"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Score from a photo of the target…" />
+
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="horizontal" android:layout_marginTop="6dp">
@@ -141,6 +147,17 @@
                 android:layout_marginTop="12dp"
                 android:typeface="monospace"
                 android:textSize="12sp" />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Shot distribution" />
+            <TextView android:id="@+id/tvDistribution"
+                style="@style/Sts.Value"
+                android:textSize="12sp" />
+            <com.rfsat.sts.ui.ScoreHistogramView
+                android:id="@+id/histogram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="12dp" />
 
         </LinearLayout>
     </ScrollView>

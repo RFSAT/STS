@@ -300,6 +300,23 @@ object ScoringSession {
             appendLine("Horizontal SD   : ${"%.1f".format(grp.horizontalSdMm)} mm")
             appendLine("Vertical SD     : ${"%.1f".format(grp.verticalSdMm)} mm")
             appendLine()
+            val dist = ShotDistribution.of(state.shots, face, rules)
+            if (!dist.isEmpty) {
+                appendLine("DISTRIBUTION")
+                appendLine("-".repeat(52))
+                appendLine("Mean ${"%.2f".format(dist.mean)}   SD ${"%.2f".format(dist.sd)}   " +
+                    "best ${dist.bestLabel}   worst ${dist.worstLabel}")
+                appendLine()
+                dist.buckets.filter { !it.isMiss || it.count > 0 }.forEach { b ->
+                    // A fixed-width bar so the shape survives being pasted
+                    // into an email, a message or a spreadsheet cell — which
+                    // is where a shared report actually ends up.
+                    val bars = if (dist.peak > 0) (20.0 * b.count / dist.peak).toInt() else 0
+                    appendLine("%5s | %-20s %3d  %4.0f%%".format(
+                        b.label, "#".repeat(bars), b.count, b.percentOf(dist.shotCount)))
+                }
+                appendLine()
+            }
             appendLine("CORRECTION")
             appendLine("-".repeat(52))
             appendLine(corr.instruction)

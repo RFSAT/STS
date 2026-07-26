@@ -25,14 +25,22 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.2.0 — feature: score a target from a photograph after the session
+        //         (ImportActivity), and a shot distribution histogram shown on
+        //         Results, live on Session, on the import screen and in the
+        //         shared report.
+        //       — correction found while writing its tests: ImageLoader's
+        //         sample size used the common idiom that stops one step early
+        //         and returns an image LARGER than the requested cap, so a
+        //         50 MP photo decoded at 4080 px instead of 3000.
         // 1.1.0 — feature: real launcher and Play Store icon, generated from
         //         one drawing (tools/generate_icons.py) into the 512 px store
         //         asset, the adaptive foreground at five densities, and the
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 4
+        versionName = "1.2.0"
     }
 
     signingConfigs {

@@ -79,6 +79,17 @@
                 android:typeface="monospace"
                 android:textSize="12sp" />
 
+            <TextView style="@style/Sts.SectionHeading" android:text="Shot distribution" />
+            <TextView android:id="@+id/tvDistribution"
+                style="@style/Sts.Value"
+                android:textSize="12sp"
+                android:typeface="monospace" />
+            <com.rfsat.sts.ui.ScoreHistogramView
+                android:id="@+id/histogram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" />
+
             <TextView style="@style/Sts.SectionHeading" android:text="Series" />
             <TextView android:id="@+id/tvSeries"
                 style="@style/Sts.Value"

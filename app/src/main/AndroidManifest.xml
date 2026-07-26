@@ -41,6 +41,7 @@
         </activity>
 
         <activity android:name="com.rfsat.sts.detect.SessionActivity" android:exported="false" />
+        <activity android:name="com.rfsat.sts.detect.ImportActivity" android:exported="false" />
         <activity android:name="com.rfsat.sts.results.ResultsActivity" android:exported="false" />
         <activity android:name="com.rfsat.sts.targets.TargetActivity" android:exported="false" />
         <activity android:name="com.rfsat.sts.profiles.ProfileActivity" android:exported="false" />

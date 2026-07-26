@@ -36,7 +36,21 @@ class RegistrationOverlayView @JvmOverloads constructor(
 
     private val taps = mutableListOf<Pair<Float, Float>>()
 
-    /** Analysis-frame size, and how it is fitted into this view. */
+    /**
+     * How the source is fitted into this view. The camera preview is
+     * centre-cropped (PreviewView's default), a still photograph is
+     * letterboxed by an ImageView set to fitCenter. The two produce
+     * DIFFERENT mappings from a finger tap to a source pixel, and using the
+     * wrong one gives a registration that is plausibly close and
+     * consistently skewed — every shot wrong by a smoothly varying amount,
+     * which is the hardest kind of error to notice.
+     */
+    enum class SourceFit { CENTER_CROP, FIT_CENTER }
+
+    var sourceFit: SourceFit = SourceFit.CENTER_CROP
+        set(v) { field = v; invalidate() }
+
+    /** Source frame size, and how it is fitted into this view. */
     private var srcWidth = 0
     private var srcHeight = 0
 
@@ -67,14 +81,19 @@ class RegistrationOverlayView @JvmOverloads constructor(
     }
 
     /**
-     * Tells the overlay how big the analysis frame is. The preview is assumed
-     * to be CENTRE-CROPPED into this view, which is CameraX's default
-     * PreviewView scale type — if that is ever changed, this mapping must
-     * change with it or the registration silently shifts.
+     * Tells the overlay how big the source frame is and how it is being
+     * displayed. If the host ever changes the ImageView scale type or the
+     * PreviewView scale type, [fit] must change with it or the registration
+     * silently shifts.
      */
-    fun setSourceGeometry(analysisWidth: Int, analysisHeight: Int) {
-        srcWidth = analysisWidth
-        srcHeight = analysisHeight
+    fun setSourceGeometry(
+        sourceW: Int,
+        sourceH: Int,
+        fit: SourceFit = SourceFit.CENTER_CROP
+    ) {
+        srcWidth = sourceW
+        srcHeight = sourceH
+        sourceFit = fit
         invalidate()
     }
 
@@ -109,20 +128,22 @@ class RegistrationOverlayView @JvmOverloads constructor(
         invalidate()
     }
 
-    // ---- centre-crop mapping, both directions ----
+    // ---- source <-> view mapping, both directions and both fits ----
 
-    private fun cropScale(): Float =
-        maxOf(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
+    private fun srcScale(): Float = when (sourceFit) {
+        SourceFit.CENTER_CROP -> maxOf(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
+        SourceFit.FIT_CENTER  -> minOf(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
+    }
 
     private fun viewToSource(vx: Float, vy: Float): Pair<Double, Double> {
-        val s = cropScale()
+        val s = srcScale()
         val dx = (width - srcWidth * s) / 2f
         val dy = (height - srcHeight * s) / 2f
         return ((vx - dx) / s).toDouble() to ((vy - dy) / s).toDouble()
     }
 
     private fun sourceToView(sx: Double, sy: Double): Pair<Float, Float> {
-        val s = cropScale()
+        val s = srcScale()
         val dx = (width - srcWidth * s) / 2f
         val dy = (height - srcHeight * s) / 2f
         return (sx * s + dx).toFloat() to (sy * s + dy).toFloat()
@@ -146,7 +167,7 @@ class RegistrationOverlayView @JvmOverloads constructor(
         }
 
         if (srcWidth > 0 && detectedMarkers.isNotEmpty()) {
-            val s = cropScale()
+            val s = srcScale()
             detectedMarkers.forEach { (sx, sy, r) ->
                 val (x, y) = sourceToView(sx.toDouble(), sy.toDouble())
                 canvas.drawCircle(x, y, (r * s).coerceAtLeast(8f), detPaint)

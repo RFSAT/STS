@@ -34,13 +34,50 @@ keystore secrets are configured.
    the active profile set — or into a rear-sight movement in millimetres for
    iron sights that have no clicks.
 
-### Three ways to record a shot
+### Four ways to record a shot
 
 | Mode | When | Accuracy |
 |---|---|---|
 | **Live** | camera stays on the target for the string | best — immune to printed rings, paper texture and the aiming mark |
-| **Single frame** | scoring a card at the end of a relay | good with a reference; weaker without one, and the app says so |
+| **From a photograph** | the relay is over and the card is in your hand | best with a clean "before" photo, since scoring is then a difference; good without one |
+| **Single frame** | scoring the target in front of the camera right now | as above, from the live feed rather than the gallery |
 | **By hand** | anything the detector got wrong | authoritative — tap the plot on the Results screen |
+
+### Scoring a photograph
+
+Home or Session → *Score a photo of a shot target*. Pick the photograph, tap
+the four corners of the card, and the app finds the holes and scores them.
+Supplying a second photograph of the same target **before** it was shot is
+worth the trouble: scoring then becomes a difference, and the printed rings,
+the paper grain, the staple shadows and the black aiming mark all cancel
+because they are in both images. Without one the detector has to separate
+holes from printing on scale and shape alone — it does a respectable job, but
+its characteristic failure is a printed feature counted as a shot, which
+looks exactly like a real detection on the plot. The screen says which mode
+it is in, every time.
+
+Photographs are loaded EXIF-aware and subsampled to 3000 px on the long edge.
+Orientation matters more than it looks: a phone records the sensor readout
+plus a tag saying which way up it was, so a portrait photo decodes landscape,
+registration still succeeds, every score comes out right, and the plot
+arrives on its side.
+
+### Shot distribution
+
+A total says what happened; the distribution says what kind of shooting
+produced it. 95 as ten 9s and 10s is a shooter who needs a sight correction;
+the same 95 as eight 10s and two 7s is a shooter throwing the occasional
+flyer. One is fixed with a turret and the other with the shot process, and
+the total alone cannot tell them apart.
+
+The histogram appears on Results, live on the Session screen as the string
+builds, on the import screen after detection, and as a fixed-width bar chart
+in the shared text report. Shots are bucketed by the **whole number** of
+points scored, because "how many tens did I shoot" is the question people
+ask; the mean and SD are computed from the true values, so in a decimal
+discipline a card of 10.9s and one of 10.1s share a bucket and are separated
+by the mean. Rings nobody hit keep their bar — dropping the empty ones hides
+the shape of the distribution, which is the only thing the chart is for.
 
 ### Frame sources
 
@@ -206,6 +243,19 @@ Each release ships as a **single ZIP** holding the whole project —
 `STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
 
 ### Changelog
+
+**1.2.0** — feature. Score a target from a photograph taken after the session
+(`ImportActivity`), with an optional clean "before" photograph that turns
+detection into a difference. Shot distribution and histogram
+(`ShotDistribution`, `ScoreHistogramView`) on Results, live on Session, on
+the import screen and in the shared report.
+
+Also a correction found while writing the tests rather than by running them:
+`ImageLoader.sampleSizeFor` used the sample-code idiom that tests
+`width / (sample * 2) >= max` and therefore stops one step early, deliberately
+returning an image at least as large as requested. That is right for a
+thumbnail and wrong for a memory bound — a 50 MP photograph came back at
+4080 px against a documented 3000 px cap. The function now genuinely caps.
 
 **1.1.0** — feature. Launcher and Play Store icon: a target with a three-shot
 group and the score `10.9` — the ISSF decimal maximum, which reads to a

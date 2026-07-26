@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000">
+
+        <!-- fitCenter, not centerCrop: the whole card must be visible for its
+             corners to be tapped, and RegistrationOverlayView is told which
+             fit is in use so its tap mapping matches. -->
+        <ImageView
+            android:id="@+id/image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="The photographed target" />
+
+        <com.rfsat.sts.detect.RegistrationOverlayView
+            android:id="@+id/overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="#AA000000"
+            android:padding="8dp"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:maxLines="5" />
+    </FrameLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <TextView style="@style/Sts.SectionHeading" android:text="1. Choose the photographs" />
+
+            <Button android:id="@+id/btnPickShot"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Photo of the shot target" />
+
+            <Button android:id="@+id/btnPickClean"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Photo of the clean target (optional, much more accurate)" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="With both photographs the app scores what CHANGED between them, which ignores the printed rings, the paper texture and the aiming mark entirely. With only the shot target it has to tell holes from printing by shape and size alone, which works but is the weaker mode." />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="2. Course of fire" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Rules" />
+            <Spinner android:id="@+id/spRules"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Target face" />
+            <Spinner android:id="@+id/spTarget"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView android:id="@+id/lblDistance" style="@style/Sts.FieldLabel" android:text="Distance" />
+            <EditText android:id="@+id/etDistance"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:autofillHints="" />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="3. Register the card" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Tap the four corners of the target card in the photograph, going clockwise from the top left. That is what ties pixels to millimetres; nothing can be scored without it." />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="8dp">
+                <Button android:id="@+id/btnRegister"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Register" />
+                <Button android:id="@+id/btnUndoCorner"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Undo tap"
+                    style="?android:attr/borderlessButtonStyle" />
+            </LinearLayout>
+
+            <TextView style="@style/Sts.SectionHeading" android:text="4. Score" />
+
+            <CheckBox android:id="@+id/cbReplace"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="Replace the shots already in this session" />
+
+            <Button android:id="@+id/btnDetect"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Detect the hits and score them" />
+
+            <TextView android:id="@+id/tvResult"
+                style="@style/Sts.Value"
+                android:layout_marginTop="10dp"
+                android:textSize="13sp" />
+
+            <TextView android:id="@+id/hdrDistribution" style="@style/Sts.SectionHeading"
+                android:visibility="gone"
+                android:text="Shot distribution" />
+            <com.rfsat.sts.ui.ScoreHistogramView
+                android:id="@+id/histogram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" />
+
+            <Button android:id="@+id/btnResults"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Open the full results" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <include layout="@layout/include_bottom_nav" />
+
+</LinearLayout>

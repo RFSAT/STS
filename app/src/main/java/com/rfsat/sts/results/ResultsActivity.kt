@@ -11,6 +11,7 @@ import com.rfsat.sts.profiles.ProfileRepository
 import com.rfsat.sts.scoring.ScoringEngine
 import com.rfsat.sts.scoring.ScoringSession
 import com.rfsat.sts.scoring.Shot
+import com.rfsat.sts.scoring.ShotDistribution
 import com.rfsat.sts.ui.BaseActivity
 import com.rfsat.sts.ui.UnitsManager
 
@@ -193,6 +194,12 @@ class ResultsActivity : BaseActivity() {
             appendLine("Horizontal SD   ${UnitsManager.formatSize(grp.horizontalSdMm)}")
             append("Vertical SD     ${UnitsManager.formatSize(grp.verticalSdMm)}")
         }
+
+        // ---- distribution ----
+        val dist = ShotDistribution.of(ScoringSession.state.shots, face, rules)
+        binding.tvDistribution.text = dist.summary()
+        binding.histogram.hideEmptyBuckets = face.zones.isNotEmpty()
+        binding.histogram.distribution = dist
 
         // ---- series ----
         binding.tvSeries.text = if (res.series.isEmpty()) "—" else buildString {

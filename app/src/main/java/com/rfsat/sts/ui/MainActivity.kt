@@ -47,6 +47,9 @@ class MainActivity : BaseActivity() {
         binding.btnStart.setOnClickListener {
             startActivity(Intent(this, SessionActivity::class.java).putExtra(SessionActivity.EXTRA_NEW, true))
         }
+        binding.btnImport.setOnClickListener {
+            startActivity(Intent(this, com.rfsat.sts.detect.ImportActivity::class.java))
+        }
         binding.btnResume.setOnClickListener {
             startActivity(Intent(this, ResultsActivity::class.java))
         }
