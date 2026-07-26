@@ -187,4 +187,35 @@ every push.
 
 ---
 
+## Versioning and packaging
+
+`<brand>.<major>.<minor>` — the same scheme VTB uses.
+
+| Component | When it changes |
+|---|---|
+| **brand** | never; `1` = STS |
+| **major** | a feature is added (minor resets to 0) |
+| **minor** | a correction is made |
+
+`versionCode` increments on **every** build that leaves the development
+machine. Play rejects a bundle whose code is not strictly greater than the
+last uploaded one, and a code reused during testing cannot be told apart
+afterwards.
+
+Each release ships as a **single ZIP** holding the whole project —
+`STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
+
+### Changelog
+
+**1.0.1** — correction. Removed `res/mipmap-hdpi/README.txt`. Android's
+resource merger accepts only `.xml` and `.png` under `res/`, so any other
+file fails `mergeDebugResources` before compilation is attempted. The file
+was a placeholder for a directory that is not needed at all: minSdk is 26,
+so the adaptive icon in `mipmap-anydpi-v26` covers every supported device
+and no density-specific PNG fallback exists.
+
+**1.0.0** — first release.
+
+---
+
 developed by Dr Artur Krukowski, with support from Claude AI

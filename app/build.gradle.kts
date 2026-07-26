@@ -13,8 +13,22 @@ android {
         applicationId = "com.STSC"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0" // scheme: <brand>.<major>.<minor>
+        // VERSIONING RULE for this project — follow it on every release:
+        //
+        //   <brand>.<major>.<minor>
+        //     brand  1 = STS. Does not change.
+        //     major  incremented when a FEATURE is added; minor resets to 0.
+        //     minor  incremented when a CORRECTION is made.
+        //
+        //   versionCode increments on EVERY build that leaves this machine,
+        //   without exception. Play rejects a bundle whose code is not
+        //   strictly greater than the last uploaded one, and a code reused
+        //   during testing is impossible to tell apart afterwards.
+        //
+        // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
+        //         resource merger rejects (res accepts only .xml and .png).
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     signingConfigs {
