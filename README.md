@@ -7,15 +7,38 @@ visual language as **VTB Vapor-Trail Ballistics**: the same four-theme
 Gson-in-SharedPreferences persistence, the same crash-safe startup, and a
 profile system that is deliberately field-compatible with VTB and DBM.
 
-- `applicationId` — `com.STSC`
+- `applicationId` — `com.STS` (permanent once published)
 - Kotlin namespace — `com.rfsat.sts`
 - AGP 8.9.1 / Kotlin 2.1.0 / compileSdk 36 / minSdk 26 / targetSdk 36
 - Gradle 8.11.1 or newer, JDK 17
 
-Open the folder in Android Studio and build, or run `gradle assembleDebug`.
-`.github/workflows/android-ci.yml` runs the unit tests and builds a debug APK
-on every push, and additionally produces a signed APK and AAB when the four
-keystore secrets are configured.
+Open the folder in Android Studio and build.
+
+`.github/workflows/android-ci.yml` is **release only** — it never assembles a
+debug artefact. It runs the unit tests against the release variant, then
+builds the release APK and the Android App Bundle for Play, and uploads both
+along with the R8 mapping file.
+
+Configure four repository secrets and the artefacts come out signed and
+uploadable:
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 release.keystore` |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+| `ANDROID_KEY_ALIAS` | key alias |
+| `ANDROID_KEY_PASSWORD` | key password |
+
+Without them the build still succeeds and still produces both artefacts,
+unsigned — useful on a fork or a pull request, useless for Play. The run
+summary states which of the two you got, rather than leaving it to be
+discovered at upload time. The keystore is deleted from the runner
+immediately after the build, whether or not it succeeded.
+
+Keep the R8 mapping file. R8 rewrites the release build, so a crash report
+from it is unreadable without `mapping.txt`; Play accepts it directly, and
+the per-build artefact keeps an old release diagnosable after the next one
+has overwritten what Play holds.
 
 ---
 
@@ -243,6 +266,19 @@ Each release ships as a **single ZIP** holding the whole project —
 `STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
 
 ### Changelog
+
+**1.2.1** — correction. `applicationId` is now `com.STS`. CI builds release
+artefacts only: unit tests run against the release variant and the workflow
+assembles the release APK and the Play bundle, with no debug build anywhere
+in the pipeline.
+
+Signing was also made to degrade rather than break. CI sets the keystore
+environment variables unconditionally, so an unconfigured secret arrives as
+an empty string and not as null — and `file("")` resolves to the project
+directory, which the old build script would have accepted as a keystore path
+and then failed on deep inside the signing task. Blank, and present-but-
+missing-on-disk, are now both treated as "no keystore", and the build
+produces unsigned artefacts instead of stopping.
 
 **1.2.0** — feature. Score a target from a photograph taken after the session
 (`ImportActivity`), with an optional clean "before" photograph that turns

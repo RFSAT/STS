@@ -8,9 +8,16 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Play listing identity. The applicationId is PERMANENT once
-        // published; the Kotlin/resource namespace stays com.rfsat.sts.
-        applicationId = "com.STSC"
+        // Play listing identity, and PERMANENT once published — an app's
+        // applicationId cannot be changed afterwards without shipping a
+        // different app and losing every install and review. The Kotlin and
+        // resource namespace stays com.rfsat.sts, so no source moves.
+        //
+        // Play requires at least two segments separated by a dot, letters,
+        // digits and underscores only, and a letter at the start of every
+        // segment. "com.STS" satisfies all of that; uppercase is unusual but
+        // legal, and matches the com.VTBC convention already in use.
+        applicationId = "com.STS"
         minSdk = 26
         targetSdk = 36
         // VERSIONING RULE for this project — follow it on every release:
@@ -25,6 +32,9 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.2.1 — correction: applicationId is now com.STS, and CI builds
+        //         release artefacts only (no debug APK). Signing degrades to
+        //         unsigned rather than failing when no keystore is present.
         // 1.2.0 — feature: score a target from a photograph after the session
         //         (ImportActivity), and a shot distribution histogram shown on
         //         Results, live on Session, on the import screen and in the
@@ -39,15 +49,25 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 5
+        versionName = "1.2.1"
     }
+
+    // Resolved once, here, rather than re-read from the environment in two
+    // places. CI sets these variables unconditionally, so an absent secret
+    // arrives as an EMPTY STRING and not as null — and file("") resolves to
+    // the project directory, which would be accepted as a keystore path and
+    // then fail deep inside the signing task with an unhelpful message. Blank
+    // and missing-on-disk are both treated as "no keystore".
+    val keystoreFile = System.getenv("ANDROID_KEYSTORE_PATH")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { file(it) }
+        ?.takeIf { it.exists() }
 
     signingConfigs {
         create("release") {
-            val ksPath = System.getenv("ANDROID_KEYSTORE_PATH")
-            if (ksPath != null) {
-                storeFile = file(ksPath)
+            if (keystoreFile != null) {
+                storeFile = keystoreFile
                 storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
@@ -56,6 +76,10 @@ android {
     }
 
     buildTypes {
+        // Kept for local work in Android Studio. CI never builds it: the
+        // workflow runs the unit tests against the RELEASE variant and
+        // assembles only the release APK and the Play bundle, so nothing that
+        // leaves the build machine is ever a debug artefact.
         debug {
             isMinifyEnabled = false
         }
@@ -78,7 +102,12 @@ android {
             ndk {
                 debugSymbolLevel = "SYMBOL_TABLE"
             }
-            if (System.getenv("ANDROID_KEYSTORE_PATH") != null) {
+            // Unsigned when no keystore is configured: the build still
+            // succeeds and still produces both artefacts, which is what makes
+            // the workflow useful on a fork or a pull request. An unsigned
+            // bundle cannot be uploaded to Play, and the workflow says so
+            // rather than leaving it to be discovered at upload time.
+            if (keystoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
