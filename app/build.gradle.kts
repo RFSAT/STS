@@ -25,10 +25,14 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.1.0 — feature: real launcher and Play Store icon, generated from
+        //         one drawing (tools/generate_icons.py) into the 512 px store
+        //         asset, the adaptive foreground at five densities, and the
+        //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     signingConfigs {

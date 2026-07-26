@@ -36,6 +36,11 @@
     <color name="ngreen_text_dim">#2BB82B</color>
     <color name="nred_text_dim">#C93A3A</color>
 
+    <!-- Launcher / Play icon field. Sampled from the VTB icon so the two
+         apps read as a family. Not the same as dark_bg: the theme background
+         is tuned for a low-light firing point, the icon for a home screen. -->
+    <color name="icon_background">#2E4034</color>
+
     <!-- Target plot palette. Deliberately theme-independent: the plot is a
          scoring document, and a shot marker that changed hue with the theme
          would be unreadable in a shared screenshot. -->

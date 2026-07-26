@@ -207,6 +207,30 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.1.0** — feature. Launcher and Play Store icon: a target with a three-shot
+group and the score `10.9` — the ISSF decimal maximum, which reads to a
+target shooter as a perfect shot and is the figure this app exists to
+produce. Palette sampled from the VTB icon (`#2E4034` field, `#CAA24B` gold,
+`#F4F3EE` cream) so the two apps sit together on a home screen as a family.
+
+`tools/generate_icons.py` is the single source: it emits `play/play_store_icon.png`
+(512×512, full bleed — Play rounds the corners itself), the adaptive
+foreground at five densities, and the Android 13+ monochrome layer, all from
+one parameterised drawing. Regenerate with `python3 tools/generate_icons.py`
+rather than editing the PNGs, or the store listing and the home screen will
+drift apart.
+
+Two details worth keeping if the artwork is revised. The bullet holes are
+knocked out to *transparency* at a slightly larger radius than the hole
+itself, so whatever they land on is visibly broken by them — that gap is what
+makes a mark read as a hole punched through paper rather than a dot printed
+on it, and being transparent it works unchanged in the store icon, the
+adaptive icon and the themed monochrome layer. And the artwork is sized to
+the 66dp adaptive safe zone, not the 108dp canvas: a launcher scales the
+canvas so its *72dp visible area* fills the display size, which is easy to
+get wrong in a preview and produces an icon that looks correct in the mockup
+and undersized on a real home screen.
+
 **1.0.1** — correction. Removed `res/mipmap-hdpi/README.txt`. Android's
 resource merger accepts only `.xml` and `.png` under `res/`, so any other
 file fails `mergeDebugResources` before compilation is attempted. The file
