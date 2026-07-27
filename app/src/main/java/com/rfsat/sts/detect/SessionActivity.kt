@@ -188,6 +188,11 @@ class SessionActivity : BaseActivity() {
         binding.btnImport.setOnClickListener {
             startActivity(Intent(this, ImportActivity::class.java))
         }
+        binding.btnClearShots.setOnClickListener {
+            ScoringSession.clearShots()
+            refreshAfterClear()
+            notifyUser("All recorded shots cleared.")
+        }
         binding.btnResults.setOnClickListener {
             startActivity(Intent(this, ResultsActivity::class.java)); finish()
         }
@@ -446,6 +451,17 @@ class SessionActivity : BaseActivity() {
             )
         )
         reg.warnings.forEach { Logger.w("Registration", it) }
+
+        // A box in the right place on the wrong face still scores everything
+        // wrongly, and looks completely normal while doing it.
+        runCatching {
+            latestFrame.get()?.let { f ->
+                TargetGeometryCheck.verifyRings(f, reg, face)?.let { problem ->
+                    Logger.w("Registration", problem)
+                    notifyUser(problem)
+                }
+            }
+        }
         live = LiveHitDetector(reg, rules.gaugeDiameterMm)
         reg.warnings.forEach { Logger.w("SessionActivity", it) }
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))
@@ -546,6 +562,12 @@ class SessionActivity : BaseActivity() {
     // ------------------------------------------------------------------
     //  State
     // ------------------------------------------------------------------
+
+    private fun refreshAfterClear() {
+        live?.reset()
+        refreshShotList()
+        refreshStatus()
+    }
 
     private fun currentFace(): TargetFace =
         selectedFace ?: faces.getOrNull(binding.spTarget.selectedItemPosition)
@@ -697,8 +719,8 @@ class SessionActivity : BaseActivity() {
     }
 
     private fun adapter(items: List<String>) =
-        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        ArrayAdapter(this, R.layout.spinner_item, items).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
     private fun onSelected(block: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {

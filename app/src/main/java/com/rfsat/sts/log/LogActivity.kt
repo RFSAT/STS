@@ -1,5 +1,6 @@
 package com.rfsat.sts.log
 
+import com.rfsat.sts.R
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -24,9 +25,9 @@ class LogActivity : BaseActivity() {
         setContentView(binding.root)
 
         binding.spLevel.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_item,
+            this, R.layout.spinner_item,
             listOf("All (info and above)", "Warnings and errors", "Errors only")
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
 
         binding.spLevel.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) {

@@ -109,6 +109,71 @@ object TargetGeometryCheck {
         return GeometryCheck(outermost, expected, observedRatio, best, warning)
     }
 
+    /**
+     * After registration, check that the face's PRINTED RINGS are actually
+     * where the registration says they are.
+     *
+     * The outer-radius test above catches a box that is too small. It cannot
+     * catch the other half of the problem: a box placed perfectly on the
+     * outermost circle of a target whose RING SPACING does not match the
+     * selected face. A six-ring 5-to-10 card registered as a ten-ring ISSF
+     * face has its box in exactly the right place and every ring boundary in
+     * the wrong one, so every score is wrong and nothing looks amiss.
+     *
+     * The test is direct: walk out along the radius and check that each ring
+     * the face claims to have is a dark line in the picture. A ring that is
+     * printed shows as a local minimum; one that only exists in the face
+     * definition does not. Fewer than half of them present means the face
+     * does not describe this target.
+     *
+     * Rings closer together than the profile can resolve are skipped rather
+     * than counted as absent — on a 10 m air rifle face at a modest photo
+     * size the rings are genuinely below one pixel apart, and failing that
+     * card for it would be the check crying wolf.
+     */
+    fun verifyRings(frame: LumaFrame, reg: TargetRegistration, face: TargetFace): String? {
+        if (face.rings.size < 3) return null
+        val (cx, cy) = reg.homography.mmToPx(0.0, 0.0)
+        if (cx.isNaN() || cy.isNaN()) return null
+
+        val profile = radialProfile(frame, cx, cy)
+        if (profile.size < 40) return null
+        val paper = profile.drop(profile.size / 2).sorted().let { it[it.size / 2] }
+
+        var testable = 0
+        var present = 0
+        for (ring in face.rings.sortedBy { it.radiusMm }) {
+            val (px, py) = reg.homography.mmToPx(ring.radiusMm, 0.0)
+            if (px.isNaN()) continue
+            val r = hypot(px - cx, py - cy).toInt()
+            if (r < 6 || r >= profile.size - 3) continue
+            // Skip rings the profile cannot separate from their neighbours.
+            val pitchPx = face.ringPitchMm?.let {
+                val (qx, qy) = reg.homography.mmToPx(it, 0.0)
+                if (qx.isNaN()) 0.0 else hypot(qx - cx, qy - cy)
+            } ?: 4.0
+            if (pitchPx < 3.0) continue
+            testable++
+            val local = (r - 2..r + 2).minOf { profile[it.coerceIn(0, profile.size - 1)] }
+            if (local <= paper - LINE_DEPTH) present++
+        }
+
+        if (testable < 3) return null
+        val fraction = present.toDouble() / testable
+        Logger.i(
+            "TargetGeometryCheck",
+            "ring verification: %d of %d expected rings found in the picture (%.0f%%)"
+                .format(present, testable, 100 * fraction)
+        )
+        if (fraction >= 0.5) return null
+
+        return "Only %d of the %d rings the %s face expects are actually printed where the ".format(
+            present, testable, face.name
+        ) + "registration puts them. The box may be in the right place, but this target's ring " +
+            "spacing does not match that face — scores computed from it will be wrong. Pick the " +
+            "face that matches the card, or add it under Targets."
+    }
+
     /** Outer diameter over black diameter for a face; 1.0 when it has no black. */
     fun expectedRatioOf(face: TargetFace): Double =
         if (face.blackDiameterMm > 0.0) (face.outerRadiusMm * 2.0) / face.blackDiameterMm else 1.0

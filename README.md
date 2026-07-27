@@ -296,6 +296,42 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.7.0** — clearing, legibility, and the other half of the wrong-face
+problem.
+
+*Every spinner in the app was drawing black text on the dark background.*
+`android.R.layout.simple_spinner_item` applies `textAppearanceMediumInverse`
+— a text appearance coloured for the INVERSE of the current theme — so under
+any of the three dark themes it resolved to black. No style in this app could
+override it, because the colour comes from the platform's text appearance
+rather than from `textColor`. Replaced with our own item layouts, which fixes
+the theme, units, rules, target, firearm, sight, click-unit and log-level
+pickers at once.
+
+*Clearing.* The log's Clear button existed, but four controls in one row
+pushed it off the right-hand edge of a phone; the toolbar is now two rows and
+the actions are evenly spread. Recorded shots can be cleared from Results,
+Import and Session, keeping the target, rules and distance so the same card
+can be re-scored without rebuilding the session.
+
+*Stale results.* A photograph that detected nothing left the previous session
+untouched, so the Results screen went on showing an older target's shots as
+though they belonged to the new photo. The session is now replaced BEFORE
+detection runs, so an empty result is visibly empty, and the message says
+what to check.
+
+*The other half of the wrong-face problem.* 1.6.0 added a check for a
+registration box that is too small. It cannot catch a box placed perfectly on
+the outermost circle of a target whose RING SPACING does not match the
+selected face — a six-ring 5-to-10 card registered as a ten-ring ISSF face
+has its box in exactly the right place and every ring boundary in the wrong
+one. `verifyRings` now walks out along the radius after registration and
+checks that each ring the face claims is actually printed there; fewer than
+half present means the face does not describe this target, and it says so.
+Rings too close together for the image to resolve are skipped rather than
+counted absent, so a dense air-rifle face at modest resolution does not cry
+wolf.
+
 **1.6.0** — a diagnostic log, and the check that would have explained why it
 was needed.
 

@@ -379,8 +379,8 @@ class ProfileActivity : BaseActivity() {
     // ------------------------------------------------------------------
 
     private fun adapter(items: List<String>) =
-        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        ArrayAdapter(this, R.layout.spinner_item, items).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
     private fun onSelected(block: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {

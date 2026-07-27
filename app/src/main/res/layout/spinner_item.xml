@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Replaces android.R.layout.simple_spinner_item.
+
+     The platform layout applies spinnerItemStyle, whose text appearance is
+     textAppearanceMediumInverse — INVERSE, i.e. coloured for a light widget
+     on a dark theme. Under this app's dark themes that resolves to black, and
+     every spinner in the app rendered black text on a dark green background:
+     the theme picker, the units picker, the rules and target pickers, the
+     firearm and sight and click-unit pickers, the log level. Invisible, and
+     nothing in the app's own styles could override it because the colour
+     comes from the platform's text appearance rather than from textColor.
+
+     Setting textColor explicitly is the fix, and it has to be on our own
+     layout because the platform's cannot be edited. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/text1"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="?android:attr/listPreferredItemHeightSmall"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:textSize="15sp"
+    android:textColor="?android:attr/textColorPrimary"
+    android:gravity="center_vertical"
+    android:ellipsize="marquee"
+    android:singleLine="true" />

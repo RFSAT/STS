@@ -159,6 +159,12 @@
                 android:checked="true"
                 android:text="Replace the shots already in this session" />
 
+            <Button android:id="@+id/btnClearShots"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Clear all recorded shots" />
+
             <Button android:id="@+id/btnDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Detect the hits and score them" />

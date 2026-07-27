@@ -137,6 +137,12 @@
                     style="?android:attr/borderlessButtonStyle" />
             </LinearLayout>
 
+            <Button android:id="@+id/btnClearShots"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Clear all shots from this session" />
+
             <Button android:id="@+id/btnNewSession"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"

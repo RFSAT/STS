@@ -32,6 +32,27 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.7.0 — feature: clear the log (the button existed but four controls
+        //         in one row pushed it off the right-hand edge of a phone, so
+        //         the toolbar is now two rows); clear the recorded shots,
+        //         from Results, Import and Session, keeping the target, rules
+        //         and distance so the same card can be re-scored.
+        //       — correction: EVERY SPINNER IN THE APP rendered black text on
+        //         the dark background. android.R.layout.simple_spinner_item
+        //         applies textAppearanceMediumInverse — coloured for the
+        //         inverse of the theme — and no app style can override it
+        //         because the colour comes from the platform text appearance,
+        //         not from textColor. Replaced with our own item layouts.
+        //       — correction: a photograph that detected nothing left the
+        //         previous session untouched, so Results went on showing an
+        //         older target's shots as though they were the new ones. The
+        //         session is now replaced BEFORE detection runs.
+        //       — correction: TargetGeometryCheck.verifyRings catches the
+        //         other half of the wrong-face problem. The outer-radius test
+        //         catches a box that is too small; this one catches a box in
+        //         exactly the right place on a face whose RING SPACING does
+        //         not match the card, which scores everything wrongly while
+        //         looking entirely normal.
         // 1.6.0 — feature: a diagnostic log reachable from the Home screen,
         //         hideable in Settings, with a Report button that shares the
         //         log TOGETHER with the active face, rules, gauge and
@@ -138,8 +159,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 13
-        versionName = "1.6.0"
+        versionCode = 14
+        versionName = "1.7.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

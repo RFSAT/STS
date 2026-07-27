@@ -64,7 +64,7 @@ class RulesActivity : BaseActivity() {
             repo.allSets()
         )
         binding.list.adapter = ArrayAdapter(
-            this, android.R.layout.simple_list_item_1,
+            this, R.layout.list_item,
             shown.map { it.name + (if (it.custom) "  [mine]" else "") + (if (!it.verified) "  ⚠" else "") }
         )
         select(shown.firstOrNull { it.id == repo.activeSetId() } ?: shown.firstOrNull())
@@ -147,8 +147,8 @@ class RulesActivity : BaseActivity() {
     private fun EditText.int(fallback: Int) = text.toString().trim().toIntOrNull() ?: fallback
 
     private fun adapter(items: List<String>) =
-        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        ArrayAdapter(this, R.layout.spinner_item, items).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
     private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {

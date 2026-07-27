@@ -122,6 +122,20 @@ object ScoringSession {
         persist()
     }
 
+    /**
+     * Removes every recorded shot but keeps the target, rules, distance and
+     * registration. Distinct from [clear] on purpose: re-scoring the same
+     * target after a bad detection is the common case, and making the user
+     * rebuild the whole session to do it is what left stale results on screen
+     * being read as new ones.
+     */
+    fun clearShots() {
+        state.shots = mutableListOf()
+        state.endedAtMs = 0L
+        persist()
+        Logger.i("ScoringSession", "Shots cleared; target, rules and distance kept")
+    }
+
     val isActive: Boolean get() = state.startedAtMs > 0L && state.endedAtMs == 0L
     val hasShots: Boolean get() = state.shots.isNotEmpty()
 

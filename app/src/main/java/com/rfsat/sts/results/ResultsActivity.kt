@@ -56,6 +56,7 @@ class ResultsActivity : BaseActivity() {
 
         binding.btnShare.setOnClickListener { share(ScoringSession.asReport(this), "STS session report") }
         binding.btnCsv.setOnClickListener { share(ScoringSession.asCsv(), "STS shots CSV") }
+        binding.btnClearShots.setOnClickListener { confirmClearShots() }
         binding.btnNewSession.setOnClickListener {
             ScoringSession.finish()
             ScoringSession.clear()
@@ -117,6 +118,28 @@ class ResultsActivity : BaseActivity() {
         ScoringSession.addShot(shot, rules)
         refresh()
         notifyUser("Shot ${shot.index}: ${shot.displayValue}")
+    }
+
+    /** Wipes the recorded shots but keeps the target, rules and distance, so
+     *  a target can be re-scored without setting the session up again. */
+    private fun confirmClearShots() {
+        if (ScoringSession.state.shots.isEmpty()) {
+            notifyUser("There are no shots to clear.")
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Clear all shots?")
+            .setMessage(
+                "${ScoringSession.state.shots.size} shot(s) will be removed. The target, rules and " +
+                    "distance stay as they are, so you can score the same target again."
+            )
+            .setPositiveButton("Clear") { _, _ ->
+                ScoringSession.clearShots()
+                refresh()
+                notifyUser("Cleared.")
+            }
+            .setNegativeButton("Keep", null)
+            .show()
     }
 
     private fun offerShotActions(shot: Shot) {

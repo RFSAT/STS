@@ -82,7 +82,7 @@ class TargetActivity : BaseActivity() {
             all
         )
         binding.list.adapter = ArrayAdapter(
-            this, android.R.layout.simple_list_item_1,
+            this, R.layout.list_item,
             shown.map { f ->
                 buildString {
                     append(f.name)
@@ -266,8 +266,8 @@ class TargetActivity : BaseActivity() {
     private fun EditText.value(): Double = text.toString().trim().toDoubleOrNull() ?: 0.0
 
     private fun adapter(items: List<String>) =
-        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        ArrayAdapter(this, R.layout.spinner_item, items).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
     private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {

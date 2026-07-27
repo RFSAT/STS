@@ -137,6 +137,11 @@ class ImportActivity : BaseActivity() {
             refreshStatus()
         }
         binding.btnDetect.setOnClickListener { doDetect() }
+        binding.btnClearShots.setOnClickListener {
+            ScoringSession.clearShots()
+            refreshAfterClear()
+            notifyUser("All recorded shots cleared.")
+        }
         binding.btnResults.setOnClickListener {
             startActivity(android.content.Intent(this, ResultsActivity::class.java)); finish()
         }
@@ -302,6 +307,17 @@ class ImportActivity : BaseActivity() {
             )
         )
         reg.warnings.forEach { Logger.w("Registration", it) }
+
+        // A box in the right place on the wrong face still scores everything
+        // wrongly, and looks completely normal while doing it.
+        runCatching {
+            shotBitmap?.let { LumaFrame.fromBitmap(it) }?.let { f ->
+                TargetGeometryCheck.verifyRings(f, reg, face)?.let { problem ->
+                    Logger.w("Registration", problem)
+                    notifyUser(problem)
+                }
+            }
+        }
         reg.warnings.forEach { Logger.w("ImportActivity", it) }
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))
         else notifyUser("Registered. Now detect the hits.")
@@ -331,17 +347,34 @@ class ImportActivity : BaseActivity() {
             HoleDetector.detectAbsolute(reg, reg.rectify(shotFrame), rules.gaugeDiameterMm)
         }
 
-        if (holes.isEmpty()) {
-            binding.tvResult.text = "No holes were found. Check that the card is registered to its " +
-                "corners and that the photograph is sharp enough to resolve a " +
-                "${rules.gaugeDiameterMm} mm hole."
-            return
-        }
-
+        // Replace FIRST, before knowing whether anything was found. Doing it
+        // afterwards meant a photograph that detected nothing left the
+        // previous session untouched, and the Results screen went on showing
+        // an older target's shots as though they belonged to this one.
         if (binding.cbReplace.isChecked) {
             ScoringSession.startNew(face, rules, distanceFromField())
         } else {
             ScoringSession.setDistance(distanceFromField())
+        }
+
+        if (holes.isEmpty()) {
+            binding.hdrDistribution.visibility = View.GONE
+            binding.histogram.distribution = com.rfsat.sts.scoring.ShotDistribution.EMPTY
+            binding.tvResult.text = buildString {
+                appendLine("No holes were found, and any previously recorded shots have been cleared.")
+                appendLine()
+                appendLine("The commonest causes, in order:")
+                appendLine("• the wrong target face — its ring spacing and its scoring gauge " +
+                    "(${rules.gaugeDiameterMm} mm) have to match the card you actually shot")
+                appendLine("• the box not on the outermost ring")
+                appendLine("• a photograph too small or too soft to resolve a " +
+                    "${rules.gaugeDiameterMm} mm hole")
+                appendLine()
+                append("The diagnostic log on the Home screen records what the detector saw; " +
+                    "its Full report button shares that together with the face and gauge in use.")
+            }
+            Logger.w("ImportActivity", "Detection found nothing; session cleared to avoid stale results")
+            return
         }
 
         val bullet = ProfileRepository(this).getBullet()
@@ -385,6 +418,13 @@ class ImportActivity : BaseActivity() {
     }
 
     // ------------------------------------------------------------------
+
+    private fun refreshAfterClear() {
+        binding.hdrDistribution.visibility = View.GONE
+        binding.histogram.distribution = com.rfsat.sts.scoring.ShotDistribution.EMPTY
+        binding.tvResult.text = "No shots recorded."
+        refreshStatus()
+    }
 
     private fun distanceFromField(): Double =
         binding.etDistance.text.toString().toDoubleOrNull()
@@ -497,8 +537,8 @@ class ImportActivity : BaseActivity() {
     }
 
     private fun adapter(items: List<String>) =
-        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        ArrayAdapter(this, R.layout.spinner_item, items).also {
+            it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
     private fun onSelected(block: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {
