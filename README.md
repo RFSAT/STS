@@ -296,6 +296,52 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.5.3** — corrections from testing the detector against two real uploaded
+targets: a synthetic face with five shots, and a photograph of a club card
+with five pellet holes.
+
+*Printed ring numerals were being scored as shots.* Radial normalisation
+removes ring lines because they are rotationally symmetric, but a numeral
+occupies four angles out of 360 and barely moves a median taken around the
+circumference. On the synthetic face the detector returned 22 candidates for
+5 real shots; 17 were printed digits. Each candidate is now tested for
+rotational twins — the same feature a quarter, half and three-quarters of a
+turn away — and discarded if two of the three partners look alike.
+
+A four-fold median over the whole image was tried first. It is perfect on
+synthetic data and **lost two of five real shots on the photograph**, because
+the rotated samples only correspond when registration is exact and the
+lighting is flat, and on a hand-held photo of a card on a range neither
+holds. The per-candidate form is far more forgiving. The result is
+insensitive to its threshold: anything from 0.35 to 0.65 gave identical
+answers on both targets.
+
+*Absolute detection now looks only inside the outermost ring.* Everything
+beyond it is card furniture — a club logo, a score box, the shooter's name, a
+thumb holding the card down — and none of it is scoreable anyway. The
+association's logo on the real target was being reported as a shot.
+Excluding that region also dropped the robust sigma from 4.4 to 3.0 on that
+photograph, and the lower threshold that followed found a faint fifth hole
+that had been missed. This is deliberately NOT done in differential mode,
+where the reference already cancels static features and a mark outside the
+rings really is a shot that should be reported as a miss.
+
+Result on the two targets: **5 of 5 shots found on both**, no false positives
+on the synthetic one, and one low-confidence false positive on the photograph
+(a thumb at the card edge, flagged as doubtful by the existing confidence
+warning).
+
+*On the remaining scoring differences, which are registration and not
+detection.* On the synthetic target the centre shot scored 9 against a true
+10, because the scoring gauge was set to 5 mm while those holes measure 6.4
+to 8.0 mm across; at any gauge of 6 mm or more it scores 10. On the
+photograph the outer three shots each came out one ring generous, and all
+five match the true scores exactly once the registration scale is corrected
+by about 6%. Marginal calls near a ring boundary need the box set to within
+one or two percent — which is precisely what dragging the handles onto the
+outermost ring is for, and why the black-derived expansion is a starting
+point to be checked rather than an answer.
+
 **1.5.2** — corrections for three failures found in the field. Every one of
 them produced a complete, plausible, wrong answer rather than an error, which
 is the class of bug this project keeps having to guard against.

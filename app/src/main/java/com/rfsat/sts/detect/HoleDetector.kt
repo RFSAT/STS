@@ -84,6 +84,16 @@ object HoleDetector {
      *  hole — which is what a printed ring looks like to a blob detector. */
     private const val MAX_ELONGATION = 2.2
 
+    /** A rotational partner counts as a twin at this fraction of the
+     *  candidate's own contrast. The result is insensitive to it: anything
+     *  from 0.35 to 0.65 gave identical answers on both test targets. */
+    private const val TWIN_STRENGTH = 0.45
+
+    /** How many of the three partners must look alike before the candidate is
+     *  treated as printing. Two, so that a single coincidence cannot discard
+     *  a real shot. */
+    private const val TWINS_TO_REJECT = 2
+
     // =====================================================================
     //  Differential detection
     // =====================================================================
@@ -200,8 +210,29 @@ object HoleDetector {
         val h = frame.height
         val n = w * h
 
-        // ---- which pixels the camera actually covered ----
-        val valid = BooleanArray(n) { (frame.data[it].toInt() and 0xFF) != OUT }
+        // ---- which pixels the camera covered AND are worth looking at ----
+        //
+        // Absolute detection is confined to the SCORING AREA. Everything
+        // outside the outermost ring is card furniture — a club logo, a score
+        // box, the shooter's name, the edge of the paper, a thumb holding it
+        // down — and none of it can be scored even if found. Tested on a real
+        // club target, the unrestricted detector reported the association's
+        // logo as a shot. Excluding that region also drops the noise floor it
+        // was contributing: on the same photograph the robust sigma fell from
+        // 4.4 to 3.0 and the threshold with it, which was enough to find a
+        // faint fifth hole that had been missed.
+        //
+        // Deliberately NOT done in [detectByDifference]: there the reference
+        // cancels every static feature already, so a mark outside the rings
+        // really is a shot, and it should be reported as the miss it is.
+        val outerLimit = reg.face.outerRadiusMm * 1.02
+        val valid = BooleanArray(n)
+        for (idx in 0 until n) {
+            if ((frame.data[idx].toInt() and 0xFF) == OUT) continue
+            val (u, v) = reg.rectToMm(idx % frame.width, idx / frame.width)
+            if (outerLimit > 0.0 && hypot(u, v) > outerLimit) continue
+            valid[idx] = true
+        }
         val validFraction = valid.count { it }.toDouble() / n
         if (validFraction < 0.05) {
             Logger.w("HoleDetector", "Almost none of the rectified face is in view; nothing to score")
@@ -252,10 +283,83 @@ object HoleDetector {
 
         val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
 
-        return components(mask, w, h, maxComponents = maxHoles * 4)
+        val candidates = components(mask, w, h, maxComponents = maxHoles * 4)
             .mapNotNull { comp -> holeFromComponent(comp, response, w, reg, gaugePx, expectedArea) }
+
+        return candidates
+            .filterNot { hasRotationalTwins(it, response, w, h, reg, gaugePx) }
             .sortedByDescending { it.confidence }
             .take(maxHoles)
+    }
+
+    /**
+     * True when the same feature appears at the other three quarter-turns
+     * about the scoring centre — which means it is printed, not shot.
+     *
+     * WHAT THIS CATCHES that the radial median cannot. Radial normalisation
+     * removes anything ROTATIONALLY symmetric, which is every ring line. It
+     * does nothing about the ring NUMERALS, because a numeral occupies four
+     * angles out of three hundred and sixty and barely moves a median taken
+     * around the whole circumference. On a synthetic ISSF-style face with its
+     * rings numbered at north, south, east and west, the detector was
+     * returning twenty-two candidates for five real shots, and seventeen of
+     * them were printed digits.
+     *
+     * WHY AS A PER-CANDIDATE TEST rather than a four-fold median over the
+     * whole image. The four-fold median was tried first and is beautiful on
+     * synthetic data — it removed every numeral perfectly. On a real
+     * photograph it LOST two of five genuine shots, because the four rotated
+     * samples only correspond when registration is exact and the lighting is
+     * flat, and on a hand-held photograph of a card on a range neither holds.
+     * Testing one candidate at a time is far more forgiving: a real shot is
+     * discarded only if two of its three rotational partners independently
+     * look like shots too, which needs a coincidence rather than a gradient.
+     *
+     * Measured on both test targets: the synthetic face goes from 22
+     * candidates to exactly 5 with none lost, and the photograph is
+     * untouched.
+     */
+    private fun hasRotationalTwins(
+        hole: DetectedHole,
+        response: IntArray,
+        w: Int,
+        h: Int,
+        reg: TargetRegistration,
+        gaugePx: Double
+    ): Boolean {
+        val (cx, cy) = reg.mmToRect(0.0, 0.0)
+        val (hx, hy) = reg.mmToRect(hole.xMm, hole.yMm)
+        val dx = hx - cx
+        val dy = hy - cy
+        val search = gaugePx * 0.7
+        val bar = TWIN_STRENGTH * hole.contrast
+
+        var twins = 0
+        for ((ex, ey) in listOf(-dy to dx, -dx to -dy, dy to -dx)) {
+            if (peakNear(response, w, h, cx + ex, cy + ey, search) >= bar) twins++
+        }
+        return twins >= TWINS_TO_REJECT
+    }
+
+    /** Strongest response within [radius] pixels of a point. */
+    private fun peakNear(response: IntArray, w: Int, h: Int, x: Double, y: Double, radius: Double): Int {
+        var best = 0
+        val r2 = radius * radius
+        val j0 = max(0, (y - radius).toInt())
+        val j1 = min(h - 1, (y + radius).toInt())
+        val i0 = max(0, (x - radius).toInt())
+        val i1 = min(w - 1, (x + radius).toInt())
+        for (j in j0..j1) {
+            for (i in i0..i1) {
+                val ddx = i - x
+                val ddy = j - y
+                if (ddx * ddx + ddy * ddy <= r2) {
+                    val v = response[j * w + i]
+                    if (v > best) best = v
+                }
+            }
+        }
+        return best
     }
 
     /**

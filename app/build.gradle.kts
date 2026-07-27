@@ -32,6 +32,23 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.5.3 — corrections from running the detector against two real
+        //         uploaded targets rather than synthetic data:
+        //   - printed ring NUMERALS were being scored as shots. Radial
+        //     normalisation removes rings but not numerals, which occupy four
+        //     angles out of 360 and barely move a radial median. A synthetic
+        //     face returned 22 candidates for 5 real shots, 17 of them digits.
+        //     Now rejected by testing each candidate for rotational twins.
+        //     A four-fold median over the whole image was tried first and
+        //     LOST two of five real shots on a photograph — see the note in
+        //     HoleDetector for why the per-candidate form survives real
+        //     lighting and registration error where the global one does not.
+        //   - absolute detection now looks only inside the outermost ring.
+        //     A club logo on a real target was reported as a shot, and the
+        //     card furniture was raising the noise floor: excluding it
+        //     dropped the robust sigma from 4.4 to 3.0 on that photograph,
+        //     which was enough to find a faint fifth hole that had been
+        //     missed.
         // 1.5.2 — corrections for three failures found in the field:
         //   (1) auto-detect skewed the box on square-on targets. It was
         //       APPLYING a tilt inferred from how elliptical the aiming mark
@@ -102,8 +119,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 11
-        versionName = "1.5.2"
+        versionCode = 12
+        versionName = "1.5.3"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

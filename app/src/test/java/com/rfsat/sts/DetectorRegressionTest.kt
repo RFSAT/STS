@@ -178,4 +178,120 @@ class DetectorRegressionTest {
         assertTrue(kotlin.math.abs(t.tiltXDeg) > 20.0)
         assertEquals(0.0, t.tiltYDeg, 1e-6)
     }
+
+    // ------------------------------------------------------------------
+    //  Printed ring numerals must not be scored as shots
+    // ------------------------------------------------------------------
+
+    /** A face with its rings NUMBERED at the four cardinal points, which is
+     *  how every competition target is printed and what defeated the radial
+     *  median: a numeral occupies four angles out of 360 and barely moves a
+     *  median taken around the whole circumference. */
+    private fun targetWithNumerals(
+        size: Int, blackRadius: Double, ringRadii: List<Double>,
+        holes: List<Triple<Double, Double, Double>>
+    ): LumaFrame {
+        val c = size / 2.0
+        val data = ByteArray(size * size)
+        for (j in 0 until size) for (i in 0 until size) {
+            val r = hypot(i - c, j - c)
+            var v = 205
+            if (r <= blackRadius) v = 25
+            if (ringRadii.any { kotlin.math.abs(r - it) < 1.2 }) v = if (r <= blackRadius) 210 else 35
+            data[j * size + i] = v.toByte()
+        }
+        // A blob standing in for the numeral, in the middle of each annulus,
+        // at north, south, east and west.
+        val mids = ringRadii.zipWithNext { a, b -> (a + b) / 2.0 }
+        for (m in mids) {
+            for ((ox, oy) in listOf(0.0 to -m, 0.0 to m, -m to 0.0, m to 0.0)) {
+                for (j in 0 until size) for (i in 0 until size) {
+                    if (hypot(i - (c + ox), j - (c + oy)) <= 4.0) data[j * size + i] = 30
+                }
+            }
+        }
+        for ((hx, hy, hr) in holes) {
+            for (j in 0 until size) for (i in 0 until size) {
+                if (hypot(i - (c + hx), j - (c + hy)) <= hr) {
+                    val onBlack = hypot(i - c, j - c) <= blackRadius
+                    data[j * size + i] = (if (onBlack) 235 else 15).toByte()
+                }
+            }
+        }
+        return LumaFrame(size, size, data)
+    }
+
+    @Test
+    fun `printed ring numerals are rejected as shots`() {
+        val face = TargetCatalog.ISSF_AP10
+        val size = 420
+        val reg = TargetRegistration.fromBoundingBox(
+            face, floatArrayOf(0f, 0f, size.toFloat(), size.toFloat()),
+            TargetRegistration.BoxMeaning.OUTER_SCORING_RING, Gauge.AIR_4_5
+        )!!
+        val pxPerMm = size / (face.outerRadiusMm * 2.0)
+        val gaugePx = Gauge.AIR_4_5 * pxPerMm
+
+        // Three shots, deliberately NOT on the cardinal axes so they have no
+        // rotational partners.
+        val holes = listOf(
+            Triple(18.0, 11.0, gaugePx / 2),
+            Triple(-33.0, 21.0, gaugePx / 2),
+            Triple(25.0, -44.0, gaugePx / 2)
+        )
+        val frame = targetWithNumerals(
+            size,
+            blackRadius = face.blackDiameterMm / 2.0 * pxPerMm,
+            ringRadii = face.rings.map { it.radiusMm * pxPerMm },
+            holes = holes
+        )
+        val found = HoleDetector.detectAbsolute(reg, reg.rectify(frame), Gauge.AIR_4_5)
+
+        // Nine annuli x four positions is thirty-six printed marks against
+        // three real shots. Before the rotational-twin test they all came
+        // back as candidates.
+        assertTrue("found ${found.size} candidates for 3 shots among 4-fold numerals", found.size <= 6)
+        assertTrue("lost the real shots entirely", found.size >= 2)
+    }
+
+    @Test
+    fun `a shot on a cardinal axis survives, because it has no twins`() {
+        val face = TargetCatalog.ISSF_AP10
+        val size = 420
+        val reg = TargetRegistration.fromBoundingBox(
+            face, floatArrayOf(0f, 0f, size.toFloat(), size.toFloat()),
+            TargetRegistration.BoxMeaning.OUTER_SCORING_RING, Gauge.AIR_4_5
+        )!!
+        val pxPerMm = size / (face.outerRadiusMm * 2.0)
+        val gaugePx = Gauge.AIR_4_5 * pxPerMm
+        // Directly above the centre — the very place a numeral would sit.
+        val frame = targetWithNumerals(
+            size, face.blackDiameterMm / 2.0 * pxPerMm,
+            face.rings.map { it.radiusMm * pxPerMm },
+            listOf(Triple(0.0, -52.0, gaugePx / 2))
+        )
+        val found = HoleDetector.detectAbsolute(reg, reg.rectify(frame), Gauge.AIR_4_5)
+        assertTrue("a lone shot on the vertical axis must not be mistaken for printing", found.isNotEmpty())
+    }
+
+    @Test
+    fun `card furniture outside the rings is not scored`() {
+        val face = TargetCatalog.ISSF_AP10
+        val size = 420
+        val reg = TargetRegistration.fromBoundingBox(
+            face, floatArrayOf(0f, 0f, size.toFloat(), size.toFloat()),
+            TargetRegistration.BoxMeaning.OUTER_SCORING_RING, Gauge.AIR_4_5
+        )!!
+        val pxPerMm = size / (face.outerRadiusMm * 2.0)
+        val gaugePx = Gauge.AIR_4_5 * pxPerMm
+        val frame = targetWithNumerals(
+            size, face.blackDiameterMm / 2.0 * pxPerMm,
+            face.rings.map { it.radiusMm * pxPerMm },
+            // one real shot, plus a club logo well outside the outermost ring
+            listOf(Triple(20.0, 15.0, gaugePx / 2), Triple(-195.0, -195.0, gaugePx))
+        )
+        val found = HoleDetector.detectAbsolute(reg, reg.rectify(frame), Gauge.AIR_4_5)
+        val outsideRings = found.count { it.distanceFromCentreMm > face.outerRadiusMm }
+        assertEquals("nothing beyond the outermost ring should be reported", 0, outsideRings)
+    }
 }
