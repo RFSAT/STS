@@ -98,6 +98,9 @@ class RegistrationOverlayView @JvmOverloads constructor(
         color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 2f * density
     }
     private val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#66000000") }
+    private val frameGhost = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#55FFC107"); style = Paint.Style.STROKE; strokeWidth = 2f * density
+    }
     private val guide = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#88FFC107"); style = Paint.Style.STROKE; strokeWidth = 1f * density
         pathEffect = android.graphics.DashPathEffect(floatArrayOf(8f, 8f), 0f)
@@ -120,6 +123,17 @@ class RegistrationOverlayView @JvmOverloads constructor(
     private val detPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD32F2F"); style = Paint.Style.STROKE; strokeWidth = 4f
     }
+
+    /**
+     * Tilt and rotation applied on top of the box. The overlay draws the
+     * transformed outline — which is what the user is actually matching to
+     * the target — while the handles keep operating on the plain square
+     * underneath. Separating them that way means dragging a handle never has
+     * to invert the transform, and the transform never has to worry about
+     * where the fingers are.
+     */
+    var transform: BoxTransform = BoxTransform.NONE
+        set(v) { field = v; invalidate() }
 
     /** Detections drawn back onto the preview, in source pixels. */
     var detectedMarkers: List<Triple<Float, Float, Float>> = emptyList()
@@ -249,19 +263,54 @@ class RegistrationOverlayView @JvmOverloads constructor(
         canvas.drawRect(0f, t, l, bt, scrim)
         canvas.drawRect(r, t, width.toFloat(), bt, scrim)
 
-        canvas.drawRect(l, t, r, bt, boxPaint)
+        val cx = (b[0] + b[2]) / 2.0
+        val cy = (b[1] + b[3]) / 2.0
+        val half = (b[2] - b[0]) / 2.0
 
-        // The inscribed circle is what the box actually means: the feature
+        if (transform.isIdentity) {
+            canvas.drawRect(l, t, r, bt, boxPaint)
+        } else {
+            // The plain square stays visible but faint: it is the frame the
+            // handles move, and hiding it would make them look detached from
+            // anything. The transformed quad is drawn solid, because that is
+            // the shape being matched to the target.
+            canvas.drawRect(l, t, r, bt, frameGhost)
+            drawSourcePolygon(canvas, transform.cornersFor(cx, cy, half), boxPaint, close = true)
+        }
+
+        // The inscribed circle is what the box actually MEANS: the feature
         // being measured is round, and showing the square alone invites
-        // people to fit it to the card instead.
-        canvas.drawCircle((l + r) / 2f, (t + bt) / 2f, (r - l) / 2f, guide)
-        canvas.drawLine((l + r) / 2f, t, (l + r) / 2f, bt, guide)
-        canvas.drawLine(l, (t + bt) / 2f, r, (t + bt) / 2f, guide)
+        // people to fit it to the card instead. Under tilt it becomes the
+        // ellipse the aiming mark should already look like, which turns
+        // setting the sliders into matching one outline to another.
+        drawSourcePolygon(canvas, transform.circleFor(cx, cy, half), guide, close = true)
+        drawSourcePolygon(
+            canvas, listOf(transform.mapNorm(0.0, 1.0, cx, cy, half), transform.mapNorm(0.0, -1.0, cx, cy, half)),
+            guide, close = false
+        )
+        drawSourcePolygon(
+            canvas, listOf(transform.mapNorm(-1.0, 0.0, cx, cy, half), transform.mapNorm(1.0, 0.0, cx, cy, half)),
+            guide, close = false
+        )
 
         for (p in listOf(l to t, r to bt)) {
             canvas.drawCircle(p.first, p.second, handleRadius, handleFill)
             canvas.drawCircle(p.first, p.second, handleRadius, handleRing)
         }
+    }
+
+    /** Draws a polyline given in SOURCE pixels. */
+    private fun drawSourcePolygon(
+        canvas: Canvas, pts: List<Pair<Double, Double>>, paint: Paint, close: Boolean
+    ) {
+        if (pts.size < 2) return
+        val path = Path()
+        pts.forEachIndexed { i, (sx, sy) ->
+            val (x, y) = sourceToView(sx, sy)
+            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        if (close) path.close()
+        canvas.drawPath(path, paint)
     }
 
     private fun drawCorners(canvas: Canvas) {

@@ -32,6 +32,12 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.5.0 — feature: individual TILT and ROTATION controls on the
+        //         registration box, laid out the way a phone camera app lays
+        //         them out. Box plus these is seven degrees of freedom, which
+        //         is every one a flat target through a normal lens needs; the
+        //         eighth, shear, cannot arise with square pixels. The tilt is
+        //         seeded from the ellipticity of the detected aiming mark.
         // 1.4.0 — feature: registration by a square bounding box with
         //         draggable top-left and bottom-right handles, placed
         //         automatically from the detected black aiming mark and
@@ -68,8 +74,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 8
-        versionName = "1.4.0"
+        versionCode = 9
+        versionName = "1.5.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

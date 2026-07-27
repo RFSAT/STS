@@ -293,7 +293,8 @@ class TargetRegistration private constructor(
             box: FloatArray,
             meaning: BoxMeaning,
             gaugeDiameterMm: Double,
-            markEllipticity: Double = 1.0
+            markEllipticity: Double = 1.0,
+            transform: BoxTransform = BoxTransform.NONE
         ): TargetRegistration? {
             if (box.size != 4) return null
             val left = minOf(box[0], box[2]).toDouble()
@@ -317,19 +318,36 @@ class TargetRegistration private constructor(
 
             val r = diameterMm / 2.0
             val boxMm = listOf(-r to r, r to r, r to -r, -r to -r)
-            val boxPx = listOf(
-                left to top, right to top, right to bottom, left to bottom
+
+            // The box supplies position and size; the transform supplies the
+            // rotation and tilt on top. Generating four corners and handing
+            // them to the same solver the corner-tap path uses means there is
+            // exactly ONE piece of code that turns correspondences into a
+            // homography, and the transform cannot introduce a second, subtly
+            // different one. With the identity transform these corners are
+            // the plain axis-aligned box, to the last decimal.
+            val boxPx = transform.cornersFor(
+                cx = (left + right) / 2.0,
+                cy = (top + bottom) / 2.0,
+                half = (right - left) / 2.0
             )
             val h = Homography.fromCorrespondences(boxMm, boxPx) ?: return null
 
             val warnings = mutableListOf<String>()
-            warnings += "Registered from a square box around the ${meaning.label.lowercase()}. " +
-                "This models position and scale only — it cannot correct for a target photographed " +
-                "at an angle."
-            if (markEllipticity > BlackMarkDetector.OBLIQUE_ELLIPTICITY) {
-                warnings += ("The aiming mark measures %.2f times wider than it is tall, so the target " +
-                    "is being viewed at an angle. A square box will misplace shots near the edges; " +
-                    "switch to corner registration for this photograph.").format(markEllipticity)
+            if (transform.isIdentity) {
+                warnings += "Registered from a square box around the ${meaning.label.lowercase()}, " +
+                    "with no tilt or rotation applied. That models position and scale only."
+                if (markEllipticity > BlackMarkDetector.OBLIQUE_ELLIPTICITY) {
+                    warnings += ("The aiming mark measures %.2f times wider than it is tall, so the " +
+                        "target is being viewed at an angle, and no tilt has been set to correct it. " +
+                        "Shots near the edges will be misplaced — use the tilt sliders, or register " +
+                        "by the four card corners.").format(markEllipticity)
+                }
+            } else {
+                warnings += "Registered from a box with ${transform.summary()}. The tilt model " +
+                    "assumes a flat target and a camera at a normal working distance; if the outline " +
+                    "did not sit on the rings, corner registration is exact where this is an " +
+                    "approximation."
             }
             if (meaning == BoxMeaning.BLACK_AIMING_MARK && face.outerRadiusMm * 2.0 > face.blackDiameterMm) {
                 warnings += "The box is around the aiming mark rather than the whole scoring area, so " +

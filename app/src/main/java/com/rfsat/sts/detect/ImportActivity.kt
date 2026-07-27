@@ -132,6 +132,7 @@ class ImportActivity : BaseActivity() {
                 else RegistrationOverlayView.Mode.BOX
             binding.overlay.clearAll()
             binding.btnAutoDetect.isEnabled = !corners
+            setTransformControlsEnabled(!corners)
             registration = null
             refreshStatus()
         }
@@ -140,6 +141,7 @@ class ImportActivity : BaseActivity() {
             startActivity(android.content.Intent(this, ResultsActivity::class.java)); finish()
         }
         binding.overlay.onCornersChanged = { refreshStatus() }
+        wireTransformControls()
 
         refreshStatus()
     }
@@ -201,6 +203,7 @@ class ImportActivity : BaseActivity() {
             binding.overlay.setDefaultBox()
             boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
             markEllipticity = 1.0
+            applyTransform(BoxTransform.NONE)
             if (!silent) {
                 notifyUser(
                     "No black aiming mark could be found, so a box has been placed in the middle " +
@@ -217,12 +220,14 @@ class ImportActivity : BaseActivity() {
         binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
         binding.overlay.detectedMarkers =
             listOf(Triple(disc.centreXPx.toFloat(), disc.centreYPx.toFloat(), disc.radiusPx.toFloat()))
+        applyTransform(BlackMarkDetector.suggestedTransform(disc))
 
         if (BlackMarkDetector.looksOblique(disc)) {
             notifyUser(
-                ("The aiming mark measures %.2f times wider than it is tall, so this photograph was " +
-                    "taken at an angle. A square box cannot correct that — tick the box below to " +
-                    "register by the four card corners instead.").format(disc.ellipticity)
+                ("The aiming mark is %.2f times longer one way than the other, so this photograph was " +
+                    "taken at an angle. Tilt of about %.0f° has been set for you — check the dashed " +
+                    "outline against the rings and flip the slider if it went the wrong way.")
+                    .format(disc.ellipticity, kotlin.math.hypot(transform.tiltXDeg, transform.tiltYDeg))
             )
         } else if (!silent) {
             notifyUser("Found the target. Check the box, adjust the handles if needed, then Register.")
@@ -254,7 +259,7 @@ class ImportActivity : BaseActivity() {
                 return
             }
             TargetRegistration.fromBoundingBox(
-                face, box, boxMeaning, rules.gaugeDiameterMm, markEllipticity
+                face, box, boxMeaning, rules.gaugeDiameterMm, markEllipticity, transform
             ) ?: run {
                 notifyUser(
                     "This face has no ${boxMeaning.label.lowercase()} for a box to measure. " +
@@ -371,10 +376,74 @@ class ImportActivity : BaseActivity() {
                     val n = binding.overlay.cornerCount()
                     if (n in 1..3) append("\n$n of 4 corners tapped")
                 } else if (binding.overlay.hasBox()) {
-                    append("\nbox around: ${boxMeaning.label.lowercase()}")
+                    append("\nbox around: ${boxMeaning.label.lowercase()}, ${transform.summary()}")
                 }
             }
         }
+    }
+
+
+    // ---- tilt and rotation -------------------------------------------
+    //
+    // Three sliders, laid out the way a phone camera app lays them out,
+    // because that is where everyone has already learnt what they do. They
+    // take the box registration from four degrees of freedom to seven, which
+    // is every one a flat target photographed through a normal lens needs.
+
+    private var transform = BoxTransform.NONE
+
+    private fun wireTransformControls() {
+        binding.sbRotation.setOnSeekBarChangeListener(seekListener { p ->
+            transform = transform.withRotation(p / 2.0 - BoxTransform.MAX_ROTATION_DEG)
+            onTransformChanged()
+        })
+        binding.sbTiltX.setOnSeekBarChangeListener(seekListener { p ->
+            transform = transform.withTiltX(p / 2.0 - BoxTransform.MAX_TILT_DEG)
+            onTransformChanged()
+        })
+        binding.sbTiltY.setOnSeekBarChangeListener(seekListener { p ->
+            transform = transform.withTiltY(p / 2.0 - BoxTransform.MAX_TILT_DEG)
+            onTransformChanged()
+        })
+        binding.btnResetTilt.setOnClickListener { applyTransform(BoxTransform.NONE) }
+        applyTransform(transform)
+    }
+
+    /** Pushes a transform into both the sliders and the overlay. Setting the
+     *  slider positions re-enters the listeners, which is harmless because
+     *  the value they compute is the one just set — but it does mean this is
+     *  the only place allowed to move them programmatically. */
+    private fun applyTransform(t: BoxTransform) {
+        transform = t
+        binding.sbRotation.progress = ((t.rotationDeg + BoxTransform.MAX_ROTATION_DEG) * 2).toInt()
+        binding.sbTiltX.progress = ((t.tiltXDeg + BoxTransform.MAX_TILT_DEG) * 2).toInt()
+        binding.sbTiltY.progress = ((t.tiltYDeg + BoxTransform.MAX_TILT_DEG) * 2).toInt()
+        onTransformChanged()
+    }
+
+    private fun onTransformChanged() {
+        binding.overlay.transform = transform
+        binding.lblRotation.text = "Rotation  %+.1f°".format(transform.rotationDeg)
+        binding.lblTiltX.text = "Horizontal tilt  %+.1f°".format(transform.tiltXDeg)
+        binding.lblTiltY.text = "Vertical tilt  %+.1f°".format(transform.tiltYDeg)
+        // The registration was built from the old shape, so it is stale now.
+        registration = null
+        refreshStatus()
+    }
+
+    private fun seekListener(onValue: (Int) -> Unit) =
+        object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) =
+                onValue(progress)
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar?) = Unit
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar?) = Unit
+        }
+
+    private fun setTransformControlsEnabled(enabled: Boolean) {
+        binding.sbRotation.isEnabled = enabled
+        binding.sbTiltX.isEnabled = enabled
+        binding.sbTiltY.isEnabled = enabled
+        binding.btnResetTilt.isEnabled = enabled
     }
 
     private fun adapter(items: List<String>) =
@@ -389,8 +458,10 @@ class ImportActivity : BaseActivity() {
 
     private fun fmt(v: Double) = if (v == Math.floor(v)) "%.0f".format(v) else "%.1f".format(v)
 
-    override fun swipeExemptViews(): List<View> =
-        listOf(binding.overlay, binding.spRules, binding.spTarget, binding.histogram)
+    override fun swipeExemptViews(): List<View> = listOf(
+        binding.overlay, binding.spRules, binding.spTarget, binding.histogram,
+        binding.sbRotation, binding.sbTiltX, binding.sbTiltY
+    )
 
     override fun onDestroy() {
         super.onDestroy()

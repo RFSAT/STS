@@ -113,6 +113,35 @@
                     style="?android:attr/borderlessButtonStyle" />
             </LinearLayout>
 
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Tilt and rotation" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Match the dashed outline to the rings. Rotation turns the target in the picture; the two tilts lean it away from the camera, one about each axis. If the outline gets worse, drag the slider the other way — a symmetric mark cannot say which way a target leans, so the starting guess picks a side." />
+
+            <TextView android:id="@+id/lblRotation" style="@style/Sts.FieldLabel" android:text="Rotation" />
+            <SeekBar android:id="@+id/sbRotation"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="180" android:progress="90" />
+
+            <TextView android:id="@+id/lblTiltX" style="@style/Sts.FieldLabel" android:text="Horizontal tilt" />
+            <SeekBar android:id="@+id/sbTiltX"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="160" android:progress="80" />
+
+            <TextView android:id="@+id/lblTiltY" style="@style/Sts.FieldLabel" android:text="Vertical tilt" />
+            <SeekBar android:id="@+id/sbTiltY"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="160" android:progress="80" />
+
+            <Button android:id="@+id/btnResetTilt"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Reset tilt and rotation" />
+
             <TextView style="@style/Sts.SectionHeading" android:text="4. Score" />
 
             <CheckBox android:id="@+id/cbReplace"

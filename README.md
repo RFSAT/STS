@@ -296,6 +296,44 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.5.0** — feature. Individual **tilt and rotation** controls on the
+registration box: an in-plane rotation and a tilt about each image axis, the
+three controls a phone camera app already teaches everyone. A square box
+carries four degrees of freedom and a homography has eight; these take it to
+seven, and the eighth is shear, which cannot arise with square pixels and a
+flat target. Corner registration remains for anything beyond that.
+
+The tilt model is deliberately not a bare projective term. Tilting a plane
+does two things at once, and modelling one of them looks convincing and
+scores wrong:
+
+* **foreshortening** by `cos(alpha)` — this is what turns the aiming mark
+  from a circle into an ellipse, and a transform with only a perspective term
+  makes the outline *wider* whatever sign you give it, so it can never match
+  a target leaning away;
+* **keystoning** — the near edge magnified, which is the projective term
+  proper.
+
+Keystone strength is fixed at a quarter (target half-size over camera
+distance, near enough at any normal framing) rather than being a fourth
+slider whose effect nobody could judge by eye. It is second order next to the
+foreshortening.
+
+The starting tilt is inferred from the detected mark: a circle tilted by
+`alpha` projects to an ellipse with minor/major = `cos(alpha)`, so
+`alpha = acos(ratio)`, split between the two axes by the direction of the
+minor axis. The axis ratio comes from the blob's **second moments**, not its
+bounding box, because a bounding box cannot tell a rotated ellipse from a
+larger circle — while the SIZE still comes from the bounding box, which is
+unaffected by the shot holes that inflate a second moment.
+
+**The sign of the tilt is a guess, knowingly.** An ellipse is symmetric: it
+says the target leans and by how much, but not which way. Only the keystone
+asymmetry distinguishes leaning toward from leaning away, and that is far too
+weak a signal to read off a shot-up aiming mark. So the app picks a side,
+draws the outline, and says to flip the slider if it went the wrong way —
+which with a live preview is a one-second fix.
+
 **1.4.0** — feature. Registration is now a **square bounding box** with
 draggable top-left and bottom-right handles, placed for you: the app finds
 the black aiming mark by Otsu threshold plus a largest-circular-component

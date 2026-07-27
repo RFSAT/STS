@@ -24,7 +24,15 @@ data class DetectedDisc(
     /** Fraction of its bounding box the component fills. A disc fills
      *  pi/4 = 0.785; much less and it is not a disc. */
     val fillRatio: Double,
-    val confidence: Double
+    val confidence: Double,
+    /** Semi-minor over semi-major from the blob's second moments. 1.0 is a
+     *  circle. Measured this way rather than from the axis-aligned bounding
+     *  box because a bounding box cannot tell a tilted ellipse from a bigger
+     *  circle once the ellipse is rotated — which is exactly the case the
+     *  tilt controls exist for. */
+    val axisRatio: Double = 1.0,
+    /** Direction of the MAJOR axis, degrees from the image's +x axis. */
+    val orientationDeg: Double = 0.0
 )
 
 /**
@@ -112,8 +120,14 @@ object BlackMarkDetector {
             return null
         }
 
-        val ellipticity = max(best.width, best.height).toDouble() /
-            max(1.0, min(best.width, best.height).toDouble())
+        val (semiMajor, semiMinor, angle) = best.ellipse()
+        // Shape from the second moments, SIZE from the bounding box. The
+        // moments give a far better axis ratio for a rotated ellipse, but
+        // they are not robust for size: shots cluster centrally, and holes
+        // removed from the middle inflate a second moment while leaving the
+        // outline — and therefore the bounding box — untouched.
+        val axisRatio = if (semiMajor > 1e-6) (semiMinor / semiMajor).coerceIn(0.05, 1.0) else 1.0
+        val ellipticity = 1.0 / axisRatio
         val fill = best.count.toDouble() / max(1, best.width * best.height)
 
         // Three independent agreements, multiplied rather than averaged, so
@@ -130,7 +144,9 @@ object BlackMarkDetector {
             radiusPx = rSmall * step,
             ellipticity = ellipticity,
             fillRatio = fill,
-            confidence = confidence
+            confidence = confidence,
+            axisRatio = axisRatio,
+            orientationDeg = angle
         )
         Logger.i(
             "BlackMarkDetector",
@@ -189,8 +205,41 @@ object BlackMarkDetector {
     private fun fitsIn(box: FloatArray, w: Int, h: Int) =
         box[0] >= 0f && box[1] >= 0f && box[2] <= w.toFloat() && box[3] <= h.toFloat()
 
-    /** True when the mark is elliptical enough that a square box will not do. */
+    /** True when the mark is elliptical enough that a plain square box will
+     *  not do and the tilt controls are needed. */
     fun looksOblique(disc: DetectedDisc): Boolean = disc.ellipticity > OBLIQUE_ELLIPTICITY
+
+    /**
+     * A starting tilt, inferred from how elliptical the aiming mark is.
+     *
+     * A circle tilted by alpha projects to an ellipse whose minor axis is
+     * cos(alpha) of its major, so alpha = acos(minor / major). The
+     * foreshortening acts ALONG THE MINOR AXIS — that is the direction the
+     * target is receding in — so the total angle is split between the two
+     * tilt controls by the components of the minor axis direction.
+     *
+     * THE SIGN IS A GUESS, AND KNOWINGLY SO. An ellipse is symmetric: it
+     * tells you the target leans, and by how much, but not which way. Only
+     * the keystone asymmetry distinguishes leaning towards the camera from
+     * leaning away, and that is a much weaker signal than the foreshortening
+     * — far too weak to read off a shot-up aiming mark. So the app picks a
+     * sign, draws the outline, and lets the user flip the slider if it went
+     * the wrong way. With the outline visible that is a one-second fix; a
+     * confident wrong answer with no preview would not be.
+     */
+    fun suggestedTransform(disc: DetectedDisc): BoxTransform {
+        if (disc.ellipticity <= 1.02) return BoxTransform.NONE
+        val alpha = Math.toDegrees(kotlin.math.acos(disc.axisRatio.coerceIn(0.0, 1.0)))
+        // Minor axis direction: the major axis turned through a right angle.
+        val phi = Math.toRadians(disc.orientationDeg)
+        val dx = -kotlin.math.sin(phi)
+        val dy = kotlin.math.cos(phi)
+        return BoxTransform(
+            rotationDeg = 0.0,
+            tiltXDeg = (alpha * dx).coerceIn(-BoxTransform.MAX_TILT_DEG, BoxTransform.MAX_TILT_DEG),
+            tiltYDeg = (alpha * dy).coerceIn(-BoxTransform.MAX_TILT_DEG, BoxTransform.MAX_TILT_DEG)
+        )
+    }
 
     // ------------------------------------------------------------------
 
@@ -199,11 +248,32 @@ object BlackMarkDetector {
         var minX = Int.MAX_VALUE; var maxX = Int.MIN_VALUE
         var minY = Int.MAX_VALUE; var maxY = Int.MIN_VALUE
         var sumX = 0L; var sumY = 0L
+        var sumXX = 0.0; var sumYY = 0.0; var sumXY = 0.0
         var touchesBorder = false
         val width get() = maxX - minX + 1
         val height get() = maxY - minY + 1
         val centreX get() = sumX.toDouble() / count
         val centreY get() = sumY.toDouble() / count
+
+        /** Semi-major, semi-minor and the major axis angle in degrees, from
+         *  the second central moments. For a uniform disc of radius R the
+         *  central moment is R^2/4, so the semi-axis is 2*sqrt(lambda). */
+        fun ellipse(): Triple<Double, Double, Double> {
+            if (count < 8) return Triple(width / 2.0, height / 2.0, 0.0)
+            val n = count.toDouble()
+            val mx = sumX / n
+            val my = sumY / n
+            val sxx = sumXX / n - mx * mx
+            val syy = sumYY / n - my * my
+            val sxy = sumXY / n - mx * my
+            val common = kotlin.math.sqrt((sxx - syy) * (sxx - syy) + 4.0 * sxy * sxy)
+            val l1 = (sxx + syy + common) / 2.0
+            val l2 = (sxx + syy - common) / 2.0
+            val semiMajor = 2.0 * kotlin.math.sqrt(max(l1, 0.0))
+            val semiMinor = 2.0 * kotlin.math.sqrt(max(l2, 0.0))
+            val angle = Math.toDegrees(0.5 * kotlin.math.atan2(2.0 * sxy, sxx - syy))
+            return Triple(semiMajor, semiMinor, angle)
+        }
     }
 
     /** Largest four-connected dark component that could be a disc. */
@@ -219,6 +289,8 @@ object BlackMarkDetector {
                 val p = stack.removeLast()
                 val x = p % w; val y = p / w
                 b.count++; b.sumX += x; b.sumY += y
+                b.sumXX += (x * x).toDouble(); b.sumYY += (y * y).toDouble()
+                b.sumXY += (x * y).toDouble()
                 if (x == 0 || y == 0 || x == w - 1 || y == h - 1) b.touchesBorder = true
                 if (x < b.minX) b.minX = x
                 if (x > b.maxX) b.maxX = x
