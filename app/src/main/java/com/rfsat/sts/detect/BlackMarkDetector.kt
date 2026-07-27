@@ -89,6 +89,26 @@ object BlackMarkDetector {
     const val OBLIQUE_ELLIPTICITY = 1.15
 
     /**
+     * Below this ellipticity no tilt is suggested at all: the mark is treated
+     * as round and the box is left square-on.
+     *
+     * 1.02 is a tilt of 11.4 degrees, and the threshold is deliberately not
+     * lower. Two reasons, both about not chasing noise:
+     *
+     *   WHAT IT COSTS TO IGNORE. At 11 degrees a shot on the OUTERMOST ring
+     *   of a 50 m rifle face is misplaced by 1.5 mm — under a fifth of a ring
+     *   pitch — and the error falls off toward the centre, where the shots
+     *   actually are. Below that it is not measurable on a scored card.
+     *
+     *   WHAT IT COSTS TO ACT. The SIGN of a suggested tilt is a guess (see
+     *   [suggestedTransform]), so a marginal ellipticity that is really
+     *   segmentation noise on a shot-up aiming mark buys a correction as
+     *   likely to be applied backwards as forwards. Doing nothing is strictly
+     *   better than a coin flip.
+     */
+    const val MIN_ELLIPTICITY_TO_SUGGEST = 1.02
+
+    /**
      * Finds the aiming mark, or returns null when nothing convincing is
      * there. Coordinates come back in [frame]'s own full-resolution pixels.
      */
@@ -228,7 +248,7 @@ object BlackMarkDetector {
      * confident wrong answer with no preview would not be.
      */
     fun suggestedTransform(disc: DetectedDisc): BoxTransform {
-        if (disc.ellipticity <= 1.02) return BoxTransform.NONE
+        if (disc.ellipticity <= MIN_ELLIPTICITY_TO_SUGGEST) return BoxTransform.NONE
         val alpha = Math.toDegrees(kotlin.math.acos(disc.axisRatio.coerceIn(0.0, 1.0)))
         // Minor axis direction: the major axis turned through a right angle.
         val phi = Math.toRadians(disc.orientationDeg)

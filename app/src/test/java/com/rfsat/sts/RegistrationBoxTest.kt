@@ -250,7 +250,12 @@ class RegistrationBoxTest {
 
     @Test
     fun `the suggested tilt recovers the angle it was generated from`() {
-        for (alpha in listOf(10.0, 20.0, 30.0, 40.0)) {
+        // Starts at 15 degrees, not 10. Below MIN_ELLIPTICITY_TO_SUGGEST the
+        // detector deliberately suggests nothing — see the test below — and
+        // an earlier version of this test asserted recovery at 10 degrees,
+        // which is under that gate. The gate was right and the test was
+        // wrong; this is the distinction worth keeping straight.
+        for (alpha in listOf(15.0, 20.0, 30.0, 40.0)) {
             val pts = BoxTransform(tiltXDeg = alpha).circleFor(0.0, 0.0, 100.0, segments = 720)
             val w = pts.maxOf { it.first } - pts.minOf { it.first }
             val h = pts.maxOf { it.second } - pts.minOf { it.second }
@@ -266,6 +271,38 @@ class RegistrationBoxTest {
     fun `a round mark suggests no tilt at all`() {
         assertTrue(BlackMarkDetector.suggestedTransform(disc(50.0, e = 1.0)).isIdentity)
         assertTrue(BlackMarkDetector.suggestedTransform(disc(50.0, e = 1.01)).isIdentity)
+    }
+
+    @Test
+    fun `a barely elliptical mark is left alone rather than half-corrected`() {
+        // The gate is at 1.02, which is a tilt of about 11.4 degrees. Under
+        // it the measurement is inside the noise of segmenting a shot-up
+        // aiming mark, and since the SIGN of a suggested tilt is a guess, a
+        // correction there is as likely to be applied backwards as forwards.
+        val gate = BlackMarkDetector.MIN_ELLIPTICITY_TO_SUGGEST
+        assertTrue(BlackMarkDetector.suggestedTransform(disc(50.0, e = gate)).isIdentity)
+        assertTrue(BlackMarkDetector.suggestedTransform(disc(50.0, e = gate - 0.005)).isIdentity)
+        // and just above it, the detector does act
+        assertTrue(!BlackMarkDetector.suggestedTransform(disc(50.0, e = gate + 0.02)).isIdentity)
+    }
+
+    @Test
+    fun `the gate corresponds to a tilt small enough to ignore`() {
+        // Documents WHY the gate sits where it does, so moving it has to be a
+        // decision rather than an accident: at this angle a shot on the
+        // outermost ring of a 50 m face is misplaced by well under a fifth of
+        // a ring pitch, and less nearer the centre.
+        val gateDeg = Math.toDegrees(
+            kotlin.math.acos(1.0 / BlackMarkDetector.MIN_ELLIPTICITY_TO_SUGGEST)
+        )
+        assertEquals(11.4, gateDeg, 0.2)
+        val outerRingMm = TargetCatalog.ISSF_R50.outerRadiusMm
+        val ringPitchMm = TargetCatalog.ISSF_R50.ringPitchMm!!
+        val worstErrorMm = outerRingMm * (1.0 - kotlin.math.cos(Math.toRadians(gateDeg)))
+        assertTrue(
+            "ignoring the gate tilt costs ${worstErrorMm}mm at the outer ring",
+            worstErrorMm < 0.25 * ringPitchMm
+        )
     }
 
     @Test

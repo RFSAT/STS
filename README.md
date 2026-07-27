@@ -296,6 +296,21 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.5.1** — correction. The first CI run to get past resource merging
+compiled the whole project and passed 75 of 76 tests. The one failure was in
+the test, not the app: it asserted that a 10 degree tilt is recovered from
+the aiming mark, while `suggestedTransform` deliberately ignores anything
+under about 11.4 degrees.
+
+The gate was right and is now explicit. Ignoring an 11 degree tilt misplaces
+a shot on the *outermost* ring of a 50 m face by 1.5 mm — under a fifth of a
+ring pitch, and less nearer the centre where the shots are. Against that, the
+sign of a suggested tilt is a guess, so acting on an ellipticity that is
+really segmentation noise buys a correction as likely to go backwards as
+forwards. The bare `1.02` is now `MIN_ELLIPTICITY_TO_SUGGEST`, documented
+with that reasoning, and a test pins the angle it corresponds to so moving it
+has to be a decision rather than an accident.
+
 **1.5.0** — feature. Individual **tilt and rotation** controls on the
 registration box: an in-plane rotation and a tilt about each image axis, the
 three controls a phone camera app already teaches everyone. A square box

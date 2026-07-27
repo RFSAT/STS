@@ -32,6 +32,13 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.5.1 — correction: the first real CI run compiled everything and
+        //         passed 75 of 76 tests. The failure was the TEST, not the
+        //         app: it asserted that a 10 degree tilt is recovered, but
+        //         suggestedTransform deliberately ignores anything under 11.4
+        //         degrees. That gate is now the named, documented constant
+        //         MIN_ELLIPTICITY_TO_SUGGEST instead of a bare 1.02, and the
+        //         test asserts the behaviour that exists.
         // 1.5.0 — feature: individual TILT and ROTATION controls on the
         //         registration box, laid out the way a phone camera app lays
         //         them out. Box plus these is seven degrees of freedom, which
@@ -74,8 +81,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 9
-        versionName = "1.5.0"
+        versionCode = 10
+        versionName = "1.5.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
