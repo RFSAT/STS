@@ -26,6 +26,10 @@
             <Spinner android:id="@+id/spUnits"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
 
+            <CheckBox android:id="@+id/cbShowLog"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Show the diagnostic log on the Home screen" />
+
             <CheckBox android:id="@+id/cbFullScreen"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Full screen (hide the system bars)" />

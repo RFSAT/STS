@@ -15,6 +15,11 @@ import com.rfsat.sts.targets.TargetRepository
 
 class MainActivity : BaseActivity() {
 
+    companion object {
+        const val KEY_SHOW_LOG = "show_log"
+    }
+
+
     private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +54,9 @@ class MainActivity : BaseActivity() {
         }
         binding.btnImport.setOnClickListener {
             startActivity(Intent(this, com.rfsat.sts.detect.ImportActivity::class.java))
+        }
+        binding.btnLog.setOnClickListener {
+            startActivity(Intent(this, com.rfsat.sts.log.LogActivity::class.java))
         }
         binding.btnResume.setOnClickListener {
             startActivity(Intent(this, ResultsActivity::class.java))
@@ -86,6 +94,13 @@ class MainActivity : BaseActivity() {
                     "rather than a governing body's own table. Check them before quoting a score.")
             }
         }
+
+        // The log is a diagnostic surface, not part of shooting, so it can be
+        // hidden — but it ships VISIBLE. Someone who needs to send a log is
+        // already having a bad time and should not have to hunt for it first.
+        binding.btnLog.visibility =
+            if (getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_SHOW_LOG, true))
+                android.view.View.VISIBLE else android.view.View.GONE
 
         val resumable = ScoringSession.hasShots
         binding.btnResume.visibility = if (resumable) android.view.View.VISIBLE else android.view.View.GONE

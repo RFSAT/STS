@@ -364,6 +364,15 @@ class SessionActivity : BaseActivity() {
         }
 
         markEllipticity = disc.ellipticity
+
+        // Does the picture actually look like the face that is selected? A
+        // wrong face does not fail — it registers the wrong circle and
+        // produces a complete, confident, wrong score sheet. See
+        // TargetGeometryCheck for the failure this was written for.
+        val geometry = TargetGeometryCheck.analyse(
+            frame, disc, face, com.rfsat.sts.targets.TargetRepository(this).allFaces()
+        )
+
         val (box, meaning) = BlackMarkDetector.boxFor(disc, face, frame.width, frame.height)
         boxMeaning = meaning
         binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
@@ -380,7 +389,11 @@ class SessionActivity : BaseActivity() {
         applyTransform(BoxTransform.NONE)
         binding.btnApplyTilt.isEnabled = !suggestedTilt.isIdentity
 
-        if (BlackMarkDetector.looksOblique(disc)) {
+        if (geometry.looksWrong) {
+            // Louder than the tilt advice and shown first, because a wrong
+            // face makes every other consideration irrelevant.
+            notifyUser(geometry.warning ?: "")
+        } else if (BlackMarkDetector.looksOblique(disc)) {
             notifyUser(
                 ("The aiming mark is %.2f times longer one way than the other, which suggests about " +
                     "%.0f° of tilt. Nothing has been changed — tap “Apply estimated tilt” to try it, " +
@@ -425,6 +438,14 @@ class SessionActivity : BaseActivity() {
             }
         }
         registration = reg
+        Logger.i(
+            "SessionActivity",
+            "registered %s: face '%s', rules '%s', gauge %.2f mm, %s".format(
+                if (binding.cbCornerMode.isChecked) "by card corners" else "by box",
+                face.name, rules.name, rules.gaugeDiameterMm, transform.summary()
+            )
+        )
+        reg.warnings.forEach { Logger.w("Registration", it) }
         live = LiveHitDetector(reg, rules.gaugeDiameterMm)
         reg.warnings.forEach { Logger.w("SessionActivity", it) }
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))

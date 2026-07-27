@@ -32,6 +32,25 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.6.0 — feature: a diagnostic log reachable from the Home screen,
+        //         hideable in Settings, with a Report button that shares the
+        //         log TOGETHER with the active face, rules, gauge and
+        //         equipment. Detection now logs its own parameters and every
+        //         candidate it accepted or rejected.
+        //       — correction: the app no longer stays silent when the selected
+        //         target face does not match the target in the picture.
+        //         TargetGeometryCheck looks for printed rings outside the
+        //         proposed registration box; if they are there, the box is too
+        //         small and the wrong face is selected. Photographing an
+        //         air-PISTOL card with the air RIFLE face chosen put the box
+        //         on the FIVE ring (188 px against the ring's 194 px), halved
+        //         every distance, scored the centre shot a 10 and every other
+        //         shot a miss — a complete, confident, wrong score sheet from
+        //         a wrong menu selection.
+        //       — correction: the scoring-area limit went from 1.02x to 1.10x
+        //         the outer ring, so a shot just outside the last ring is
+        //         reported as the miss it is. Card furniture sits much further
+        //         out; the logo that prompted the limit was at 1.21x.
         // 1.5.3 — corrections from running the detector against two real
         //         uploaded targets rather than synthetic data:
         //   - printed ring NUMERALS were being scored as shots. Radial
@@ -119,8 +138,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 12
-        versionName = "1.5.3"
+        versionCode = 13
+        versionName = "1.6.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -225,7 +225,10 @@ object HoleDetector {
         // Deliberately NOT done in [detectByDifference]: there the reference
         // cancels every static feature already, so a mark outside the rings
         // really is a shot, and it should be reported as the miss it is.
-        val outerLimit = reg.face.outerRadiusMm * 1.02
+        // 1.10 rather than 1.02: a shot just outside the last ring is a
+        // genuine miss and is worth reporting, while card furniture sits much
+        // further out — the club logo that triggered this was at 1.21x.
+        val outerLimit = reg.face.outerRadiusMm * 1.10
         val valid = BooleanArray(n)
         for (idx in 0 until n) {
             if ((frame.data[idx].toInt() and 0xFF) == OUT) continue
@@ -283,13 +286,52 @@ object HoleDetector {
 
         val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
 
-        val candidates = components(mask, w, h, maxComponents = maxHoles * 4)
-            .mapNotNull { comp -> holeFromComponent(comp, response, w, reg, gaugePx, expectedArea) }
+        val blobs = components(mask, w, h, maxComponents = maxHoles * 4)
+        val candidates = blobs.mapNotNull { comp ->
+            holeFromComponent(comp, response, w, reg, gaugePx, expectedArea)
+        }
+        val twinned = candidates.filter { hasRotationalTwins(it, response, w, h, reg, gaugePx) }
+        val kept = (candidates - twinned.toSet()).sortedByDescending { it.confidence }.take(maxHoles)
 
-        return candidates
-            .filterNot { hasRotationalTwins(it, response, w, h, reg, gaugePx) }
-            .sortedByDescending { it.confidence }
-            .take(maxHoles)
+        // Enough detail that a bad result can be diagnosed from the log alone,
+        // without the photograph. Every number here has been needed at least
+        // once to explain a wrong answer.
+        Logger.i(
+            "HoleDetector",
+            "absolute pass: rect %dx%d @ %.3f mm/px, gauge %.1f mm = %.1f px, ".format(
+                w, h, reg.mmPerPx, gaugeDiameterMm, gaugePx
+            ) +
+                "scoring limit %.1f mm, %.0f%% of the frame in view, ".format(
+                    outerLimit, 100.0 * validFraction
+                ) +
+                "sigma %.2f threshold %.1f | %d blobs -> %d candidates -> %d after twin rejection".format(
+                    sigma, threshold, blobs.size, candidates.size, kept.size
+                )
+        )
+        kept.forEachIndexed { i, hHole ->
+            Logger.i(
+                "HoleDetector",
+                "  hit %d: (%.1f, %.1f) mm  r=%.1f  dia=%.1f mm  contrast=%.0f  conf=%.2f".format(
+                    i + 1, hHole.xMm, hHole.yMm, hHole.distanceFromCentreMm,
+                    hHole.diameterMm, hHole.contrast, hHole.confidence
+                )
+            )
+        }
+        if (twinned.isNotEmpty()) {
+            Logger.i(
+                "HoleDetector",
+                "  rejected ${twinned.size} candidate(s) as printed: they repeat at the other " +
+                    "quarter-turns about the centre"
+            )
+        }
+        if (kept.isEmpty() && blobs.isNotEmpty()) {
+            Logger.w(
+                "HoleDetector",
+                "  ${blobs.size} region(s) exceeded the threshold but none passed the size, " +
+                    "roundness and printing filters — check the scoring gauge matches the calibre"
+            )
+        }
+        return kept
     }
 
     /**

@@ -67,6 +67,13 @@ class ProfileActivity : BaseActivity() {
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
+        binding.cbShowLog.isChecked = getSharedPreferences(BaseActivity.PREFS, MODE_PRIVATE)
+            .getBoolean(com.rfsat.sts.ui.MainActivity.KEY_SHOW_LOG, true)
+        binding.cbShowLog.setOnCheckedChangeListener { _, on ->
+            getSharedPreferences(BaseActivity.PREFS, MODE_PRIVATE).edit()
+                .putBoolean(com.rfsat.sts.ui.MainActivity.KEY_SHOW_LOG, on).apply()
+        }
+
         binding.cbFullScreen.isChecked = fullScreenEnabled()
         binding.cbFullScreen.setOnCheckedChangeListener { _, on ->
             getSharedPreferences(BaseActivity.PREFS, MODE_PRIVATE).edit().putBoolean("full_screen", on).apply()

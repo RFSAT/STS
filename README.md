@@ -296,6 +296,41 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.6.0** — a diagnostic log, and the check that would have explained why it
+was needed.
+
+*The log.* Reachable from the Home screen, hideable in Settings > Display.
+Its **Report** button shares the log together with the state needed to read
+it: app build, device, and the active target face with its black-to-outer
+ratio, rule set, scoring gauge, distance and equipment. A log alone would not
+have diagnosed the failure that prompted this — the cause was a target face
+picked in a menu, which no amount of detection logging reveals unless you
+also know what was picked. Detection itself now logs its parameters
+(rectified size, mm/px, gauge in pixels, scoring limit, fraction of the frame
+in view, noise sigma, threshold) and every candidate it accepted or rejected,
+with the reason.
+
+*Why the app was silent when it should not have been.* Auto-detection finds
+the black aiming mark and expands the box to the outer ring using the
+SELECTED face's published ratio. That ratio varies enormously — 2.61 on the
+ISSF air pistol face, 1.49 on the air rifle one — so the wrong face does not
+fail, it registers the wrong circle. An air-pistol-proportioned card scored
+with the air rifle face put the box at 188 px when the FIVE ring sits at
+194 px: every distance came out half its true size, the centre shot read as a
+10, and everything past the misplaced outer ring was not looked at and came
+back as a miss.
+
+`TargetGeometryCheck` now reads the evidence already in the picture. If the
+box really is around the outermost ring, there should be no printed rings
+outside it; when there are, the face is wrong — and the black-to-outer ratio
+the image actually shows says which face would have been right. The app says
+so before anything is scored.
+
+*Also:* the scoring-area limit moved from 1.02x to 1.10x the outer ring, so a
+shot just past the last ring is reported as the miss it is rather than
+ignored. Card furniture sits much further out — the club logo that prompted
+the limit was at 1.21x.
+
 **1.5.3** — corrections from testing the detector against two real uploaded
 targets: a synthetic face with five shots, and a photograph of a club card
 with five pellet holes.
