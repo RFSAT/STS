@@ -101,6 +101,22 @@
 
             <TextView style="@style/Sts.SectionHeading" android:text="Scoring" />
 
+            <!-- First, because it needs neither registration nor a
+                 reference frame. A shooter who just wants to score the card
+                 in their hand should not have to read past the whole
+                 live-capture workflow to find it. -->
+            <Button android:id="@+id/btnImport"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Upload a target photo to score" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="2dp"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Or score live, as you shoot:" />
+
             <Button android:id="@+id/btnReference"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Capture clean target (reference)" />
@@ -114,12 +130,6 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="Score the target now (single frame)" />
-
-            <Button android:id="@+id/btnImport"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                style="?android:attr/borderlessButtonStyle"
-                android:text="Score from a photo of the target…" />
 
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"

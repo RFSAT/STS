@@ -294,6 +294,21 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.3.1** — correction. The photo-upload scoring entry points have existed
+since 1.2.0, but both were styled `borderlessButtonStyle` — flat text with no
+background, sitting directly under a filled button — and read as captions
+rather than controls. Users could not find the feature at all. Both are now
+ordinary buttons labelled "Upload a target photo to score", the Home one
+comes first (scoring a card after the relay is the commoner job and needs no
+camera downrange), and the Session screen separates it from the live-capture
+workflow with an explicit "Or score live, as you shoot:".
+
+The static gate now also flags the reverse of a missing view: a button
+present in a layout that no code listens to. It would not have caught this
+one — the listener was wired correctly, the button was just invisible as a
+button — which is worth remembering about what a build check can and cannot
+tell you.
+
 **1.3.0** — feature. Google Play listing material in `play/`: short and full
 descriptions, and a 1024x500 feature graphic generated from the same drawing
 as the launcher icon.

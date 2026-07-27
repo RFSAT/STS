@@ -161,7 +161,10 @@ class ImportActivity : BaseActivity() {
     }
 
     private fun doRegister() {
-        val bmp = shotBitmap ?: run { notifyUser("Choose a photo of the shot target first."); return }
+        if (shotBitmap == null) {
+            notifyUser("Choose a photo of the shot target first.")
+            return
+        }
         val corners = binding.overlay.cornersInSource() ?: run {
             notifyUser("Tap all four corners of the card — ${binding.overlay.cornerCount()} of 4 so far.")
             return
@@ -177,9 +180,6 @@ class ImportActivity : BaseActivity() {
         reg.warnings.forEach { Logger.w("ImportActivity", it) }
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))
         else notifyUser("Registered. Now detect the hits.")
-        // Unused here beyond the null check, but naming it documents that the
-        // bitmap must outlive registration.
-        check(bmp.width > 0)
         refreshStatus()
     }
 

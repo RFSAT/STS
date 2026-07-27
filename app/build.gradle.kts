@@ -32,6 +32,11 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.3.1 — correction: the photo-upload scoring entry points existed
+        //         since 1.2.0 but were styled borderless — flat text under a
+        //         filled button — and users could not find them. Both are now
+        //         ordinary buttons, the Home one comes FIRST, and both read
+        //         "Upload a target photo to score".
         // 1.3.0 — feature: Play Store listing material — short and full
         //         descriptions and the 1024x500 feature graphic, in play/.
         //         The graphic is generated from the SAME drawing as the icon
@@ -54,8 +59,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 6
-        versionName = "1.3.0"
+        versionCode = 7
+        versionName = "1.3.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

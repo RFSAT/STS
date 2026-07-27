@@ -60,20 +60,27 @@
                     android:layout_marginTop="8dp"
                     android:lineSpacingExtra="3dp" />
 
-                <Button
-                    android:id="@+id/btnStart"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Start a scoring session" />
-
+                <!-- Two equally weighted choices, and the photo one FIRST.
+                     Scoring a card after the relay is the commoner job and
+                     needs no camera pointed downrange, so it should not be
+                     the secondary option. It must also NOT be a borderless
+                     button: that style renders as flat text with no
+                     background, and sitting under a filled button it reads
+                     as a caption rather than as a control. It was missed
+                     entirely in 1.3.0 for exactly that reason. -->
                 <Button
                     android:id="@+id/btnImport"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    style="?android:attr/borderlessButtonStyle"
-                    android:text="Score a photo of a shot target" />
+                    android:layout_marginTop="14dp"
+                    android:text="Upload a target photo to score" />
+
+                <Button
+                    android:id="@+id/btnStart"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Start a live scoring session" />
 
                 <Button
                     android:id="@+id/btnResume"
