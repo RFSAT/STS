@@ -84,6 +84,9 @@ object BlackMarkDetector {
      *  threshold split the scene rather than finding anything on it. */
     private const val MAX_RADIUS_FRACTION = 0.48
 
+    /** A first pass this confident is accepted without trying the crop. */
+    private const val GOOD_ENOUGH = 0.55
+
     /** Past this the target is angled enough that a square box will mis-score
      *  it and corner registration is wanted instead. */
     const val OBLIQUE_ELLIPTICITY = 1.15
@@ -113,18 +116,48 @@ object BlackMarkDetector {
      * there. Coordinates come back in [frame]'s own full-resolution pixels.
      */
     fun detect(frame: LumaFrame): DetectedDisc? {
-        val step = max(1, max(frame.width, frame.height) / WORK_MAX)
-        val w = frame.width / step
-        val h = frame.height / step
+        // Try the whole picture first, then just the middle of it.
+        //
+        // WHY THE RETRY. Otsu splits the image into a dark population and a
+        // light one, which is exactly right when the frame is filled by a
+        // white card with a black mark on it. Photograph that card lying on a
+        // dark bench, though, and the biggest dark population is the BENCH:
+        // the split lands between bench and card, the aiming mark ends up in
+        // the light class, and nothing is found. Re-running on the central
+        // 60% usually excludes the bench and puts the card back in charge of
+        // the histogram.
+        val full = detectIn(frame, 0, 0, frame.width, frame.height)
+        if (full != null && full.confidence >= GOOD_ENOUGH) return full
+
+        val insetX = (frame.width * 0.2).toInt()
+        val insetY = (frame.height * 0.2).toInt()
+        val cropped = detectIn(
+            frame, insetX, insetY, frame.width - insetX, frame.height - insetY
+        )
+        return when {
+            cropped == null -> full
+            full == null -> cropped
+            cropped.confidence > full.confidence -> cropped
+            else -> full
+        }
+    }
+
+    private fun detectIn(frame: LumaFrame, x0: Int, y0: Int, x1: Int, y1: Int): DetectedDisc? {
+        val regionW = x1 - x0
+        val regionH = y1 - y0
+        if (regionW < 32 || regionH < 32) return null
+        val step = max(1, max(regionW, regionH) / WORK_MAX)
+        val w = regionW / step
+        val h = regionH / step
         if (w < 16 || h < 16) return null
 
         val small = IntArray(w * h)
-        for (y in 0 until h) for (x in 0 until w) small[y * w + x] = frame.at(x * step, y * step)
+        for (y in 0 until h) for (x in 0 until w) small[y * w + x] = frame.at(x0 + x * step, y0 + y * step)
 
         val threshold = otsu(small)
         val dark = BooleanArray(w * h) { small[it] <= threshold }
 
-        val best = largestDisc(dark, w, h) ?: run {
+        val best = bestDisc(dark, w, h) ?: run {
             Logger.i("BlackMarkDetector", "No disc-like dark region found")
             return null
         }
@@ -159,8 +192,8 @@ object BlackMarkDetector {
         val confidence = roundness * (0.5 + 0.5 * fillScore) * (0.5 + 0.5 * sizeScore)
 
         val disc = DetectedDisc(
-            centreXPx = best.centreX * step,
-            centreYPx = best.centreY * step,
+            centreXPx = x0 + best.centreX * step,
+            centreYPx = y0 + best.centreY * step,
             radiusPx = rSmall * step,
             ellipticity = ellipticity,
             fillRatio = fill,
@@ -251,9 +284,15 @@ object BlackMarkDetector {
         if (disc.ellipticity <= MIN_ELLIPTICITY_TO_SUGGEST) return BoxTransform.NONE
         val alpha = Math.toDegrees(kotlin.math.acos(disc.axisRatio.coerceIn(0.0, 1.0)))
         // Minor axis direction: the major axis turned through a right angle.
+        // The orientation is measured in IMAGE coordinates, where y runs
+        // down, while the tilt controls are in target coordinates, where it
+        // runs up — hence the negated y component. It only affects which way
+        // the suggestion points, not how it splits between the two axes, but
+        // an axis convention that is wrong on purpose is a trap for whoever
+        // reads this next.
         val phi = Math.toRadians(disc.orientationDeg)
         val dx = -kotlin.math.sin(phi)
-        val dy = kotlin.math.cos(phi)
+        val dy = -kotlin.math.cos(phi)
         return BoxTransform(
             rotationDeg = 0.0,
             tiltXDeg = (alpha * dx).coerceIn(-BoxTransform.MAX_TILT_DEG, BoxTransform.MAX_TILT_DEG),
@@ -296,8 +335,17 @@ object BlackMarkDetector {
         }
     }
 
-    /** Largest four-connected dark component that could be a disc. */
-    private fun largestDisc(dark: BooleanArray, w: Int, h: Int): Blob? {
+    /**
+     * The most aiming-mark-like four-connected dark component.
+     *
+     * Not simply the largest. A photograph of a target on a range often
+     * contains something bigger and darker than the aiming mark — a shadow, a
+     * frame, a doorway behind the butts — and picking on size alone walks
+     * straight into it. The score multiplies area by how central the
+     * component is, because the one thing that is reliably true of the mark
+     * the user is trying to register is that they pointed the camera at it.
+     */
+    private fun bestDisc(dark: BooleanArray, w: Int, h: Int): Blob? {
         val seen = BooleanArray(dark.size)
         val stack = ArrayDeque<Int>()
         var best: Blob? = null
@@ -327,9 +375,18 @@ object BlackMarkDetector {
             if (b.count < 32) continue
             if (b.count.toDouble() / max(1, b.width * b.height) < MIN_FILL) continue
             val current = best
-            if (current == null || b.count > current.count) best = b
+            if (current == null || score(b, w, h) > score(current, w, h)) best = b
         }
         return best
+    }
+
+    /** Area weighted by centrality; a component at the very edge of the frame
+     *  has to be four times the size of a central one to win. */
+    private fun score(b: Blob, w: Int, h: Int): Double {
+        val dx = (b.centreX - w / 2.0) / (w / 2.0)
+        val dy = (b.centreY - h / 2.0) / (h / 2.0)
+        val offCentre = min(1.0, kotlin.math.hypot(dx, dy))
+        return b.count * (1.0 - 0.75 * offCentre)
     }
 
     /**

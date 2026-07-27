@@ -161,13 +161,21 @@ object HoleDetector {
     /**
      * Finds holes in a single rectified frame, with no clean reference.
      *
-     * The core operator is a centre-surround contrast: for every pixel,
+     * Two stages, and the first is what makes the second workable.
+     *
+     * FIRST the printed target is subtracted from itself by radial median —
+     * see [radiallyNormalise]. Every ring line and the aiming mark are
+     * rotationally symmetric and vanish; the holes, which are not, remain.
+     * Relying on the centre-surround operator alone to reject printing was
+     * not good enough: it rejects a ring line only for being long and thin,
+     * which fails wherever rings run close together or a numeral is printed.
+     *
+     * THEN a centre-surround contrast on what is left: for every pixel,
      * compare the mean over a disc of the gauge's own size against the mean
      * over the annulus immediately outside it. That is scale-selective by
      * construction — a feature much smaller than the disc barely moves the
-     * inner mean, and a feature much larger moves the inner and outer means
-     * together and cancels. A printed ring line, being long and thin, cancels
-     * almost exactly; that is the main reason this works at all.
+     * inner mean, and a feature much larger moves inner and outer together
+     * and cancels.
      *
      * The disc and annulus are evaluated as squares through an integral
      * image. A square is a poor circle, but it is a 4-array-read circle, and
@@ -191,27 +199,43 @@ object HoleDetector {
         val w = frame.width
         val h = frame.height
         val n = w * h
-        val integral = IntegralImage(frame)
+
+        // ---- which pixels the camera actually covered ----
+        val valid = BooleanArray(n) { (frame.data[it].toInt() and 0xFF) != OUT }
+        val validFraction = valid.count { it }.toDouble() / n
+        if (validFraction < 0.05) {
+            Logger.w("HoleDetector", "Almost none of the rectified face is in view; nothing to score")
+            return emptyList()
+        }
+
+        // ---- remove the printed target ----
+        val normalised = radiallyNormalise(reg, frame, valid)
+
+        val integral = MaskedIntegralImage(normalised, valid)
 
         val gaugePx = gaugeDiameterMm / reg.mmPerPx
         val rIn = max(1, (gaugePx / 2.0).roundToInt())
         val rOut = max(rIn + 2, (gaugePx * 1.6).roundToInt())
+        // A window must be mostly real data before its mean means anything.
+        val minInner = max(3, ((2 * rIn + 1) * (2 * rIn + 1) * 0.6).roundToInt())
+        val minOuter = max(6, (((2 * rOut + 1) * (2 * rOut + 1) - (2 * rIn + 1) * (2 * rIn + 1)) * 0.6).roundToInt())
 
         val blackRadiusMm = reg.face.blackDiameterMm / 2.0
 
-        // ---- centre-surround response over the whole rectified face ----
         val response = IntArray(n)
         for (j in 0 until h) {
             for (i in 0 until w) {
                 val idx = j * w + i
-                if ((frame.data[idx].toInt() and 0xFF) == OUT) continue
+                if (!valid[idx]) continue
 
-                val inner = integral.mean(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
+                val inner = integral.mean(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1, minInner)
+                if (inner.isNaN()) continue
+
                 val outerSum = integral.sum(i - rOut, j - rOut, i + rOut + 1, j + rOut + 1) -
                     integral.sum(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
-                val outerN = integral.count(i - rOut, j - rOut, i + rOut + 1, j + rOut + 1) -
-                    integral.count(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
-                if (inner.isNaN() || outerN <= 0) continue
+                val outerN = integral.validCount(i - rOut, j - rOut, i + rOut + 1, j + rOut + 1) -
+                    integral.validCount(i - rIn, j - rIn, i + rIn + 1, j + rIn + 1)
+                if (outerN < minOuter) continue
                 val annulus = outerSum.toDouble() / outerN
 
                 val darkSpot = annulus - inner   // positive when the centre is darker
@@ -232,6 +256,87 @@ object HoleDetector {
             .mapNotNull { comp -> holeFromComponent(comp, response, w, reg, gaugePx, expectedArea) }
             .sortedByDescending { it.confidence }
             .take(maxHoles)
+    }
+
+    /**
+     * Subtracts the printed target from itself.
+     *
+     * THE PROBLEM THIS SOLVES. Without a clean reference frame the detector
+     * has to tell a hole from the printing, and on a competition face the
+     * printing is the same colour as a hole: ring lines are black, the aiming
+     * mark is blacker, and the boundary between them is the strongest edge in
+     * the picture. A centre-surround operator alone rejects a ring line only
+     * because it is long and thin, which fails wherever two rings run close
+     * together or a numeral is printed.
+     *
+     * THE OBSERVATION THAT FIXES IT. Everything printed on a ringed target is
+     * ROTATIONALLY SYMMETRIC about the scoring centre. A ring line is dark at
+     * every angle at its own radius; the aiming mark is dark at every angle
+     * inside its radius. A shot hole is dark at ONE angle only. So taking the
+     * median brightness around each radius and subtracting it removes every
+     * printed ring exactly, at every radius, with no threshold to tune — and
+     * leaves the holes standing, because a handful of holes cannot move a
+     * median taken over a whole circumference.
+     *
+     * The median, not the mean: with a mean, a big enough group would drag
+     * the baseline toward itself and start suppressing the very holes being
+     * looked for.
+     *
+     * Output is centred on 128 so a hole on paper is still a DARK spot and a
+     * hole in the aiming mark is still a light one, which is what the rest of
+     * the detector already expects.
+     */
+    private fun radiallyNormalise(
+        reg: TargetRegistration,
+        frame: LumaFrame,
+        valid: BooleanArray
+    ): LumaFrame {
+        val w = frame.width
+        val h = frame.height
+        val (ci, cj) = reg.mmToRect(0.0, 0.0)
+
+        var maxR = 0
+        val binOf = IntArray(w * h)
+        for (j in 0 until h) {
+            for (i in 0 until w) {
+                val idx = j * w + i
+                val r = hypot(i - ci, j - cj).toInt()
+                binOf[idx] = r
+                if (r > maxR) maxR = r
+            }
+        }
+
+        val bins = maxR + 1
+        val hist = IntArray(bins * 256)
+        val counts = IntArray(bins)
+        for (idx in 0 until w * h) {
+            if (!valid[idx]) continue
+            val b = binOf[idx]
+            hist[b * 256 + (frame.data[idx].toInt() and 0xFF)]++
+            counts[b]++
+        }
+
+        val median = IntArray(bins)
+        for (b in 0 until bins) {
+            val total = counts[b]
+            if (total == 0) { median[b] = 128; continue }
+            var acc = 0
+            for (level in 0 until 256) {
+                acc += hist[b * 256 + level]
+                if (acc * 2 >= total) { median[b] = level; break }
+            }
+        }
+
+        val out = ByteArray(w * h)
+        for (idx in 0 until w * h) {
+            if (!valid[idx]) { out[idx] = TargetRegistration.OUT_OF_FRAME; continue }
+            val v = (frame.data[idx].toInt() and 0xFF) - median[binOf[idx]] + 128
+            // Never let a normalised value collide with the out-of-frame
+            // marker, or a legitimately dark pixel would be treated as
+            // missing data by everything downstream.
+            out[idx] = v.coerceIn(2, 255).toByte()
+        }
+        return LumaFrame(w, h, out)
     }
 
     // =====================================================================

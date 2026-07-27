@@ -156,3 +156,63 @@ class IntegralImage(frame: LumaFrame) {
         return if (n == 0) Double.NaN else sum(x0, y0, x1, y1).toDouble() / n
     }
 }
+
+/**
+ * An integral image that knows which pixels carry data.
+ *
+ * WHY THIS EXISTS. Rectifying a photograph fills everything the camera did
+ * not cover with [TargetRegistration.OUT_OF_FRAME], which is very nearly
+ * black. A plain integral image averages that in, so a window straddling the
+ * edge of the covered area reads as much darker than the paper around it —
+ * a window 25% outside the photograph reads 150 instead of 200, which is 50
+ * levels of apparent contrast against a detector threshold of about 8. The
+ * result was a rim of invented "holes" wherever the photograph did not cover
+ * the whole card, which is most photographs.
+ *
+ * So sums and counts are both taken over VALID pixels only, and a window
+ * without enough of them reports NaN rather than a confident wrong number.
+ */
+class MaskedIntegralImage(frame: LumaFrame, private val valid: BooleanArray) {
+    private val w = frame.width
+    private val h = frame.height
+    private val satSum = LongArray((w + 1) * (h + 1))
+    private val satCount = IntArray((w + 1) * (h + 1))
+
+    init {
+        require(valid.size >= w * h) { "validity mask smaller than the frame" }
+        for (y in 0 until h) {
+            var rowSum = 0L
+            var rowCount = 0
+            for (x in 0 until w) {
+                val i = y * w + x
+                if (valid[i]) { rowSum += frame.at(x, y); rowCount++ }
+                satSum[(y + 1) * (w + 1) + (x + 1)] = satSum[y * (w + 1) + (x + 1)] + rowSum
+                satCount[(y + 1) * (w + 1) + (x + 1)] = satCount[y * (w + 1) + (x + 1)] + rowCount
+            }
+        }
+    }
+
+    private fun rect(a: IntArray, x0: Int, y0: Int, x1: Int, y1: Int): Int {
+        val l = x0.coerceIn(0, w); val t = y0.coerceIn(0, h)
+        val r = x1.coerceIn(0, w); val b = y1.coerceIn(0, h)
+        if (r <= l || b <= t) return 0
+        return a[b * (w + 1) + r] - a[t * (w + 1) + r] - a[b * (w + 1) + l] + a[t * (w + 1) + l]
+    }
+
+    private fun rectL(a: LongArray, x0: Int, y0: Int, x1: Int, y1: Int): Long {
+        val l = x0.coerceIn(0, w); val t = y0.coerceIn(0, h)
+        val r = x1.coerceIn(0, w); val b = y1.coerceIn(0, h)
+        if (r <= l || b <= t) return 0
+        return a[b * (w + 1) + r] - a[t * (w + 1) + r] - a[b * (w + 1) + l] + a[t * (w + 1) + l]
+    }
+
+    fun validCount(x0: Int, y0: Int, x1: Int, y1: Int): Int = rect(satCount, x0, y0, x1, y1)
+
+    fun sum(x0: Int, y0: Int, x1: Int, y1: Int): Long = rectL(satSum, x0, y0, x1, y1)
+
+    /** Mean over valid pixels, or NaN when fewer than [minValid] of them. */
+    fun mean(x0: Int, y0: Int, x1: Int, y1: Int, minValid: Int = 1): Double {
+        val n = validCount(x0, y0, x1, y1)
+        return if (n < minValid || n == 0) Double.NaN else sum(x0, y0, x1, y1).toDouble() / n
+    }
+}

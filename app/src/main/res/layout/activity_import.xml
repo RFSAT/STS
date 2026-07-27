@@ -137,10 +137,20 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:max="160" android:progress="80" />
 
-            <Button android:id="@+id/btnResetTilt"
+            <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="?android:attr/borderlessButtonStyle"
-                android:text="Reset tilt and rotation" />
+                android:orientation="horizontal">
+                <Button android:id="@+id/btnApplyTilt"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:text="Apply estimated tilt" />
+                <Button android:id="@+id/btnResetTilt"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:text="Reset tilt" />
+            </LinearLayout>
 
             <TextView style="@style/Sts.SectionHeading" android:text="4. Score" />
 

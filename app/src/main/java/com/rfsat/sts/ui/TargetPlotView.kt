@@ -254,9 +254,21 @@ class TargetPlotView @JvmOverloads constructor(
         if (annulusMm <= 0.0) return
 
         val paint = if (onBlack) labelOnBlack else labelOnPaper
-        paint.textSize = 12 * resources.displayMetrics.density
-        val annulusPx = annulusMm * s
-        if (annulusPx < paint.textSize * 1.7f) return
+        val annulusPx = (annulusMm * s).toFloat()
+
+        // SIZE THE GLYPH TO THE ANNULUS, rather than gating a fixed size
+        // against it. The previous version asked for 12dp of text and skipped
+        // the numeral unless the annulus was 1.7 times that — which on the
+        // 230dp preview in the targets database is about 60 px against an
+        // annulus of 33, so the numbers were skipped on every face at every
+        // screen density and never appeared at all. Scaling instead means
+        // they always appear at whatever size fits, and drop out only when
+        // that size would genuinely be unreadable.
+        val fitted = annulusPx * 0.62f
+        val maxSize = 13 * resources.displayMetrics.density
+        val minSize = 6.5f * resources.displayMetrics.density
+        if (fitted < minSize) return
+        paint.textSize = min(fitted, maxSize)
 
         // Midway across the annulus, so the numeral sits between its own ring
         // and the next one in rather than crowding either.

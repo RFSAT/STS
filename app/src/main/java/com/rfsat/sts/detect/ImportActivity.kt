@@ -203,6 +203,7 @@ class ImportActivity : BaseActivity() {
             binding.overlay.setDefaultBox()
             boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
             markEllipticity = 1.0
+            suggestedTilt = BoxTransform.NONE
             applyTransform(BoxTransform.NONE)
             if (!silent) {
                 notifyUser(
@@ -220,14 +221,25 @@ class ImportActivity : BaseActivity() {
         binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
         binding.overlay.detectedMarkers =
             listOf(Triple(disc.centreXPx.toFloat(), disc.centreYPx.toFloat(), disc.radiusPx.toFloat()))
-        applyTransform(BlackMarkDetector.suggestedTransform(disc))
+        // NOT applied automatically, and this is the correction that
+        // mattered most in the field. The tilt is inferred from how
+        // elliptical the aiming mark measures, a shot-up mark measures a few
+        // percent elliptical from segmentation noise alone, and acos turns
+        // three percent into fourteen degrees. Users were opening a
+        // photograph of a square-on target and being shown a visibly skewed
+        // box. On top of that the SIGN is a guess, so half of those skews
+        // pointed the wrong way. The estimate is worth offering and is not
+        // worth imposing.
+        suggestedTilt = BlackMarkDetector.suggestedTransform(disc)
+        applyTransform(BoxTransform.NONE)
+        binding.btnApplyTilt.isEnabled = !suggestedTilt.isIdentity
 
         if (BlackMarkDetector.looksOblique(disc)) {
             notifyUser(
-                ("The aiming mark is %.2f times longer one way than the other, so this photograph was " +
-                    "taken at an angle. Tilt of about %.0f° has been set for you — check the dashed " +
-                    "outline against the rings and flip the slider if it went the wrong way.")
-                    .format(disc.ellipticity, kotlin.math.hypot(transform.tiltXDeg, transform.tiltYDeg))
+                ("The aiming mark is %.2f times longer one way than the other, which suggests about " +
+                    "%.0f° of tilt. Nothing has been changed — tap “Apply estimated tilt” to try it, " +
+                    "and check the dashed outline against the rings.")
+                    .format(disc.ellipticity, kotlin.math.hypot(suggestedTilt.tiltXDeg, suggestedTilt.tiltYDeg))
             )
         } else if (!silent) {
             notifyUser("Found the target. Check the box, adjust the handles if needed, then Register.")
@@ -392,6 +404,10 @@ class ImportActivity : BaseActivity() {
 
     private var transform = BoxTransform.NONE
 
+    /** What the detector thinks the tilt is. Offered, never applied on its
+     *  own — see the note where it is set. */
+    private var suggestedTilt = BoxTransform.NONE
+
     private fun wireTransformControls() {
         binding.sbRotation.setOnSeekBarChangeListener(seekListener { p ->
             transform = transform.withRotation(p / 2.0 - BoxTransform.MAX_ROTATION_DEG)
@@ -406,6 +422,18 @@ class ImportActivity : BaseActivity() {
             onTransformChanged()
         })
         binding.btnResetTilt.setOnClickListener { applyTransform(BoxTransform.NONE) }
+        binding.btnApplyTilt.setOnClickListener {
+            if (suggestedTilt.isIdentity) {
+                notifyUser("The aiming mark looks round, so there is no tilt to apply.")
+            } else {
+                applyTransform(suggestedTilt)
+                notifyUser(
+                    "Applied the estimated tilt. If the dashed outline now fits the rings worse, " +
+                        "drag a tilt slider the other way — the mark cannot say which way it leans."
+                )
+            }
+        }
+        binding.btnApplyTilt.isEnabled = false
         applyTransform(transform)
     }
 
@@ -444,6 +472,7 @@ class ImportActivity : BaseActivity() {
         binding.sbTiltX.isEnabled = enabled
         binding.sbTiltY.isEnabled = enabled
         binding.btnResetTilt.isEnabled = enabled
+        binding.btnApplyTilt.isEnabled = enabled && !suggestedTilt.isIdentity
     }
 
     private fun adapter(items: List<String>) =

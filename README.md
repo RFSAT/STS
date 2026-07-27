@@ -296,6 +296,50 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.5.2** — corrections for three failures found in the field. Every one of
+them produced a complete, plausible, wrong answer rather than an error, which
+is the class of bug this project keeps having to guard against.
+
+*The box came out skewed on a square-on target.* Auto-detect was APPLYING a
+tilt inferred from the ellipticity of the aiming mark. A shot-up mark
+measures a few percent elliptical from segmentation noise alone, and
+`acos(1/1.05)` is 18 degrees — so noise became a visible skew, and since the
+sign is a guess, half of them skewed the wrong way. The estimate is now
+offered on an *Apply estimated tilt* button and never applied on its own.
+Mark detection additionally weights candidates by how central they are and
+retries on the middle 60% of the frame, because a white card on a dark bench
+puts the bench in charge of the Otsu split.
+
+*Ring numerals never appeared in the targets database.* The gate wanted the
+annulus to exceed 1.7x a fixed 12 dp of text — about 60 px — while the 230 dp
+preview gives roughly 33 px on every face at every screen density, so they
+were skipped universally. The glyph now scales to the annulus and drops out
+only when it would genuinely be unreadable.
+
+*Hit detection bore no resemblance to the real shots,* in both count and
+position. Two independent causes:
+
+* **Out-of-frame pixels were averaged into the contrast windows.** Rectifying
+  fills whatever the camera did not cover with a near-black marker; a window
+  25% outside the photograph read 150 instead of 200, which is 50 levels of
+  apparent contrast against a threshold of 8. That invented a rim of holes
+  wherever the photo did not cover the whole card. Sums and counts are now
+  taken over valid pixels only, and a window without enough of them reports
+  nothing rather than a confident wrong number.
+* **Nothing suppressed the printed target.** On a synthetic ISSF face the
+  ring lines carry 170 levels of contrast against a real hole's 39 — the
+  printing was four times stronger than the signal. Absolute detection now
+  subtracts the RADIAL MEDIAN first: everything printed on a ringed face is
+  rotationally symmetric, so taking the median brightness around each radius
+  and removing it deletes every ring exactly, at every radius, with no
+  threshold to tune, while a handful of holes cannot shift a median taken
+  over a whole circumference. Measured on the synthetic face, ring contrast
+  goes to zero and hole contrast survives.
+
+Note the third fix is verified against synthetic targets, not photographs.
+It removes two definite causes; whether it is now good enough on real cards
+needs range testing.
+
 **1.5.1** — correction. The first CI run to get past resource merging
 compiled the whole project and passed 75 of 76 tests. The one failure was in
 the test, not the app: it asserted that a 10 degree tilt is recovered from

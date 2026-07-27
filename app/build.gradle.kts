@@ -32,6 +32,27 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.5.2 — corrections for three failures found in the field:
+        //   (1) auto-detect skewed the box on square-on targets. It was
+        //       APPLYING a tilt inferred from how elliptical the aiming mark
+        //       measured, and a shot-up mark measures a few percent
+        //       elliptical from segmentation noise alone — which acos turns
+        //       into 14 to 25 degrees. The estimate is now offered on a
+        //       button, never imposed. Mark detection also gained a
+        //       centrality weighting and a central-crop retry, so a dark
+        //       bench behind a white card no longer wins the histogram.
+        //   (2) ring numerals never appeared in the targets database: the
+        //       gate demanded ~60 px of annulus against the 33 px a 230 dp
+        //       preview actually has, on every face at every density. The
+        //       glyph now scales to the annulus instead.
+        //   (3) hit detection bore no resemblance to reality. Two causes:
+        //       out-of-frame pixels were averaged into the contrast windows,
+        //       inventing holes around the rim wherever the photo did not
+        //       cover the whole card; and nothing suppressed the printed
+        //       rings, which carry FOUR TIMES the contrast of a real hole.
+        //       Fixed by a validity-masked integral image and by subtracting
+        //       the radial median, which removes everything rotationally
+        //       symmetric — every ring, exactly — and leaves the holes.
         // 1.5.1 — correction: the first real CI run compiled everything and
         //         passed 75 of 76 tests. The failure was the TEST, not the
         //         app: it asserted that a 10 degree tilt is recovered, but
@@ -81,8 +102,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 10
-        versionName = "1.5.1"
+        versionCode = 11
+        versionName = "1.5.2"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
