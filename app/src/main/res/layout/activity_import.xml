@@ -83,13 +83,23 @@
                 android:inputType="numberDecimal"
                 android:autofillHints="" />
 
-            <TextView style="@style/Sts.SectionHeading" android:text="3. Register the card" />
+            <TextView style="@style/Sts.SectionHeading" android:text="3. Register the target" />
+
+            <Button android:id="@+id/btnAutoDetect"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Auto-detect the target" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
+                android:layout_marginTop="6dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="Tap the four corners of the target card in the photograph, going clockwise from the top left. That is what ties pixels to millimetres; nothing can be scored without it." />
+                android:text="The app finds the black centre and draws a square box around the scoring area. Check it, then drag the top-left or bottom-right handle to adjust, or drag the middle to move it. The dashed circle is what the box actually measures." />
+
+            <CheckBox android:id="@+id/cbCornerMode"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Photo taken at an angle — register by tapping the four card corners instead" />
 
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -99,7 +109,7 @@
                     android:layout_height="wrap_content" android:text="Register" />
                 <Button android:id="@+id/btnUndoCorner"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Undo tap"
+                    android:layout_height="wrap_content" android:text="Reset"
                     style="?android:attr/borderlessButtonStyle" />
             </LinearLayout>
 

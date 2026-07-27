@@ -86,6 +86,8 @@ class SessionActivity : BaseActivity() {
     private var analysisSize: Size? = null
 
     private var registration: TargetRegistration? = null
+    private var boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+    private var markEllipticity = 1.0
     private var live: LiveHitDetector? = null
     private var liveRunning = false
 
@@ -160,8 +162,21 @@ class SessionActivity : BaseActivity() {
 
         // ---- buttons ----
         binding.overlay.onCornersChanged = { refreshStatus() }
+        binding.btnAutoDetect.setOnClickListener { doAutoDetect() }
         binding.btnRegister.setOnClickListener { doRegister() }
-        binding.btnUndoCorner.setOnClickListener { binding.overlay.undoCorner() }
+        binding.btnUndoCorner.setOnClickListener {
+            binding.overlay.clearAll(); registration = null; live = null; refreshStatus()
+        }
+        binding.cbCornerMode.setOnCheckedChangeListener { _, corners ->
+            binding.overlay.mode =
+                if (corners) RegistrationOverlayView.Mode.CORNERS
+                else RegistrationOverlayView.Mode.BOX
+            binding.overlay.clearAll()
+            binding.btnAutoDetect.isEnabled = !corners
+            registration = null
+            live = null
+            refreshStatus()
+        }
         binding.btnReference.setOnClickListener { doSetReference() }
         binding.btnLive.setOnClickListener { toggleLive() }
         binding.btnScoreNow.setOnClickListener { doScoreNow() }
@@ -315,22 +330,85 @@ class SessionActivity : BaseActivity() {
     //  Actions
     // ------------------------------------------------------------------
 
-    private fun doRegister() {
-        val corners = binding.overlay.cornersInSource()
-        if (corners == null) {
-            notifyUser("Tap all four corners of the card first — ${binding.overlay.cornerCount()} of 4 so far.")
+    /**
+     * Finds the aiming mark in the latest frame and places the box round it.
+     *
+     * Runs on the CURRENT frame rather than continuously: the target does not
+     * move, so re-detecting every frame would burn battery to redraw the same
+     * box, and a box that twitched under the user's finger while they were
+     * adjusting it would be worse than no automation at all.
+     */
+    private fun doAutoDetect() {
+        if (binding.cbCornerMode.isChecked) return
+        val frame = latestFrame.get() ?: run {
+            notifyUser("No frame yet — is the camera or stream running?")
             return
         }
         val face = currentFace()
-        val rules = currentRules()
-        val reg = TargetRegistration.fromCardCorners(face, corners, rules.gaugeDiameterMm)
-        if (reg == null) {
-            notifyUser("Those four taps do not define a quadrilateral. Tap the corners in order, going clockwise.")
+        val disc = BlackMarkDetector.detect(frame)
+
+        if (disc == null) {
+            binding.overlay.setDefaultBox()
+            boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+            markEllipticity = 1.0
+            notifyUser(
+                "No black aiming mark could be found, so a box has been placed in the middle for " +
+                    "you to drag onto the scoring area."
+            )
+            refreshStatus()
             return
+        }
+
+        markEllipticity = disc.ellipticity
+        val (box, meaning) = BlackMarkDetector.boxFor(disc, face, frame.width, frame.height)
+        boxMeaning = meaning
+        binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
+
+        if (BlackMarkDetector.looksOblique(disc)) {
+            notifyUser(
+                ("The aiming mark measures %.2f times wider than it is tall, so the target is being " +
+                    "viewed at an angle. A square box cannot correct that — tick the box below to " +
+                    "register by the four card corners instead.").format(disc.ellipticity)
+            )
+        } else {
+            notifyUser("Found the target. Check the box, then Register.")
+        }
+        refreshStatus()
+    }
+
+    private fun doRegister() {
+        val face = currentFace()
+        val rules = currentRules()
+
+        val reg = if (binding.cbCornerMode.isChecked) {
+            val corners = binding.overlay.cornersInSource() ?: run {
+                notifyUser("Tap all four corners of the card first — ${binding.overlay.cornerCount()} of 4 so far.")
+                return
+            }
+            val r = TargetRegistration.fromCardCorners(face, corners, rules.gaugeDiameterMm)
+            if (r == null) {
+                notifyUser("Those four taps do not define a quadrilateral. Tap the corners in order, going clockwise.")
+                return
+            }
+            ScoringSession.saveRegistrationCorners(corners)
+            r
+        } else {
+            val box = binding.overlay.boxInSource() ?: run {
+                notifyUser("Tap “Auto-detect the target” first, or drag a box around the scoring area.")
+                return
+            }
+            TargetRegistration.fromBoundingBox(
+                face, box, boxMeaning, rules.gaugeDiameterMm, markEllipticity
+            ) ?: run {
+                notifyUser(
+                    "This face has no ${boxMeaning.label.lowercase()} for a box to measure. " +
+                        "Use corner registration instead."
+                )
+                return
+            }
         }
         registration = reg
         live = LiveHitDetector(reg, rules.gaugeDiameterMm)
-        ScoringSession.saveRegistrationCorners(corners)
         reg.warnings.forEach { Logger.w("SessionActivity", it) }
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))
         else notifyUser("Registered. Capture the clean target next, then start live detection.")
@@ -450,8 +528,13 @@ class SessionActivity : BaseActivity() {
             append("  |  ")
             append(if (liveRunning) "LIVE" else "idle")
             append("  |  $shots shot(s)")
-            if (reg == null && binding.overlay.cornerCount() in 1..3) {
-                append("\n${binding.overlay.cornerCount()} of 4 corners tapped")
+            if (reg == null) {
+                if (binding.cbCornerMode.isChecked) {
+                    val n = binding.overlay.cornerCount()
+                    if (n in 1..3) append("\n$n of 4 corners tapped")
+                } else if (binding.overlay.hasBox()) {
+                    append("\nbox around: ${boxMeaning.label.lowercase()}")
+                }
             }
         }
     }

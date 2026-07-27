@@ -32,6 +32,15 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.4.0 — feature: registration by a square bounding box with
+        //         draggable top-left and bottom-right handles, placed
+        //         automatically from the detected black aiming mark and
+        //         expanded to the whole scoring area by the face's own
+        //         published ratio. Corner registration stays available for
+        //         angled views, and the detector says when it is needed.
+        //       — feature: ring values printed on the target plot at all four
+        //         cardinal points, so the targets database shows scores on
+        //         the circles.
         // 1.3.1 — correction: the photo-upload scoring entry points existed
         //         since 1.2.0 but were styled borderless — flat text under a
         //         filled button — and users could not find them. Both are now
@@ -59,8 +68,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 7
-        versionName = "1.3.1"
+        versionCode = 8
+        versionName = "1.4.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -86,6 +86,13 @@ class TargetRegistration private constructor(
         return LumaFrame(rectWidth, rectHeight, out)
     }
 
+    /** What a square registration box is drawn around. The box gives a
+     *  DIAMETER, and the diameter is meaningless until you say of what. */
+    enum class BoxMeaning(val label: String) {
+        BLACK_AIMING_MARK("Black aiming mark"),
+        OUTER_SCORING_RING("Whole scoring area")
+    }
+
     companion object {
 
         /** Fill value for rectified pixels with no source data. Chosen at 1
@@ -251,6 +258,109 @@ class TargetRegistration private constructor(
                 face = face,
                 homography = h,
                 mmPerPx = (gaugeDiameterMm / PX_PER_GAUGE).coerceAtLeast(MIN_MM_PER_PX),
+                uMinMm = cx - hw, uMaxMm = cx + hw,
+                vMinMm = cy - hh, vMaxMm = cy + hh,
+                warnings = warnings
+            )
+        }
+
+        /**
+         * Registration from a square bounding box drawn around a concentric
+         * feature of the face — the aiming mark, or the outer scoring ring.
+         *
+         * WHAT THIS MODEL CAN AND CANNOT DO, because the difference decides
+         * whether a score is right. Four independently tapped corners give a
+         * full projective transform: eight degrees of freedom, enough to undo
+         * the keystoning of a target photographed from an angle. An
+         * axis-aligned square gives four — translation and one scale — and
+         * cannot represent perspective or rotation at all. Registering an
+         * oblique target this way produces a plausible number that is wrong
+         * by a smoothly varying amount across the face, which is the hardest
+         * kind of error to notice.
+         *
+         * It is still the right default, because most people photograph a
+         * card square-on and two draggable handles are a far better ask than
+         * four accurate taps. [BlackMarkDetector] measures the ellipticity of
+         * the aiming mark precisely so the app can tell when the assumption
+         * has broken and send the user to [fromCardCorners] instead.
+         *
+         * The box is expressed as [left, top, right, bottom] in SOURCE pixels
+         * and is assumed concentric with the SCORING centre, which is true of
+         * both features it can bound on every face in the catalogue.
+         */
+        fun fromBoundingBox(
+            face: TargetFace,
+            box: FloatArray,
+            meaning: BoxMeaning,
+            gaugeDiameterMm: Double,
+            markEllipticity: Double = 1.0
+        ): TargetRegistration? {
+            if (box.size != 4) return null
+            val left = minOf(box[0], box[2]).toDouble()
+            val right = maxOf(box[0], box[2]).toDouble()
+            val top = minOf(box[1], box[3]).toDouble()
+            val bottom = maxOf(box[1], box[3]).toDouble()
+            if (right - left < 4.0 || bottom - top < 4.0) return null
+
+            val diameterMm = when (meaning) {
+                BoxMeaning.BLACK_AIMING_MARK -> face.blackDiameterMm
+                BoxMeaning.OUTER_SCORING_RING -> face.outerRadiusMm * 2.0
+            }
+            if (diameterMm <= 0.0) {
+                Logger.w(
+                    "TargetRegistration",
+                    "The ${face.name} face has no ${meaning.label.lowercase()} to measure, so a box " +
+                        "cannot set its scale"
+                )
+                return null
+            }
+
+            val r = diameterMm / 2.0
+            val boxMm = listOf(-r to r, r to r, r to -r, -r to -r)
+            val boxPx = listOf(
+                left to top, right to top, right to bottom, left to bottom
+            )
+            val h = Homography.fromCorrespondences(boxMm, boxPx) ?: return null
+
+            val warnings = mutableListOf<String>()
+            warnings += "Registered from a square box around the ${meaning.label.lowercase()}. " +
+                "This models position and scale only — it cannot correct for a target photographed " +
+                "at an angle."
+            if (markEllipticity > BlackMarkDetector.OBLIQUE_ELLIPTICITY) {
+                warnings += ("The aiming mark measures %.2f times wider than it is tall, so the target " +
+                    "is being viewed at an angle. A square box will misplace shots near the edges; " +
+                    "switch to corner registration for this photograph.").format(markEllipticity)
+            }
+            if (meaning == BoxMeaning.BLACK_AIMING_MARK && face.outerRadiusMm * 2.0 > face.blackDiameterMm) {
+                warnings += "The box is around the aiming mark rather than the whole scoring area, so " +
+                    "the scale of the outer rings is extrapolated from a shorter baseline and is less " +
+                    "precise there."
+            }
+
+            val holePx = (right - left) / diameterMm * gaugeDiameterMm
+            if (holePx < 3.0) {
+                warnings += ("A %.1f mm hole spans only %.1f pixels at this box size. Move closer or " +
+                    "crop less — detection below about three pixels is guesswork.")
+                    .format(gaugeDiameterMm, holePx)
+            }
+
+            var mmPerPx = (gaugeDiameterMm / PX_PER_GAUGE).coerceAtLeast(MIN_MM_PER_PX)
+            val hw = face.faceWidthMm / 2.0
+            val hh = face.faceHeightMm / 2.0
+            val cx = face.cardCentreOffsetXMm
+            val cy = face.cardCentreOffsetYMm
+            val pixels = ((2 * hw) / mmPerPx) * ((2 * hh) / mmPerPx)
+            if (pixels > MAX_RECT_PIXELS) {
+                val factor = kotlin.math.sqrt(pixels / MAX_RECT_PIXELS)
+                mmPerPx *= factor
+                warnings += ("This face is large enough that the rectified image would not fit in " +
+                    "memory at full resolution, so it is being sampled %.1f× coarser.").format(factor)
+            }
+
+            return TargetRegistration(
+                face = face,
+                homography = h,
+                mmPerPx = mmPerPx,
                 uMinMm = cx - hw, uMaxMm = cx + hw,
                 vMinMm = cy - hh, vMaxMm = cy + hh,
                 warnings = warnings

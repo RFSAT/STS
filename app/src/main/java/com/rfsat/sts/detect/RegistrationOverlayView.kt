@@ -8,62 +8,108 @@ import android.graphics.Path
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /**
- * Transparent overlay for registering the target: the user taps the four
- * corners of the card, and this view collects them and draws what it has.
+ * ============================================================================
+ *  REGISTRATION OVERLAY
+ * ============================================================================
+ *
+ * Sits on top of the camera preview or the photograph and collects the input
+ * that ties image pixels to millimetres. Two ways to give it, because they
+ * suit different pictures:
+ *
+ *   [Mode.BOX] — a SQUARE box around a concentric feature of the face, with
+ *   draggable top-left and bottom-right handles. Two handles instead of four
+ *   taps, and the app can place it for you from the detected aiming mark. It
+ *   expresses position and scale, and nothing else.
+ *
+ *   [Mode.CORNERS] — four taps on the corners of the card, which give a full
+ *   projective transform and can undo the keystoning of a target photographed
+ *   from an angle. More work, and the only correct choice when the view is
+ *   oblique.
  *
  * TAPS ARE IN VIEW PIXELS, AND THAT IS NOT WHAT THE DETECTOR NEEDS. The
- * analysis frame is a different size from the preview, and usually a
- * different aspect ratio, because CameraX picks an analysis resolution
- * independently of the preview's. So every tap is converted through
- * [setSourceGeometry] into coordinates in the ANALYSIS frame before it
- * leaves this view. Getting that wrong produces a registration that is
- * plausibly close and consistently skewed — the hardest kind of bug to see,
- * because every shot is wrong by a smoothly varying amount rather than
- * obviously wrong.
+ * analysis frame is a different size from the preview and usually a different
+ * aspect ratio, and a still photograph is letterboxed by an ImageView while a
+ * camera preview is centre-cropped. Every coordinate that leaves this view is
+ * converted to SOURCE pixels through [setSourceGeometry] first. Getting that
+ * wrong gives a registration that is plausibly close and consistently skewed
+ * — every shot wrong by a smoothly varying amount, the hardest kind of error
+ * to see.
  *
- * The corners are collected in a fixed order — top-left, top-right,
- * bottom-right, bottom-left — because [TargetRegistration] pairs them
- * positionally with the card's own corners and cannot recover from a
- * transposition. The prompt text names the corner being asked for.
+ * The box is likewise STORED in source coordinates, so it survives a screen
+ * rotation, a view resize, or the keyboard opening, none of which move the
+ * target.
  */
 class RegistrationOverlayView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyle: Int = 0
 ) : View(context, attrs, defStyle) {
 
-    val cornerNames = listOf("top-left", "top-right", "bottom-right", "bottom-left")
-
-    private val taps = mutableListOf<Pair<Float, Float>>()
+    enum class Mode { BOX, CORNERS }
 
     /**
-     * How the source is fitted into this view. The camera preview is
-     * centre-cropped (PreviewView's default), a still photograph is
-     * letterboxed by an ImageView set to fitCenter. The two produce
-     * DIFFERENT mappings from a finger tap to a source pixel, and using the
-     * wrong one gives a registration that is plausibly close and
-     * consistently skewed — every shot wrong by a smoothly varying amount,
-     * which is the hardest kind of error to notice.
+     * How the source is fitted into this view. A camera preview is
+     * centre-cropped (PreviewView's default); a still photograph is
+     * letterboxed by an ImageView set to fitCenter. The two give DIFFERENT
+     * mappings from a finger to a source pixel.
      */
     enum class SourceFit { CENTER_CROP, FIT_CENTER }
+
+    val cornerNames = listOf("top-left", "top-right", "bottom-right", "bottom-left")
+
+    var mode: Mode = Mode.BOX
+        set(v) { field = v; invalidate() }
 
     var sourceFit: SourceFit = SourceFit.CENTER_CROP
         set(v) { field = v; invalidate() }
 
-    /** Source frame size, and how it is fitted into this view. */
+    /** Fires with the number of corners tapped (CORNERS mode), or with 4 when
+     *  a box exists (BOX mode), so hosts can enable a Register button. */
+    var onCornersChanged: ((Int) -> Unit)? = null
+
+    /** Fires whenever the box is moved or resized. */
+    var onBoxChanged: (() -> Unit)? = null
+
+    private val taps = mutableListOf<Pair<Float, Float>>()
+
+    /** [left, top, right, bottom] in SOURCE pixels. Always square. */
+    private var box: FloatArray? = null
+
     private var srcWidth = 0
     private var srcHeight = 0
 
-    var onCornersChanged: ((Int) -> Unit)? = null
+    private val density = resources.displayMetrics.density
+    private val handleRadius = 13f * density
+    private val touchSlop = 26f * density
+    private val minBoxSourcePx get() = 24.0
 
-    private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFC107"); style = Paint.Style.STROKE; strokeWidth = 4f
+    // ---- paints ----
+    private val gold = Color.parseColor("#FFC107")
+    private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = gold; style = Paint.Style.STROKE; strokeWidth = 3f * density
     }
-    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val handleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = gold; style = Paint.Style.FILL
+    }
+    private val handleRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 2f * density
+    }
+    private val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#66000000") }
+    private val guide = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#88FFC107"); style = Paint.Style.STROKE; strokeWidth = 1f * density
+        pathEffect = android.graphics.DashPathEffect(floatArrayOf(8f, 8f), 0f)
+    }
+    private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = gold; style = Paint.Style.STROKE; strokeWidth = 4f
+    }
+    private val markFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#66FFC107"); style = Paint.Style.FILL
     }
     private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FFC107"); style = Paint.Style.STROKE; strokeWidth = 3f
+        color = gold; style = Paint.Style.STROKE; strokeWidth = 3f
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE; textSize = 34f; isFakeBoldText = true
@@ -71,55 +117,55 @@ class RegistrationOverlayView @JvmOverloads constructor(
     private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#AA000000"); style = Paint.Style.FILL
     }
-
-    /** Detections drawn back onto the preview, in analysis-frame pixels. */
-    var detectedMarkers: List<Triple<Float, Float, Float>> = emptyList()
-        set(v) { field = v; invalidate() }
-
     private val detPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD32F2F"); style = Paint.Style.STROKE; strokeWidth = 4f
     }
 
-    /**
-     * Tells the overlay how big the source frame is and how it is being
-     * displayed. If the host ever changes the ImageView scale type or the
-     * PreviewView scale type, [fit] must change with it or the registration
-     * silently shifts.
-     */
-    fun setSourceGeometry(
-        sourceW: Int,
-        sourceH: Int,
-        fit: SourceFit = SourceFit.CENTER_CROP
-    ) {
+    /** Detections drawn back onto the preview, in source pixels. */
+    var detectedMarkers: List<Triple<Float, Float, Float>> = emptyList()
+        set(v) { field = v; invalidate() }
+
+    // ------------------------------------------------------------------
+
+    fun setSourceGeometry(sourceW: Int, sourceH: Int, fit: SourceFit = SourceFit.CENTER_CROP) {
+        val changed = sourceW != srcWidth || sourceH != srcHeight
         srcWidth = sourceW
         srcHeight = sourceH
         sourceFit = fit
+        // A different source is a different picture, so anything registered
+        // against the old one is meaningless now.
+        if (changed) { box = null; taps.clear() }
         invalidate()
     }
 
     fun cornerCount(): Int = taps.size
 
-    fun clearCorners() {
-        taps.clear()
-        onCornersChanged?.invoke(0)
+    fun hasBox(): Boolean = box != null
+
+    fun clearAll() {
+        taps.clear(); box = null
+        onCornersChanged?.invoke(0); onBoxChanged?.invoke()
         invalidate()
     }
 
+    fun clearCorners() = clearAll()
+
     fun undoCorner() {
-        if (taps.isNotEmpty()) {
+        if (mode == Mode.CORNERS && taps.isNotEmpty()) {
             taps.removeAt(taps.size - 1)
             onCornersChanged?.invoke(taps.size)
             invalidate()
+        } else {
+            clearAll()
         }
     }
 
-    /** The four taps in ANALYSIS-frame pixels, or null until there are four. */
+    /** The four taps in SOURCE pixels, or null until there are four. */
     fun cornersInSource(): List<Pair<Double, Double>>? {
         if (taps.size != 4 || srcWidth <= 0 || srcHeight <= 0) return null
         return taps.map { (vx, vy) -> viewToSource(vx, vy) }
     }
 
-    /** Restores a previously stored registration, in analysis-frame pixels. */
     fun setCornersFromSource(corners: List<Pair<Double, Double>>) {
         if (corners.size != 4 || srcWidth <= 0 || srcHeight <= 0) return
         taps.clear()
@@ -128,11 +174,39 @@ class RegistrationOverlayView @JvmOverloads constructor(
         invalidate()
     }
 
+    /** The square box in SOURCE pixels, or null. */
+    fun boxInSource(): FloatArray? = box?.copyOf()
+
+    /** Places the box, in SOURCE pixels. Squared off defensively — a caller
+     *  computing it from a detected ellipse could otherwise hand over a
+     *  rectangle and silently change what the registration means. */
+    fun setBoxInSource(l: Float, t: Float, r: Float, b: Float) {
+        val side = max(minBoxSourcePx, max((r - l).toDouble(), (b - t).toDouble())).toFloat()
+        val cx = (l + r) / 2f
+        val cy = (t + b) / 2f
+        box = floatArrayOf(cx - side / 2f, cy - side / 2f, cx + side / 2f, cy + side / 2f)
+        mode = Mode.BOX
+        onBoxChanged?.invoke()
+        onCornersChanged?.invoke(4)
+        invalidate()
+    }
+
+    /** A default box covering the middle of the frame, for when detection
+     *  finds nothing and the user has to place it themselves. */
+    fun setDefaultBox() {
+        if (srcWidth <= 0 || srcHeight <= 0) return
+        val side = min(srcWidth, srcHeight) * 0.6f
+        setBoxInSource(
+            srcWidth / 2f - side / 2f, srcHeight / 2f - side / 2f,
+            srcWidth / 2f + side / 2f, srcHeight / 2f + side / 2f
+        )
+    }
+
     // ---- source <-> view mapping, both directions and both fits ----
 
     private fun srcScale(): Float = when (sourceFit) {
-        SourceFit.CENTER_CROP -> maxOf(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
-        SourceFit.FIT_CENTER  -> minOf(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
+        SourceFit.CENTER_CROP -> max(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
+        SourceFit.FIT_CENTER -> min(width.toFloat() / srcWidth, height.toFloat() / srcHeight)
     }
 
     private fun viewToSource(vx: Float, vy: Float): Pair<Double, Double> {
@@ -149,11 +223,48 @@ class RegistrationOverlayView @JvmOverloads constructor(
         return (sx * s + dx).toFloat() to (sy * s + dy).toFloat()
     }
 
-    // ---- drawing ----
+    // ------------------------------------------------------------------
+    //  Drawing
+    // ------------------------------------------------------------------
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (mode == Mode.BOX) drawBox(canvas) else drawCorners(canvas)
+        drawDetections(canvas)
+    }
 
+    private fun drawBox(canvas: Canvas) {
+        val b = box
+        if (b == null || srcWidth <= 0) {
+            prompt(canvas, "Tap “Auto-detect”, or drag a box around the target")
+            return
+        }
+        val (l, t) = sourceToView(b[0].toDouble(), b[1].toDouble())
+        val (r, bt) = sourceToView(b[2].toDouble(), b[3].toDouble())
+
+        // Dim everything outside the box, which is far more legible than an
+        // outline alone once the picture behind it is busy.
+        canvas.drawRect(0f, 0f, width.toFloat(), t, scrim)
+        canvas.drawRect(0f, bt, width.toFloat(), height.toFloat(), scrim)
+        canvas.drawRect(0f, t, l, bt, scrim)
+        canvas.drawRect(r, t, width.toFloat(), bt, scrim)
+
+        canvas.drawRect(l, t, r, bt, boxPaint)
+
+        // The inscribed circle is what the box actually means: the feature
+        // being measured is round, and showing the square alone invites
+        // people to fit it to the card instead.
+        canvas.drawCircle((l + r) / 2f, (t + bt) / 2f, (r - l) / 2f, guide)
+        canvas.drawLine((l + r) / 2f, t, (l + r) / 2f, bt, guide)
+        canvas.drawLine(l, (t + bt) / 2f, r, (t + bt) / 2f, guide)
+
+        for (p in listOf(l to t, r to bt)) {
+            canvas.drawCircle(p.first, p.second, handleRadius, handleFill)
+            canvas.drawCircle(p.first, p.second, handleRadius, handleRing)
+        }
+    }
+
+    private fun drawCorners(canvas: Canvas) {
         if (taps.size >= 2) {
             val path = Path()
             taps.forEachIndexed { i, (x, y) -> if (i == 0) path.moveTo(x, y) else path.lineTo(x, y) }
@@ -161,31 +272,47 @@ class RegistrationOverlayView @JvmOverloads constructor(
             canvas.drawPath(path, edgePaint)
         }
         taps.forEachIndexed { i, (x, y) ->
-            canvas.drawCircle(x, y, 22f, fillPaint)
+            canvas.drawCircle(x, y, 22f, markFill)
             canvas.drawCircle(x, y, 22f, markPaint)
             canvas.drawText("${i + 1}", x + 28f, y - 8f, textPaint)
         }
+        if (taps.size < 4) prompt(canvas, "Tap the ${cornerNames[taps.size]} corner of the card")
+    }
 
-        if (srcWidth > 0 && detectedMarkers.isNotEmpty()) {
-            val s = srcScale()
-            detectedMarkers.forEach { (sx, sy, r) ->
-                val (x, y) = sourceToView(sx.toDouble(), sy.toDouble())
-                canvas.drawCircle(x, y, (r * s).coerceAtLeast(8f), detPaint)
-            }
-        }
-
-        if (taps.size < 4) {
-            val prompt = "Tap the ${cornerNames[taps.size]} corner of the target card"
-            val w = textPaint.measureText(prompt)
-            val pad = 18f
-            canvas.drawRoundRect(
-                20f, 20f, 20f + w + pad * 2, 20f + textPaint.textSize + pad * 2, 12f, 12f, shadow
-            )
-            canvas.drawText(prompt, 20f + pad, 20f + pad + textPaint.textSize * 0.8f, textPaint)
+    private fun drawDetections(canvas: Canvas) {
+        if (srcWidth <= 0 || detectedMarkers.isEmpty()) return
+        val s = srcScale()
+        detectedMarkers.forEach { (sx, sy, r) ->
+            val (x, y) = sourceToView(sx.toDouble(), sy.toDouble())
+            canvas.drawCircle(x, y, (r * s).coerceAtLeast(8f), detPaint)
         }
     }
 
+    private fun prompt(canvas: Canvas, message: String) {
+        val w = textPaint.measureText(message)
+        val pad = 18f
+        canvas.drawRoundRect(
+            20f, 20f, 20f + w + pad * 2, 20f + textPaint.textSize + pad * 2, 12f, 12f, shadow
+        )
+        canvas.drawText(message, 20f + pad, 20f + pad + textPaint.textSize * 0.8f, textPaint)
+    }
+
+    // ------------------------------------------------------------------
+    //  Touch
+    // ------------------------------------------------------------------
+
+    private enum class Grab { NONE, TOP_LEFT, BOTTOM_RIGHT, INSIDE }
+
+    private var grab = Grab.NONE
+    private var lastX = 0f
+    private var lastY = 0f
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (mode == Mode.CORNERS) return cornerTouch(event)
+        return boxTouch(event)
+    }
+
+    private fun cornerTouch(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN) {
             if (taps.size >= 4) taps.clear()
             taps.add(event.x to event.y)
@@ -195,6 +322,87 @@ class RegistrationOverlayView @JvmOverloads constructor(
             return true
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun boxTouch(event: MotionEvent): Boolean {
+        val b = box ?: return super.onTouchEvent(event)
+        val (l, t) = sourceToView(b[0].toDouble(), b[1].toDouble())
+        val (r, bt) = sourceToView(b[2].toDouble(), b[3].toDouble())
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                grab = when {
+                    near(event.x, event.y, l, t) -> Grab.TOP_LEFT
+                    near(event.x, event.y, r, bt) -> Grab.BOTTOM_RIGHT
+                    event.x in l..r && event.y in t..bt -> Grab.INSIDE
+                    else -> Grab.NONE
+                }
+                lastX = event.x; lastY = event.y
+                if (grab != Grab.NONE) {
+                    // The host activity is a scroll view; without this the
+                    // first drag scrolls the page instead of moving the box.
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    return true
+                }
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                if (grab == Grab.NONE) return false
+                val (sx, sy) = viewToSource(event.x, event.y)
+                when (grab) {
+                    // Resizing keeps the OPPOSITE corner pinned and takes the
+                    // side from the larger of the two deltas. Using one axis
+                    // would make the box impossible to grow diagonally; using
+                    // the smaller would make it feel stuck.
+                    Grab.TOP_LEFT -> {
+                        val side = max(minBoxSourcePx, max(b[2] - sx, b[3] - sy))
+                        b[0] = (b[2] - side).toFloat(); b[1] = (b[3] - side).toFloat()
+                    }
+                    Grab.BOTTOM_RIGHT -> {
+                        val side = max(minBoxSourcePx, max(sx - b[0], sy - b[1]))
+                        b[2] = (b[0] + side).toFloat(); b[3] = (b[1] + side).toFloat()
+                    }
+                    Grab.INSIDE -> {
+                        val s = srcScale()
+                        val dx = (event.x - lastX) / s
+                        val dy = (event.y - lastY) / s
+                        b[0] += dx; b[2] += dx; b[1] += dy; b[3] += dy
+                    }
+                    Grab.NONE -> Unit
+                }
+                lastX = event.x; lastY = event.y
+                clampCentreIntoFrame(b)
+                onBoxChanged?.invoke()
+                invalidate()
+                return true
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                if (grab != Grab.NONE) { grab = Grab.NONE; performClick(); return true }
+                grab = Grab.NONE
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun near(x: Float, y: Float, hx: Float, hy: Float) =
+        abs(x - hx) <= touchSlop && abs(y - hy) <= touchSlop
+
+    /**
+     * The box may hang off the edge of the picture — a target can genuinely
+     * be cropped, and the outer ring of a large face often is — but its
+     * CENTRE must stay inside, because a centre outside the frame means the
+     * scoring origin was never photographed and nothing can be scored.
+     */
+    private fun clampCentreIntoFrame(b: FloatArray) {
+        if (srcWidth <= 0 || srcHeight <= 0) return
+        val cx = (b[0] + b[2]) / 2f
+        val cy = (b[1] + b[3]) / 2f
+        val dx = cx.coerceIn(0f, srcWidth.toFloat()) - cx
+        val dy = cy.coerceIn(0f, srcHeight.toFloat()) - cy
+        if (dx != 0f) { b[0] += dx; b[2] += dx }
+        if (dy != 0f) { b[1] += dy; b[3] += dy }
     }
 
     override fun performClick(): Boolean {

@@ -81,11 +81,21 @@
 
             <TextView style="@style/Sts.SectionHeading" android:text="Registration" />
 
+            <Button android:id="@+id/btnAutoDetect"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Auto-detect the target" />
+
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
+                android:layout_marginTop="6dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="Tap the four corners of the target card in the viewfinder, going clockwise from the top left. Registration ties image pixels to millimetres on the face; without it nothing can be scored." />
+                android:text="The app finds the black centre and draws a square box around the scoring area. Drag a handle to adjust it, or the middle to move it. Registration ties image pixels to millimetres; without it nothing can be scored." />
+
+            <CheckBox android:id="@+id/cbCornerMode"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Target viewed at an angle — register by tapping the four card corners instead" />
 
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -95,7 +105,7 @@
                     android:layout_height="wrap_content" android:text="Register" />
                 <Button android:id="@+id/btnUndoCorner"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Undo tap"
+                    android:layout_height="wrap_content" android:text="Reset"
                     style="?android:attr/borderlessButtonStyle" />
             </LinearLayout>
 

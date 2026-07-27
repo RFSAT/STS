@@ -62,6 +62,8 @@ class ImportActivity : BaseActivity() {
     private var cleanUri: Uri? = null
 
     private var registration: TargetRegistration? = null
+    private var boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+    private var markEllipticity = 1.0
     private var faces: List<TargetFace> = emptyList()
     private var ruleSets: List<RuleSet> = emptyList()
 
@@ -119,8 +121,20 @@ class ImportActivity : BaseActivity() {
 
         binding.btnPickShot.setOnClickListener { pickingClean = false; pickImage.launch("image/*") }
         binding.btnPickClean.setOnClickListener { pickingClean = true; pickImage.launch("image/*") }
+        binding.btnAutoDetect.setOnClickListener { doAutoDetect() }
         binding.btnRegister.setOnClickListener { doRegister() }
-        binding.btnUndoCorner.setOnClickListener { binding.overlay.undoCorner() }
+        binding.btnUndoCorner.setOnClickListener {
+            binding.overlay.clearAll(); registration = null; refreshStatus()
+        }
+        binding.cbCornerMode.setOnCheckedChangeListener { _, corners ->
+            binding.overlay.mode =
+                if (corners) RegistrationOverlayView.Mode.CORNERS
+                else RegistrationOverlayView.Mode.BOX
+            binding.overlay.clearAll()
+            binding.btnAutoDetect.isEnabled = !corners
+            registration = null
+            refreshStatus()
+        }
         binding.btnDetect.setOnClickListener { doDetect() }
         binding.btnResults.setOnClickListener {
             startActivity(android.content.Intent(this, ResultsActivity::class.java)); finish()
@@ -154,8 +168,64 @@ class ImportActivity : BaseActivity() {
             binding.overlay.setSourceGeometry(
                 bmp.width, bmp.height, RegistrationOverlayView.SourceFit.FIT_CENTER
             )
-            binding.overlay.clearCorners()
+            binding.overlay.clearAll()
             registration = null
+            // Detection is cheap and almost always right, so run it the
+            // moment a photograph arrives rather than making the user ask.
+            // A box they merely have to check is a different task from a box
+            // they have to place.
+            doAutoDetect(silent = true)
+        }
+        refreshStatus()
+    }
+
+    /**
+     * Finds the aiming mark and places the registration box around it.
+     *
+     * [silent] suppresses the "nothing found" complaint for the automatic
+     * run on load: a face with no black mark at all is a perfectly ordinary
+     * thing to open, and being told off for it would be noise.
+     */
+    private fun doAutoDetect(silent: Boolean = false) {
+        val bmp = shotBitmap ?: run {
+            if (!silent) notifyUser("Choose a photo of the shot target first.")
+            return
+        }
+        if (binding.cbCornerMode.isChecked) return
+
+        val face = currentFace()
+        val frame = LumaFrame.fromBitmap(bmp)
+        val disc = BlackMarkDetector.detect(frame)
+
+        if (disc == null) {
+            binding.overlay.setDefaultBox()
+            boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+            markEllipticity = 1.0
+            if (!silent) {
+                notifyUser(
+                    "No black aiming mark could be found, so a box has been placed in the middle " +
+                        "for you to drag onto the scoring area."
+                )
+            }
+            refreshStatus()
+            return
+        }
+
+        markEllipticity = disc.ellipticity
+        val (box, meaning) = BlackMarkDetector.boxFor(disc, face, bmp.width, bmp.height)
+        boxMeaning = meaning
+        binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
+        binding.overlay.detectedMarkers =
+            listOf(Triple(disc.centreXPx.toFloat(), disc.centreYPx.toFloat(), disc.radiusPx.toFloat()))
+
+        if (BlackMarkDetector.looksOblique(disc)) {
+            notifyUser(
+                ("The aiming mark measures %.2f times wider than it is tall, so this photograph was " +
+                    "taken at an angle. A square box cannot correct that — tick the box below to " +
+                    "register by the four card corners instead.").format(disc.ellipticity)
+            )
+        } else if (!silent) {
+            notifyUser("Found the target. Check the box, adjust the handles if needed, then Register.")
         }
         refreshStatus()
     }
@@ -165,16 +235,33 @@ class ImportActivity : BaseActivity() {
             notifyUser("Choose a photo of the shot target first.")
             return
         }
-        val corners = binding.overlay.cornersInSource() ?: run {
-            notifyUser("Tap all four corners of the card — ${binding.overlay.cornerCount()} of 4 so far.")
-            return
-        }
         val face = currentFace()
         val rules = currentRules()
-        val reg = TargetRegistration.fromCardCorners(face, corners, rules.gaugeDiameterMm)
-        if (reg == null) {
-            notifyUser("Those four taps do not form a quadrilateral. Tap the corners in order, going clockwise.")
-            return
+
+        val reg = if (binding.cbCornerMode.isChecked) {
+            val corners = binding.overlay.cornersInSource() ?: run {
+                notifyUser("Tap all four corners of the card — ${binding.overlay.cornerCount()} of 4 so far.")
+                return
+            }
+            TargetRegistration.fromCardCorners(face, corners, rules.gaugeDiameterMm)
+                ?: run {
+                    notifyUser("Those four taps do not form a quadrilateral. Tap the corners in order, going clockwise.")
+                    return
+                }
+        } else {
+            val box = binding.overlay.boxInSource() ?: run {
+                notifyUser("Tap “Auto-detect the target” first, or drag a box around the scoring area.")
+                return
+            }
+            TargetRegistration.fromBoundingBox(
+                face, box, boxMeaning, rules.gaugeDiameterMm, markEllipticity
+            ) ?: run {
+                notifyUser(
+                    "This face has no ${boxMeaning.label.lowercase()} for a box to measure. " +
+                        "Use corner registration instead."
+                )
+                return
+            }
         }
         registration = reg
         reg.warnings.forEach { Logger.w("ImportActivity", it) }
@@ -279,8 +366,14 @@ class ImportActivity : BaseActivity() {
             append(if (cleanBitmap == null) "no clean reference (weaker mode)" else "clean reference loaded")
             append("  |  ")
             append(if (registration == null) "not registered" else "registered")
-            val n = binding.overlay.cornerCount()
-            if (registration == null && n in 1..3) append("\n$n of 4 corners tapped")
+            if (registration == null) {
+                if (binding.cbCornerMode.isChecked) {
+                    val n = binding.overlay.cornerCount()
+                    if (n in 1..3) append("\n$n of 4 corners tapped")
+                } else if (binding.overlay.hasBox()) {
+                    append("\nbox around: ${boxMeaning.label.lowercase()}")
+                }
+            }
         }
     }
 

@@ -205,14 +205,7 @@ class TargetPlotView @JvmOverloads constructor(
             ink.strokeWidth = if (ring.value == 10) 2f else 1.2f
             canvas.drawCircle(toPxX(f, 0.0), toPxY(f, 0.0), (r * s).toFloat(), ink)
 
-            // Ring numerals, only where they will actually be legible.
-            val labelPaint = if (onBlack) labelOnBlack else labelOnPaper
-            labelPaint.textSize = (12 * resources.displayMetrics.density)
-            val gapPx = (r * s) - ((f.ringsByValue.firstOrNull { it.value == ring.value + 1 }?.radiusMm ?: 0.0) * s)
-            if (gapPx > labelPaint.textSize * 1.4f && ring.value in 1..9) {
-                val y = toPxY(f, -(r - (gapPx / s) / 2.0)) + labelPaint.textSize / 3f
-                canvas.drawText(ring.value.toString(), toPxX(f, 0.0), y, labelPaint)
-            }
+            drawRingNumerals(canvas, f, s, ring, onBlack)
         }
         ink.color = ContextCompat.getColor(context, R.color.plot_ink)
 
@@ -230,6 +223,51 @@ class TargetPlotView @JvmOverloads constructor(
                 (f.innerTenDiameterMm / 2.0 * s).toFloat(), dash
             )
         }
+    }
+
+    /**
+     * The ring's own value, printed on the target the way a real card prints
+     * it: at all four cardinal points, in the middle of the annulus, in ink
+     * that reverses to white inside the black aiming mark.
+     *
+     * WHY FOUR AND NOT ONE. A single numeral below centre made the plot ask
+     * to be rotated in the reader's head to check a shot on the left. Four
+     * costs nothing at the sizes where they fit and makes a marginal call
+     * legible wherever it lands.
+     *
+     * AND WHY THEY ARE GATED. On a 10 m air rifle face the rings are 2.5 mm
+     * apart, and at thumbnail scale that annulus is thinner than the glyph.
+     * Drawing anyway gives overlapping numerals that obscure the very rings
+     * they label — so a numeral appears only when its annulus is comfortably
+     * wider than the text, which means dense faces label their outer rings
+     * and drop the inner ones automatically as the view shrinks.
+     */
+    private fun drawRingNumerals(
+        canvas: Canvas, f: TargetFace, s: Float, ring: com.rfsat.sts.targets.Ring, onBlack: Boolean
+    ) {
+        // The ten is never numbered on a real face: it is the middle, and
+        // there is rarely room. Neither is anything outside the printed set.
+        if (ring.value !in 1..9) return
+
+        val inner = f.ringsByValue.firstOrNull { it.value == ring.value + 1 }?.radiusMm ?: 0.0
+        val annulusMm = ring.radiusMm - inner
+        if (annulusMm <= 0.0) return
+
+        val paint = if (onBlack) labelOnBlack else labelOnPaper
+        paint.textSize = 12 * resources.displayMetrics.density
+        val annulusPx = annulusMm * s
+        if (annulusPx < paint.textSize * 1.7f) return
+
+        // Midway across the annulus, so the numeral sits between its own ring
+        // and the next one in rather than crowding either.
+        val rMid = inner + annulusMm / 2.0
+        val dy = paint.textSize / 3f
+        val label = ring.value.toString()
+
+        canvas.drawText(label, toPxX(f, 0.0), toPxY(f, rMid) + dy, paint)
+        canvas.drawText(label, toPxX(f, 0.0), toPxY(f, -rMid) + dy, paint)
+        canvas.drawText(label, toPxX(f, -rMid), toPxY(f, 0.0) + dy, paint)
+        canvas.drawText(label, toPxX(f, rMid), toPxY(f, 0.0) + dy, paint)
     }
 
     private fun drawZones(canvas: Canvas, f: TargetFace, s: Float) {

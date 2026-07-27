@@ -68,8 +68,10 @@ has overwritten what Play holds.
 
 ### Scoring a photograph
 
-Home or Session → *Score a photo of a shot target*. Pick the photograph, tap
-the four corners of the card, and the app finds the holes and scores them.
+Home or Session → *Upload a target photo to score*. Pick the photograph; the
+app finds the black centre and draws a square box around the scoring area,
+which you check and adjust by dragging its handles. Then it finds the holes
+and scores them.
 Supplying a second photograph of the same target **before** it was shot is
 worth the trouble: scoring then becomes a difference, and the printed rings,
 the paper grain, the staple shadows and the black aiming mark all cancel
@@ -293,6 +295,38 @@ Each release ships as a **single ZIP** holding the whole project —
 `STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
 
 ### Changelog
+
+**1.4.0** — feature. Registration is now a **square bounding box** with
+draggable top-left and bottom-right handles, placed for you: the app finds
+the black aiming mark by Otsu threshold plus a largest-circular-component
+search, then expands the box to the whole scoring area using the face's own
+published black-to-outer ratio. Ring values are printed on the target plot at
+four cardinal points, so the targets database shows scores on the circles.
+
+Three decisions worth keeping if this is revised.
+
+*The box cannot model perspective.* Four tapped corners give a full
+projective transform — eight degrees of freedom, enough to undo keystoning.
+An axis-aligned square gives four, translation and one scale, and registering
+an oblique target that way yields a plausible score that is wrong by a
+smoothly varying amount across the face. The box is still the right default
+because most people photograph a card square-on and two handles beat four
+accurate taps, so the detector measures the aiming mark's **ellipticity** and
+says plainly when the assumption has broken. Corner registration remains one
+checkbox away and is unchanged.
+
+*The outer ring is reached by arithmetic, not detection.* The outermost ring
+is a thin line on white paper and finding it directly is unreliable; the
+black mark is the easiest feature in the picture. So the mark locates the
+target and the published ratio expands to the outer ring — 1.5x on the ISSF
+air rifle face, 2.61x on air pistol — giving a much longer scale baseline
+than the black alone. It falls back to the mark when the expansion would run
+off the picture.
+
+*The mark's radius comes from its bounding box, not its area.* A shot-up
+aiming mark has holes in it, so `sqrt(area/pi)` under-reads the radius by
+more the better the shooter is — a bias that would tighten registration and
+inflate every score, worst for exactly the people most likely to notice.
 
 **1.3.1** — correction. The photo-upload scoring entry points have existed
 since 1.2.0, but both were styled `borderlessButtonStyle` — flat text with no
