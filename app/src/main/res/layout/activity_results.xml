@@ -117,7 +117,8 @@
             <TextView android:id="@+id/tvWarnings"
                 style="@style/Sts.Value"
                 android:textSize="13sp"
-                android:lineSpacingExtra="3dp" />
+                android:lineSpacingExtra="3dp"
+                android:justificationMode="inter_word" />
 
             <TextView style="@style/Sts.SectionHeading" android:text="Stage time (practical disciplines)" />
             <EditText android:id="@+id/etTime"

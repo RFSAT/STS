@@ -65,7 +65,8 @@
                 android:textSize="12sp"
                 android:layout_marginTop="4dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="With both photographs the app scores what CHANGED between them, which ignores the printed rings, the paper texture and the aiming mark entirely. With only the shot target it has to tell holes from printing by shape and size alone, which works but is the weaker mode." />
+                android:text="With both photographs the app scores what CHANGED between them, which ignores the printed rings, the paper texture and the aiming mark entirely. With only the shot target it has to tell holes from printing by shape and size alone, which works but is the weaker mode."
+                android:justificationMode="inter_word" />
 
             <TextView style="@style/Sts.SectionHeading" android:text="2. Course of fire" />
 
@@ -95,7 +96,8 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="6dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="Fits the printed rings, works out which target face it is, and takes the scale from the ring spacing. More accurate than the aiming mark alone, and it does not depend on the face selected above being right." />
+                android:text="Fits the printed rings, works out which target face it is, and takes the scale from the ring spacing. More accurate than the aiming mark alone, and it does not depend on the face selected above being right."
+                android:justificationMode="inter_word" />
 
             <Button android:id="@+id/btnAutoDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -106,7 +108,8 @@
                 android:textSize="12sp"
                 android:layout_marginTop="6dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="The app finds the black centre and draws a square box around the scoring area. Check it, then drag the top-left or bottom-right handle to adjust, or drag the middle to move it. The dashed circle is what the box actually measures." />
+                android:text="The app finds the black centre and draws a square box around the scoring area. Check it, then drag the top-left or bottom-right handle to adjust, or drag the middle to move it. The dashed circle is what the box actually measures."
+                android:justificationMode="inter_word" />
 
             <CheckBox android:id="@+id/cbCornerMode"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -132,7 +135,8 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="Match the dashed outline to the rings. Rotation turns the target in the picture; the two tilts lean it away from the camera, one about each axis. If the outline gets worse, drag the slider the other way — a symmetric mark cannot say which way a target leans, so the starting guess picks a side." />
+                android:text="Match the dashed outline to the rings. Rotation turns the target in the picture; the two tilts lean it away from the camera, one about each axis. If the outline gets worse, drag the slider the other way — a symmetric mark cannot say which way a target leans, so the starting guess picks a side."
+                android:justificationMode="inter_word" />
 
             <TextView android:id="@+id/lblRotation" style="@style/Sts.FieldLabel" android:text="Rotation" />
             <SeekBar android:id="@+id/sbRotation"

@@ -139,7 +139,8 @@
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="?android:attr/textColorPrimary"
-                android:text="@string/about_app_description" />
+                android:text="@string/about_app_description"
+                android:justificationMode="inter_word" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -148,7 +149,8 @@
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="@string/about_disciplines" />
+                android:text="@string/about_disciplines"
+                android:justificationMode="inter_word" />
 
             <TextView
                 style="@style/Sts.SectionHeading"
@@ -160,7 +162,8 @@
                 android:textSize="13sp"
                 android:lineSpacingExtra="3dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="@string/disclaimer_scoring" />
+                android:text="@string/disclaimer_scoring"
+                android:justificationMode="inter_word" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -169,7 +172,8 @@
                 android:textSize="13sp"
                 android:lineSpacingExtra="3dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="@string/safety_notice" />
+                android:text="@string/safety_notice"
+                android:justificationMode="inter_word" />
 
             <TextView
                 style="@style/Sts.SectionHeading"
@@ -181,7 +185,8 @@
                 android:textSize="14sp"
                 android:lineSpacingExtra="4dp"
                 android:textColor="?android:attr/textColorPrimary"
-                android:text="@string/about_developer_description" />
+                android:text="@string/about_developer_description"
+                android:justificationMode="inter_word" />
 
             <TextView
                 android:layout_width="wrap_content"

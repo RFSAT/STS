@@ -32,6 +32,30 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.14.0 — feature: justified description text, and an aligned
+        //          parameter table on the rules screen.
+        //   - Sixteen descriptive paragraphs are now fully justified with
+        //     android:justificationMode, across Home, Session, Import,
+        //     Results and the two catalogue dialogs. Available unconditionally
+        //     because minSdk is 26, which is the release it was added in.
+        //     Applied to PROSE only: justification stretches inter-word
+        //     spacing to reach the right margin, which on a two-word heading
+        //     or a one-line field label reads as a mistake rather than as
+        //     typesetting.
+        //   - Rule parameters are a two-column table, both columns left
+        //     aligned. They were lines of a single TextView with the names
+        //     padded out with spaces, which only lines the values up in a
+        //     monospaced font — the same defect the home screen's setup block
+        //     had, and it wandered by several characters in the app's
+        //     proportional face. Left rather than right alignment on the
+        //     values on purpose: a ragged left edge is what stops a column
+        //     being scannable.
+        //   - The rows are INFLATED from item_param_row.xml rather than
+        //     constructed in Kotlin. Passing a ContextThemeWrapper to a View
+        //     constructor sets the theme used to resolve attributes; it does
+        //     not apply the style's own attributes, so rows built that way
+        //     compile, run, and render completely unstyled.
+        //
         // 1.13.0 — feature: interface changes across Home, Session,
         //          Results, Targets, Settings and Import.
         //   - Home no longer carries the upload-photo and live-session
@@ -498,8 +522,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 25
-        versionName = "1.13.0"
+        versionCode = 26
+        versionName = "1.14.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

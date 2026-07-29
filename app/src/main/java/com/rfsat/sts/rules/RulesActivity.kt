@@ -6,6 +6,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.R
 import com.rfsat.sts.databinding.ActivityRulesBinding
@@ -73,30 +74,62 @@ class RulesActivity : BaseActivity() {
     private fun select(rules: RuleSet?) {
         selected = rules
         binding.btnDelete.isEnabled = rules?.custom == true
-        binding.tvDetail.text = rules?.let { r ->
-            val face = TargetRepository(this).byId(r.targetFaceId)
-            buildString {
-                appendLine(r.name)
-                appendLine(r.summary())
-                appendLine()
-                appendLine("Target face   ${face?.name ?: r.targetFaceId}")
-                appendLine("Shots         ${if (r.matchShots > 0) r.matchShots else "stage-defined"}" +
-                    (if (r.shotsPerSeries > 0) " in series of ${r.shotsPerSeries}" else ""))
-                appendLine("Sighters      ${if (r.sighters < 0) "unlimited" else r.sighters}")
-                appendLine("Scoring gauge ${r.gaugeDiameterMm} mm")
-                appendLine("Value scale   ${if (r.decimalScoring) "decimal (tenths)" else "whole rings"}")
-                appendLine("Aggregation   ${r.matchScoring.label}")
-                if (r.maxScore() > 0) appendLine("Maximum       ${"%.0f".format(r.maxScore())}")
-                if (r.tieBreak.isNotEmpty()) appendLine("Tie-break     ${r.tieBreak.joinToString(", ")}")
-                if (r.ruleReference.isNotBlank()) appendLine("Reference     ${r.ruleReference}")
-                appendLine()
-                if (!r.verified) appendLine(
-                    "⚠ These are the commonly published figures rather than a governing body's own " +
-                        "table. Check them against the rulebook in force."
+        val r = rules
+        if (r == null) {
+            binding.tvDetailHead.text = "No rule set selected."
+            binding.tblParams.removeAllViews()
+            binding.tvDetailFoot.text = ""
+            return
+        }
+        val face = TargetRepository(this).byId(r.targetFaceId)
+
+        binding.tvDetailHead.text = "${r.name}\n${r.summary()}"
+
+        val params = buildList {
+            add("Target face" to (face?.name ?: r.targetFaceId))
+            add("Shots" to (
+                (if (r.matchShots > 0) r.matchShots.toString() else "stage-defined") +
+                    (if (r.shotsPerSeries > 0) " in series of ${r.shotsPerSeries}" else "")))
+            add("Sighters" to (if (r.sighters < 0) "unlimited" else r.sighters.toString()))
+            add("Scoring gauge" to "${r.gaugeDiameterMm} mm")
+            add("Value scale" to (if (r.decimalScoring) "decimal (tenths)" else "whole rings"))
+            add("Aggregation" to r.matchScoring.label)
+            if (r.maxScore() > 0) add("Maximum" to "%.0f".format(r.maxScore()))
+            if (r.tieBreak.isNotEmpty()) add("Tie-break" to r.tieBreak.joinToString(", "))
+            if (r.ruleReference.isNotBlank()) add("Reference" to r.ruleReference)
+        }
+        fillParamTable(params)
+
+        binding.tvDetailFoot.text = buildString {
+            if (!r.verified) {
+                appendLine(
+                    "\u26a0 These are the commonly published figures rather than a governing " +
+                        "body's own table. Check them against the rulebook in force."
                 )
-                append(r.notes)
+                if (r.notes.isNotBlank()) appendLine()
             }
-        } ?: "No rule set selected."
+            append(r.notes)
+        }
+        binding.tvDetailFoot.visibility =
+            if (binding.tvDetailFoot.text.isBlank()) View.GONE else View.VISIBLE
+    }
+
+    /**
+     * Rebuilds the parameter table.
+     *
+     * Built in code rather than declared in the layout because the list is
+     * not fixed — a maximum, a tie-break and a rule reference each appear
+     * only when the set defines one, and a table of blank rows reads worse
+     * than a shorter table.
+     */
+    private fun fillParamTable(params: List<Pair<String, String>>) {
+        binding.tblParams.removeAllViews()
+        for ((name, value) in params) {
+            val row = layoutInflater.inflate(R.layout.item_param_row, binding.tblParams, false)
+            row.findViewById<TextView>(R.id.tvParamName).text = name
+            row.findViewById<TextView>(R.id.tvParamValue).text = value
+            binding.tblParams.addView(row)
+        }
     }
 
     private fun edit(rules: RuleSet) {

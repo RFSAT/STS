@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row of the rule-parameter table.
+
+     Inflated rather than built in code. Applying a style to a view
+     constructed in Kotlin is not what it looks like: passing a
+     ContextThemeWrapper to the constructor sets the theme used to RESOLVE
+     attributes, it does not apply the style's own attributes, so the row
+     would compile, run, and render completely unstyled. Inflating a layout
+     that names the style is the one way that reliably applies it. -->
+<TableRow xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView android:id="@+id/tvParamName" style="@style/Sts.ParamName" />
+    <TextView android:id="@+id/tvParamValue" style="@style/Sts.ParamValue" />
+</TableRow>

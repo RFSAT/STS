@@ -22,13 +22,38 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <TextView android:id="@+id/tvDetail"
-            style="@style/Sts.Value"
+        <!-- The rule detail, in three parts.
+
+             The parameters used to be lines of a single TextView with their
+             names padded out with spaces, which only lines the values up in a
+             monospaced font — in the app's proportional face the second
+             column wandered by several characters. A table aligns both
+             columns by construction, and the prose above and below it stays
+             ordinary flowing text. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:minLines="7" />
+            android:padding="12dp">
+
+            <TextView android:id="@+id/tvDetailHead"
+                style="@style/Sts.Value"
+                android:textSize="12sp" />
+
+            <TableLayout android:id="@+id/tblParams"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:shrinkColumns="1" />
+
+            <TextView android:id="@+id/tvDetailFoot"
+                style="@style/Sts.Value"
+                android:layout_marginTop="8dp"
+                android:textSize="12sp"
+                android:justificationMode="inter_word" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
