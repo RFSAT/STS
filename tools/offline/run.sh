@@ -74,5 +74,9 @@ cp "$ROOT"/tools/offline/{JUnit4Shim,StubLog,StubContext,StubGraphics,StubCamera
 cp "$ROOT"/app/src/test/java/com/rfsat/sts/*.kt "$WORK/src/"
 
 echo "compiling $(ls "$WORK/src" | wc -l) files..."
-kotlinc -nowarn "$WORK"/src/*.kt -include-runtime -d "$WORK/all.jar" -Xmain-class=AllRunnerKt
-java -jar "$WORK/all.jar"
+# Invoke the runner class by name rather than through a jar manifest:
+# -Xmain-class is not supported by every kotlinc build, and where it is
+# ignored the jar silently gets no Main-Class and the run fails with
+# "no main manifest attribute" long after the compile appeared to succeed.
+kotlinc -nowarn "$WORK"/src/*.kt -include-runtime -d "$WORK/all.jar"
+java -cp "$WORK/all.jar" AllRunnerKt

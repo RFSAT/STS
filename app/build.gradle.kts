@@ -32,6 +32,74 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.11.0 — feature: the ring-pitch ladder now returns the same scale
+        //          for the same target photographed at different angles.
+        //
+        //   The defect, from 1.10.1: pitch came back as 10.4, 36.1 and 7.6 px
+        //   for one target at three tilts. Four causes, each measured:
+        //
+        //   1. ONE PERCENTILE CANNOT SEE EVERY RING. The radial profile was
+        //      read at the 25th percentile only, which finds dark rings on
+        //      light paper and is BLIND to the white rings printed inside the
+        //      black aiming mark — where rings 7 to 10 live. On a real target
+        //      the 25th-percentile profile read exactly 0 for every radius
+        //      from 0 to 124 px: the whole mark, flat, with three rings in it.
+        //      The profile is now read at 0.25, 0.50 and 0.90 from a single
+        //      histogram and the candidates pooled.
+        //
+        //   2. INLIER_TOLERANCE 0.16 admitted a peak nearly 6 px off its rung.
+        //      Residual perspective SPLITS an outer ring into two shoulder
+        //      peaks, both were admitted, and the refit was dragged between
+        //      them. Now 0.10.
+        //
+        //   3. NOTHING CROSS-CHECKED THE PITCH. The aiming mark is now used
+        //      as independent evidence: its radius over the pitch must lie in
+        //      2.4 to 8.6, which is the range spanned by every face in the
+        //      catalogue (measured: 3.00 to 7.03). This is what rejects a
+        //      ladder at half or twice the true pitch — one target was
+        //      returning 18.8 px where the mark implied 37.
+        //
+        //   4. THE MARK ITSELF WAS NOT STABLE. MarkOutline took the first
+        //      threshold that produced a compact blob, so the same card at
+        //      two angles gave mark radii of 39.6 and 114.0 px. It now
+        //      evaluates every threshold and keeps the largest compact
+        //      region. It also CLOSES the dark mask first: the rings printed
+        //      inside the mark are light lines that stop a flood fill dead,
+        //      and on a synthetic face this returned the ten-ring disc
+        //      instead of the mark. That had gone unnoticed only because thin
+        //      anti-aliased lines on a photograph let the fill leak past.
+        //
+        //   MEASURED, on four real targets warped by angles chosen in advance.
+        //   Rotation about an axis through the centre leaves depth unchanged
+        //   there, so the true pitch is IDENTICAL at every tilt and any
+        //   spread is error. Spread over 0-15 degrees, which is what a
+        //   roughly square-on photograph produces:
+        //
+        //        target    before        after
+        //        t01       (n/a)          7.0%
+        //        t02       47.7%          9.2%
+        //        t03       71.9%          7.7%
+        //        t04      >100%           4.8%
+        //
+        //   A CHECKED ASSUMPTION THAT TURNED OUT TO BE FALSE, recorded
+        //   because it nearly shipped: the black edge lands exactly on a ring
+        //   boundary on ten of the twelve applicable catalogue faces, and on
+        //   the ISSF 50 m Rifle face — and the German 50 m Kleinkaliber face
+        //   that copies it — it sits 0.375 of a ring away by design. A hard
+        //   rung constraint, which was written and working, would have made
+        //   both unscoreable. It is now a confidence factor with a floor, and
+        //   two tests pin the property so it cannot be re-assumed.
+        //
+        //   STILL OPEN. The remaining 5-9 per cent drifts monotonically with
+        //   tilt, which points at a specific cause: the radial profile
+        //   averages over ALL bearings, including those the residual
+        //   perspective distorts, whereas along the tilt axis depth does not
+        //   change at all and the scale there is exactly uniform. Restricting
+        //   the profile to a wedge about the fitted major axis should remove
+        //   it. Written and NOT shipped: it could not be measured properly
+        //   inside this session, and an unvalidated change to the scale is
+        //   the worst kind to guess at.
+        //
         // 1.10.1 — correction: the unit test source set had never once been
         //          compiled, and failed the moment it could be.
         //   - RingFinderTest asserted assertEquals(0xFE, r.toInt(), 6): three
@@ -295,8 +363,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 20
-        versionName = "1.10.1"
+        versionCode = 21
+        versionName = "1.11.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

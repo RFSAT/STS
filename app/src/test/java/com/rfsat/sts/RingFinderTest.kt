@@ -40,8 +40,14 @@ class RingFinderTest {
 
     @Test
     fun `the ring pitch is recovered from a synthetic family`() {
-        val frame = target(500, 250.0, 250.0, firstRingPx = 60.0, pitchPx = 22.0,
-            ringCount = 8, blackRadiusPx = 45.0)
+        // Geometry chosen to match a real face rather than an arbitrary one.
+        // The previous fixture put the black at 45 px with rings starting at
+        // 60 and a pitch of 22 — a black/pitch ratio of 2.05, and no printed
+        // ring inside the aiming mark at all. Every face in the catalogue has
+        // a ratio between 3.0 and 7.03 and several rings inside the black,
+        // which is what the detector is entitled to assume.
+        val frame = target(500, 250.0, 250.0, firstRingPx = 22.0, pitchPx = 22.0,
+            ringCount = 8, blackRadiusPx = 88.0)
         val fit = RingFinder.find(frame)
         assertNotNull("no ring family found", fit)
         assertEquals(22.0, fit!!.pitchPx, 0.7)
@@ -64,7 +70,9 @@ class RingFinderTest {
         // real ring PLUS every spurious edge and wins on inlier count alone.
         // An earlier version returned exactly half the true pitch on two of
         // four real targets because of it.
-        val frame = target(600, 300.0, 300.0, 70.0, 30.0, 8, 55.0)
+        // black 120 px over a 30 px pitch: ratio 4.0, and on a rung, as on
+        // ten of the twelve applicable catalogue faces.
+        val frame = target(600, 300.0, 300.0, 30.0, 30.0, 8, 120.0)
         val fit = RingFinder.find(frame)!!
         assertEquals("returned half the true pitch", 30.0, fit.pitchPx, 1.0)
     }
@@ -140,5 +148,57 @@ class RingFinderTest {
         assertEquals(0xFE.toDouble(), r.toDouble(), 6.0)
         assertEquals(0xDB.toDouble(), g.toDouble(), 6.0)
         assertEquals(0x83.toDouble(), b.toDouble(), 6.0)
+    }
+
+    // ------------------------------------------------------------------
+    //  The premise behind the aiming-mark cross-check
+    // ------------------------------------------------------------------
+
+    /**
+     * [RingFinder] uses the aiming mark to sanity-check the fitted pitch, on
+     * the strength of two properties of real faces. Both are asserted here
+     * rather than assumed, because the first is NOT universal and a hard
+     * constraint built on it would have made two catalogue faces unscoreable.
+     */
+    @Test
+    fun `the aiming mark is a plausible number of rings across on every face`() {
+        val faces = listOf(
+            TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_AP10, TargetCatalog.ISSF_R50,
+            TargetCatalog.ISSF_P25_PRECISION, TargetCatalog.ISSF_P25_RAPID,
+            TargetCatalog.ISSF_R300, TargetCatalog.NRA_MR1_600, TargetCatalog.FCLASS_600,
+            TargetCatalog.NRA_A17_50FT, TargetCatalog.NRA_A23_50YD,
+            TargetCatalog.DE_100M, TargetCatalog.DE_KK_50M
+        )
+        for (f in faces) {
+            val pitch = f.ringPitchMm ?: continue
+            val black = f.blackDiameterMm / 2.0
+            if (black <= 0.0 || pitch <= 0.0) continue
+            val ratio = black / pitch
+            assertTrue(
+                "${f.name}: black/pitch is $ratio, outside the range the ladder filter allows",
+                ratio in 2.4..8.6
+            )
+        }
+    }
+
+    /**
+     * The weaker property: the black edge usually IS a ring boundary, but on
+     * the ISSF 50 m Rifle face — and the German 50 m Kleinkaliber face that
+     * copies its dimensions — it sits 0.375 of a ring away. If this test ever
+     * starts passing for all faces, the confidence floor in RingFinder can be
+     * removed; while it fails for these two, that floor is load bearing.
+     */
+    @Test
+    fun `two catalogue faces have a black edge that is not on a ring boundary`() {
+        val offRung = listOf(TargetCatalog.ISSF_R50, TargetCatalog.DE_KK_50M)
+        for (f in offRung) {
+            val pitch = f.ringPitchMm!!
+            val k = (f.outerRadiusMm - f.blackDiameterMm / 2.0) / pitch
+            val miss = kotlin.math.abs(k - Math.round(k))
+            assertTrue(
+                "${f.name} is now on a rung (miss $miss); revisit MARK_AGREEMENT_FLOOR",
+                miss > RingFinder.MARK_RUNG_TOLERANCE * 2
+            )
+        }
     }
 }

@@ -51,6 +51,10 @@ object MarkOutline {
     private const val MAX_AREA_FRACTION = 0.60
     private const val MIN_OUTLINE_POINTS = 60
 
+    /** Morphological closing radius, px. Large enough to bridge a printed
+     *  ring line inside the mark, far too small to reach the rings outside. */
+    private const val CLOSE_RADIUS = 3
+
     /** Thresholds tried in order, as a fraction of the way from the darkest
      *  part of the mark to the paper. */
     private val THRESHOLD_FRACTIONS = doubleArrayOf(0.45, 0.50, 0.55, 0.40, 0.60)
@@ -73,11 +77,30 @@ object MarkOutline {
             return null
         }
 
+        // Try EVERY threshold and keep the largest compact region, rather
+        // than the first one that passes.
+        //
+        // First-match was not deterministic in the way that matters: which
+        // threshold happens to yield a compact blob depends on the exposure
+        // and the shading of the particular photograph, so the same target
+        // photographed at two angles returned two different features. Measured
+        // on one real card, the mark radius came out as 39.6 px at one tilt
+        // and 114.0 px at another — and since that radius is now used to
+        // cross-check the ring pitch, an unstable mark poisons the ladder as
+        // well. The aiming mark is the LARGEST compact dark region containing
+        // the centre; leaked regions are excluded by the fill-ratio test
+        // rather than by hoping a threshold avoids them.
+        var bestOutline: List<EdgePoint>? = null
+        var bestArea = 0
+        var bestCut = -1
+        var bestFill = 0.0
+        var bestRadius = 0.0
         for (f in THRESHOLD_FRACTIONS) {
             val cut = dark + ((light - dark) * f).toInt()
-            val blob = floodFill(frame, w, h, sx, sy, cut) ?: continue
-            val area = blob.count { it }
-            if (area < MIN_AREA_PX || area > MAX_AREA_FRACTION * w * h) continue
+            val mask = closedDarkMask(frame, w, h, cut)
+            val blob = floodFillMask(mask, w, h, sx, sy) ?: continue
+            val area0 = blob.count { it }
+            if (area0 < MIN_AREA_PX || area0 > MAX_AREA_FRACTION * w * h) continue
 
             fillInteriorHoles(blob, w, h)
 
@@ -113,21 +136,85 @@ object MarkOutline {
                 continue
             }
             if (outline.size < MIN_OUTLINE_POINTS) continue
+            if (n > bestArea) {
+                bestArea = n; bestOutline = outline; bestCut = cut; bestFill = fill; bestRadius = rMax
+            }
+        }
+        if (bestOutline != null) {
             Logger.i(
                 "MarkOutline",
                 "aiming mark at threshold %d: %d px, radius %.0f, fill %.2f, %d outline points"
-                    .format(cut, n, rMax, fill, outline.size)
+                    .format(bestCut, bestArea, bestRadius, bestFill, bestOutline.size)
             )
-            return outline
+            return bestOutline
         }
         Logger.i("MarkOutline", "no compact aiming mark found at any threshold")
         return null
     }
 
-    private fun floodFill(
-        frame: LumaFrame, w: Int, h: Int, sx: Int, sy: Int, cut: Int
+    /**
+     * The dark mask, morphologically CLOSED.
+     *
+     * Rings 7 to 10 are printed INSIDE the black aiming mark, as light lines.
+     * A flood fill of dark pixels starting at the centre is stopped dead by
+     * the innermost of them, and returns the ten-ring disc instead of the
+     * mark — on a synthetic face with crisp lines this reported a radius of
+     * 22 px where the mark is 88, which then made the ring-pitch cross-check
+     * reject the true ladder and accept one at a third of the pitch.
+     *
+     * It went unnoticed on real photographs only because thin anti-aliased
+     * lines, softened further by JPEG, do not quite reach the threshold
+     * everywhere, so the fill leaked past them. That is luck, not robustness,
+     * and it would run out on a sharper photograph or a cleaner scan.
+     *
+     * Closing by [CLOSE_RADIUS] bridges lines a few pixels wide and leaves
+     * the outer edge of the mark where it was. It cannot bridge the mark to
+     * the rings outside it: those are a whole ring pitch away, which is an
+     * order of magnitude more than this radius.
+     */
+    private fun closedDarkMask(frame: LumaFrame, w: Int, h: Int, cut: Int): BooleanArray {
+        val m = BooleanArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) m[y * w + x] = frame.at(x, y) < cut
+        val dil = dilate(m, w, h, CLOSE_RADIUS)
+        return erode(dil, w, h, CLOSE_RADIUS)
+    }
+
+    /** Separable square dilation: horizontal pass then vertical. */
+    private fun dilate(src: BooleanArray, w: Int, h: Int, r: Int): BooleanArray {
+        val tmp = BooleanArray(w * h)
+        for (y in 0 until h) {
+            val row = y * w
+            for (x in 0 until w) {
+                var v = false
+                var i = maxOf(0, x - r)
+                val e = minOf(w - 1, x + r)
+                while (i <= e) { if (src[row + i]) { v = true; break }; i++ }
+                tmp[row + x] = v
+            }
+        }
+        val out = BooleanArray(w * h)
+        for (x in 0 until w) {
+            for (y in 0 until h) {
+                var v = false
+                var j = maxOf(0, y - r)
+                val e = minOf(h - 1, y + r)
+                while (j <= e) { if (tmp[j * w + x]) { v = true; break }; j++ }
+                out[y * w + x] = v
+            }
+        }
+        return out
+    }
+
+    private fun erode(src: BooleanArray, w: Int, h: Int, r: Int): BooleanArray {
+        val inv = BooleanArray(w * h) { !src[it] }
+        val d = dilate(inv, w, h, r)
+        return BooleanArray(w * h) { !d[it] }
+    }
+
+    private fun floodFillMask(
+        mask: BooleanArray, w: Int, h: Int, sx: Int, sy: Int
     ): BooleanArray? {
-        if (frame.at(sx, sy) >= cut) return null
+        if (!mask[sy * w + sx]) return null
         val seen = BooleanArray(w * h)
         val stack = IntArray(w * h)
         var top = 0
@@ -141,22 +228,10 @@ object MarkOutline {
             val y = p / w
             count++
             if (count > limit) return null
-            if (x > 0) {
-                val i = p - 1
-                if (!seen[i] && frame.at(x - 1, y) < cut) { seen[i] = true; stack[top++] = i }
-            }
-            if (x < w - 1) {
-                val i = p + 1
-                if (!seen[i] && frame.at(x + 1, y) < cut) { seen[i] = true; stack[top++] = i }
-            }
-            if (y > 0) {
-                val i = p - w
-                if (!seen[i] && frame.at(x, y - 1) < cut) { seen[i] = true; stack[top++] = i }
-            }
-            if (y < h - 1) {
-                val i = p + w
-                if (!seen[i] && frame.at(x, y + 1) < cut) { seen[i] = true; stack[top++] = i }
-            }
+            if (x > 0) { val i = p - 1; if (!seen[i] && mask[i]) { seen[i] = true; stack[top++] = i } }
+            if (x < w - 1) { val i = p + 1; if (!seen[i] && mask[i]) { seen[i] = true; stack[top++] = i } }
+            if (y > 0) { val i = p - w; if (!seen[i] && mask[i]) { seen[i] = true; stack[top++] = i } }
+            if (y < h - 1) { val i = p + w; if (!seen[i] && mask[i]) { seen[i] = true; stack[top++] = i } }
         }
         return seen
     }
