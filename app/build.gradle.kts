@@ -32,6 +32,19 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.9.1 — correction: four compile errors from the 1.6.0-1.9.0 run of
+        //         releases, none of which had been through a compiler.
+        //   - SessionActivity had TWO companion objects, which made
+        //     IDENTIFY_TOLERANCE unresolvable and reported the error on a
+        //     different line than the cause.
+        //   - ProfileActivity kept a return@onSelected after the function it
+        //     labelled was renamed to onSelectedIndex.
+        //   - the ported VTB ScopeCatalog's `when` covers VTB's three click
+        //     units; this app has six, because match diopters are quoted in
+        //     millimetres at a distance rather than as an angle.
+        //   tools/kotlin_checks.py now catches all three, and CI runs it
+        //   BEFORE the compiler, since it names the file and line where the
+        //   compiler reports consequences elsewhere.
         // 1.9.0 — the two gaps from 1.8.0, and Hough centre voting.
         //   - the target spinners on the detection screens now show a picture
         //     of each face. 1.8.0 put thumbnails only in the Targets tab,
@@ -223,8 +236,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 17
-        versionName = "1.9.0"
+        versionCode = 18
+        versionName = "1.9.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

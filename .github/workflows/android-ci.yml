@@ -55,6 +55,12 @@ jobs:
       # Unit tests are not minified — R8 applies to the packaged artefact, not
       # to the JVM test classpath — so this tests the same code the release
       # ships without needing a debug build to do it.
+      # Cheap semantic checks first: they need no toolchain and they name the
+      # file and line, where the same mistakes reach the compiler as errors
+      # reported somewhere else entirely.
+      - name: Static checks
+        run: python3 tools/kotlin_checks.py
+
       - name: Unit tests (release variant)
         run: gradle testReleaseUnitTest --no-daemon
 

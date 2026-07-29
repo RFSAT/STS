@@ -64,6 +64,11 @@ import java.util.concurrent.atomic.AtomicReference
 class SessionActivity : BaseActivity() {
 
     companion object {
+        /** Beyond this the best-matching face is not convincing. On the two
+         *  real targets tested the right face agreed to within 1.3% while the
+         *  runner-up was 8% out, so 5% separates them comfortably. */
+        const val IDENTIFY_TOLERANCE = 0.05
+
         const val EXTRA_NEW = "start_new"
         private const val REQ_PERMISSIONS = 4711
 
@@ -719,12 +724,6 @@ class SessionActivity : BaseActivity() {
         refreshStatus()
     }
 
-    private companion object {
-        /** Beyond this the best-matching face is not convincing. On the two
-         *  real targets tested the right face agreed to within 1.3% while the
-         *  runner-up was 8% out, so 5% separates them comfortably. */
-        const val IDENTIFY_TOLERANCE = 0.05
-    }
 
     private fun detectionFrame(): LumaFrame? = latestFrame.get()
 

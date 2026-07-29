@@ -296,6 +296,32 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.9.1** — correction. Four compile errors, from four releases that had not
+been through a compiler.
+
+* `SessionActivity` had **two companion objects**. Kotlin allows one, and the
+  effect is that constants in the first become unresolvable — so the reported
+  error was an unresolved reference sixty lines away from the cause.
+* `ProfileActivity` kept a `return@onSelected` after the function it labelled
+  was renamed to `onSelectedIndex`. The old name still existed elsewhere in
+  the file, which is why it looked fine.
+* The ported VTB `ScopeCatalog` has a `when` over `ClickUnit` covering VTB's
+  three values. This app has six, because match diopters and target-pistol
+  sights are quoted in millimetres at a stated distance rather than as an
+  angle. Filled in rather than given an `else`, so a seventh unit is a compile
+  error here instead of a sight that silently labels itself wrongly.
+
+`tools/kotlin_checks.py` now catches all three classes — a second companion
+object in one class, a `return@` naming no enclosing lambda, and a `when` over
+an enum that is missing members and has no `else`. It was verified by putting
+each bug back and confirming it was caught. CI runs it **before** the
+compiler: it needs no toolchain and it names the file and line, where the
+compiler reports the consequences somewhere else.
+
+The project's other gates check resources, binding ids, layout attributes,
+imports and brace balance. They were blind to all three of these, which is
+worth knowing about what they are and are not for.
+
 **1.9.0** — the two gaps from 1.8.0, and Hough centre voting.
 
 *Thumbnails where they matter.* 1.8.0 drew a face beside each name in the

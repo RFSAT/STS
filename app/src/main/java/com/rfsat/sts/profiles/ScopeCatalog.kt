@@ -50,10 +50,19 @@ object ScopeCatalog {
             zoomMax <= 20.0 -> "Mid (10\u201320\u00d7)"
             else -> "High (> 20\u00d7)"
         }
+        // VTB's ClickUnit has three values; STS's has six, because match
+        // diopters and target-pistol sights are quoted in millimetres at a
+        // stated distance rather than as an angle. The ported branch is kept
+        // and the STS units added, rather than an else, so that adding a
+        // seventh unit is a compile error here instead of a sight that
+        // silently labels itself wrongly.
         val clickLabel: String get() = when (clickUnit) {
             ClickUnit.MRAD_TENTH -> "0.1 MRAD"
             ClickUnit.MOA_QUARTER -> "1/4 MOA"
             ClickUnit.MOA_EIGHTH -> "1/8 MOA"
+            ClickUnit.MOA_HALF -> "1/2 MOA"
+            ClickUnit.MRAD_HUNDREDTH -> "0.01 MRAD"
+            ClickUnit.MM_AT_REFERENCE -> "mm at a reference distance"
         }
         fun label(): String =
             "$brand $model \u2014 ${fmt(zoomMin)}-${fmt(zoomMax)}\u00d7${objectiveMm.toInt()}, $clickLabel"

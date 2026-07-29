@@ -53,7 +53,7 @@ class ProfileActivity : BaseActivity() {
         binding.spTheme.adapter = adapter(ThemeMode.values().map { it.label })
         binding.spTheme.setSelection(ThemeMode.values().indexOf(ThemeManager.mode()))
         binding.spTheme.onItemSelectedListener = onSelectedIndex { i ->
-            if (suppressThemeCallback) return@onSelected
+            if (suppressThemeCallback) return@onSelectedIndex
             val mode = ThemeMode.values()[i]
             if (mode != ThemeManager.mode()) {
                 ThemeManager.setMode(this, mode)
