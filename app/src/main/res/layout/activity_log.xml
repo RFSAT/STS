@@ -25,15 +25,15 @@
             <Button android:id="@+id/btnShare"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                style="?android:attr/borderlessButtonStyle" android:text="Share log" />
+                style="@style/Sts.TextButton" android:text="Share log" />
             <Button android:id="@+id/btnShareAll"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                style="?android:attr/borderlessButtonStyle" android:text="Full report" />
+                style="@style/Sts.TextButton" android:text="Full report" />
             <Button android:id="@+id/btnClear"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content"
-                style="?android:attr/borderlessButtonStyle" android:text="Clear log" />
+                style="@style/Sts.TextButton" android:text="Clear log" />
         </LinearLayout>
     </LinearLayout>
 

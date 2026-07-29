@@ -86,6 +86,22 @@ class SessionActivity : BaseActivity() {
     private var analysisSize: Size? = null
 
     private var registration: TargetRegistration? = null
+    /**
+     * Positions this screen selected programmatically, so the callback the
+     * Spinner posts for them can be told apart from a real user choice.
+     *
+     * THIS WAS THE BUG BEHIND THREE SEPARATE COMPLAINTS. A Spinner delivers
+     * its first onItemSelected on the layout pass AFTER onCreate, which is
+     * after the listener has been attached — so merely OPENING this screen
+     * ran the rules listener, which forces the target face to the rule set's
+     * default. Choose a custom target, leave the screen, come back, and it
+     * had silently reverted to ISSF 10 m Air Rifle. Results then showed that
+     * face, and detection ran against it, which is why a card that scores
+     * correctly in testing produced no hits at all on the phone.
+     */
+    private var pendingRulesSelection = -1
+    private var pendingTargetSelection = -1
+
     private var boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
     private var markEllipticity = 1.0
     private var live: LiveHitDetector? = null
@@ -105,6 +121,7 @@ class SessionActivity : BaseActivity() {
         setContentView(binding.root)
         analysisExecutor = Executors.newSingleThreadExecutor()
         ScoringSession.attach(this)
+        ScoringSession.adoptSelectionIfEmpty(this)
 
         runCatching { initScreen() }.onFailure {
             Logger.e("SessionActivity", "Screen init failed", it)
@@ -117,29 +134,48 @@ class SessionActivity : BaseActivity() {
         faces = TargetRepository(this).allFaces()
         ruleSets = RuleRepository(this).allSets()
 
+        // Both spinners are pointed at the stored selection BEFORE their
+        // listeners can act, and the position set is remembered so the
+        // callback the Spinner posts for it is recognised as ours rather than
+        // treated as a user choice. See the note on pendingRulesSelection.
+        val ruleIndex = ruleSets.indexOfFirst { it.id == RuleRepository(this).activeSet().id }
+            .coerceAtLeast(0)
+        val faceIndex = faces.indexOfFirst { it.id == TargetRepository(this).activeFace().id }
+            .coerceAtLeast(0)
+        selectedRules = ruleSets.getOrNull(ruleIndex)
+        selectedFace = faces.getOrNull(faceIndex)
+
         // ---- rules spinner ----
         binding.spRules.adapter = adapter(ruleSets.map { "${it.name}  (${it.governingBody})" })
-        val activeRules = RuleRepository(this).activeSet()
-        binding.spRules.setSelection(ruleSets.indexOfFirst { it.id == activeRules.id }.coerceAtLeast(0))
+        pendingRulesSelection = ruleIndex
+        binding.spRules.setSelection(ruleIndex)
         binding.spRules.onItemSelectedListener = onSelected { i ->
+            if (i == pendingRulesSelection) { pendingRulesSelection = -1; return@onSelected }
             val r = ruleSets.getOrNull(i) ?: return@onSelected
             selectedRules = r
             RuleRepository(this).setActiveSet(r.id)
-            // Selecting a course of fire also selects its face and distance:
-            // those three are a single decision, and making the user restate
-            // it twice is how mismatched sessions get recorded.
-            faces.indexOfFirst { it.id == r.targetFaceId }.takeIf { it >= 0 }?.let {
-                binding.spTarget.setSelection(it)
+            // Changing the course of fire moves the target face with it —
+            // but only on a real user change, never on the way into the
+            // screen, which used to silently revert a chosen target.
+            faces.indexOfFirst { it.id == r.targetFaceId }.takeIf { it >= 0 }?.let { idx ->
+                pendingTargetSelection = idx
+                binding.spTarget.setSelection(idx)
+                selectedFace = faces[idx]
+                TargetRepository(this).setActiveFace(faces[idx].id)
+                notifyUser("Target face switched to ${faces[idx].name} to match the rules.")
             }
             binding.etDistance.setText(fmt(UnitsManager.displayDistance(r.distanceM)))
+            registration = null
+            live = null
             refreshStatus()
         }
 
         // ---- target spinner ----
         binding.spTarget.adapter = adapter(faces.map { it.name + if (it.verified) "" else "  (unverified)" })
-        val activeFace = TargetRepository(this).activeFace()
-        binding.spTarget.setSelection(faces.indexOfFirst { it.id == activeFace.id }.coerceAtLeast(0))
+        pendingTargetSelection = faceIndex
+        binding.spTarget.setSelection(faceIndex)
         binding.spTarget.onItemSelectedListener = onSelected { i ->
+            if (i == pendingTargetSelection) { pendingTargetSelection = -1; return@onSelected }
             val f = faces.getOrNull(i) ?: return@onSelected
             selectedFace = f
             TargetRepository(this).setActiveFace(f.id)

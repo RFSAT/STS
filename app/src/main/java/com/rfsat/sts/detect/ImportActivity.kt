@@ -62,6 +62,22 @@ class ImportActivity : BaseActivity() {
     private var cleanUri: Uri? = null
 
     private var registration: TargetRegistration? = null
+    /**
+     * Positions this screen selected programmatically, so the callback the
+     * Spinner posts for them can be told apart from a real user choice.
+     *
+     * THIS WAS THE BUG BEHIND THREE SEPARATE COMPLAINTS. A Spinner delivers
+     * its first onItemSelected on the layout pass AFTER onCreate, which is
+     * after the listener has been attached — so merely OPENING this screen
+     * ran the rules listener, which forces the target face to the rule set's
+     * default. Choose a custom target, leave the screen, come back, and it
+     * had silently reverted to ISSF 10 m Air Rifle. Results then showed that
+     * face, and detection ran against it, which is why a card that scores
+     * correctly in testing produced no hits at all on the phone.
+     */
+    private var pendingRulesSelection = -1
+    private var pendingTargetSelection = -1
+
     private var boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
     private var markEllipticity = 1.0
     private var faces: List<TargetFace> = emptyList()
@@ -79,6 +95,7 @@ class ImportActivity : BaseActivity() {
         binding = ActivityImportBinding.inflate(layoutInflater)
         setContentView(binding.root)
         ScoringSession.attach(this)
+        ScoringSession.adoptSelectionIfEmpty(this)
 
         runCatching { initScreen() }.onFailure {
             Logger.e("ImportActivity", "Screen init failed", it)
@@ -91,25 +108,41 @@ class ImportActivity : BaseActivity() {
         faces = TargetRepository(this).allFaces()
         ruleSets = RuleRepository(this).allSets()
 
+        // Both spinners are populated and pointed at the stored selection
+        // BEFORE their listeners can do anything, and the position we set is
+        // remembered so the callback the Spinner posts for it is recognised
+        // as ours rather than treated as a user choice.
+        val ruleIndex = ruleSets.indexOfFirst { it.id == RuleRepository(this).activeSet().id }
+            .coerceAtLeast(0)
+        val faceIndex = faces.indexOfFirst { it.id == TargetRepository(this).activeFace().id }
+            .coerceAtLeast(0)
+
         binding.spRules.adapter = adapter(ruleSets.map { "${it.name}  (${it.governingBody})" })
-        binding.spRules.setSelection(
-            ruleSets.indexOfFirst { it.id == RuleRepository(this).activeSet().id }.coerceAtLeast(0)
-        )
+        pendingRulesSelection = ruleIndex
+        binding.spRules.setSelection(ruleIndex)
         binding.spRules.onItemSelectedListener = onSelected { i ->
+            if (i == pendingRulesSelection) { pendingRulesSelection = -1; return@onSelected }
             val r = ruleSets.getOrNull(i) ?: return@onSelected
             RuleRepository(this).setActiveSet(r.id)
-            faces.indexOfFirst { it.id == r.targetFaceId }.takeIf { it >= 0 }
-                ?.let { binding.spTarget.setSelection(it) }
+            // A course of fire implies its face, so changing the rules moves
+            // the target with it — but only when the user actually changed
+            // them, never on the way in.
+            faces.indexOfFirst { it.id == r.targetFaceId }.takeIf { it >= 0 }?.let { idx ->
+                pendingTargetSelection = idx
+                binding.spTarget.setSelection(idx)
+                TargetRepository(this).setActiveFace(faces[idx].id)
+                notifyUser("Target face switched to ${faces[idx].name} to match the rules.")
+            }
             binding.etDistance.setText(fmt(UnitsManager.displayDistance(r.distanceM)))
             registration = null      // the gauge changed, so the rectification did too
             refreshStatus()
         }
 
         binding.spTarget.adapter = adapter(faces.map { it.name + if (it.verified) "" else "  (unverified)" })
-        binding.spTarget.setSelection(
-            faces.indexOfFirst { it.id == TargetRepository(this).activeFace().id }.coerceAtLeast(0)
-        )
+        pendingTargetSelection = faceIndex
+        binding.spTarget.setSelection(faceIndex)
         binding.spTarget.onItemSelectedListener = onSelected { i ->
+            if (i == pendingTargetSelection) { pendingTargetSelection = -1; return@onSelected }
             faces.getOrNull(i)?.let { TargetRepository(this).setActiveFace(it.id) }
             registration = null      // a different face means a different mapping
             binding.overlay.clearCorners()
@@ -362,6 +395,11 @@ class ImportActivity : BaseActivity() {
             binding.histogram.distribution = com.rfsat.sts.scoring.ShotDistribution.EMPTY
             binding.tvResult.text = buildString {
                 appendLine("No holes were found, and any previously recorded shots have been cleared.")
+                appendLine()
+                appendLine("Scored against: ${face.name}")
+                appendLine("Ring spacing ${face.ringPitchMm?.let { "%.2f mm".format(it) } ?: "uneven"}, " +
+                    "outer ring ${"%.1f".format(face.outerRadiusMm * 2)} mm, " +
+                    "gauge ${rules.gaugeDiameterMm} mm")
                 appendLine()
                 appendLine("The commonest causes, in order:")
                 appendLine("• the wrong target face — its ring spacing and its scoring gauge " +

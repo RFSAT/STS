@@ -87,7 +87,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Sts.TextButton"
                     android:text="Diagnostic log" />
 
                 <Button
@@ -96,7 +96,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:visibility="gone"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Sts.TextButton"
                     android:text="Resume the session in progress" />
             </LinearLayout>
 

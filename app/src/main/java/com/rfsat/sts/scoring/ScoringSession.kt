@@ -129,6 +129,29 @@ object ScoringSession {
      * rebuild the whole session to do it is what left stale results on screen
      * being read as new ones.
      */
+    /**
+     * Points an EMPTY session at whatever target and rules are currently
+     * selected.
+     *
+     * A session records the face it was scored against, which is right: a
+     * result must not change because a menu changed afterwards. But before
+     * anything has been shot there is nothing to protect, and leaving the
+     * stale id in place made the Results screen go on naming the face the
+     * session happened to be created with — reported as "Results does not use
+     * the selected target". Once there are shots, this does nothing.
+     */
+    fun adoptSelectionIfEmpty(context: Context) {
+        if (state.shots.isNotEmpty()) return
+        val face = TargetRepository(context).activeFace()
+        val rules = RuleRepository(context).activeSet()
+        if (state.faceId == face.id && state.rulesId == rules.id) return
+        state.faceId = face.id
+        state.rulesId = rules.id
+        if (state.distanceM <= 0.0) state.distanceM = rules.distanceM
+        persist()
+        Logger.i("ScoringSession", "Empty session now follows ${face.name} / ${rules.name}")
+    }
+
     fun clearShots() {
         state.shots = mutableListOf()
         state.endedAtMs = 0L

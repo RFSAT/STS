@@ -296,6 +296,36 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.7.1** — three corrections, and two of them had a single cause.
+
+*The black text was not the spinners.* 1.7.0 fixed those, and they did need
+fixing, but the controls still unreadable were the **35 borderless buttons** —
+the log and resume actions on Home, everything under Elsewhere in Settings,
+every undo, reset and clear elsewhere. `?android:attr/borderlessButtonStyle`
+selects the PLATFORM style, whose text colour comes from platform attributes
+that nothing in this app's themes can reach. Replaced with `Sts.TextButton`,
+which sets `textColor` on the style applied directly to the view — the one
+place the platform cannot override — and uses `colorAccent`, so a text button
+reads as an action in all four themes.
+
+*One bug behind "selections are not remembered", "Results ignores the
+selected target", and "still no shots detected".* A `Spinner` delivers its
+first `onItemSelected` on the layout pass AFTER `onCreate` — that is, after
+the listener has been attached. So merely OPENING the Session or Import
+screen ran the rules listener, which forces the target face to the rule set's
+default face. Choose a custom target, leave, come back, and it had silently
+reverted to ISSF 10 m Air Rifle. The Results screen then named that face, and
+detection ran against its geometry, which is why a card that scores correctly
+in offline testing produced no hits at all on the phone. The position set
+programmatically is now remembered and its callback recognised as ours rather
+than treated as a user choice.
+
+*An empty session now follows the current selection.* A session records the
+face it was scored against, and must: a result cannot change because a menu
+changed afterwards. But before anything has been shot there is nothing to
+protect, and the stale id was what the Results screen was reporting. Once
+there are shots, the recorded face and rules stand, and the screen says so.
+
 **1.7.0** — clearing, legibility, and the other half of the wrong-face
 problem.
 

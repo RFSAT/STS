@@ -32,6 +32,22 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.7.1 — three corrections, two of which had one cause.
+        //   - the black text was NOT the spinners (1.7.0 fixed those); it was
+        //     all 35 BORDERLESS BUTTONS. "?android:attr/borderlessButtonStyle"
+        //     takes the platform style, whose text colour comes from platform
+        //     attributes this app cannot reach. Replaced with Sts.TextButton,
+        //     which sets textColor on the view's own style.
+        //   - a Spinner delivers its first onItemSelected on the layout pass
+        //     AFTER onCreate, i.e. after the listener is attached. Opening
+        //     Session or Import therefore ran the rules listener, which forces
+        //     the target face to the rule set's default — silently reverting a
+        //     chosen target to ISSF 10 m Air Rifle every time. That is why the
+        //     Results screen kept naming that face AND why detection kept
+        //     finding nothing: it was running against the wrong geometry. The
+        //     initial selection is now recognised and ignored.
+        //   - an EMPTY session now follows the current target and rules.
+        //     A scored session still keeps what it was scored with.
         // 1.7.0 — feature: clear the log (the button existed but four controls
         //         in one row pushed it off the right-hand edge of a phone, so
         //         the toolbar is now two rows); clear the recorded shots,
@@ -159,8 +175,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 14
-        versionName = "1.7.0"
+        versionCode = 15
+        versionName = "1.7.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

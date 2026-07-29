@@ -163,6 +163,7 @@ class ResultsActivity : BaseActivity() {
     }
 
     private fun refresh() {
+        ScoringSession.adoptSelectionIfEmpty(this)
         val face = ScoringSession.face(this)
         val rules = ScoringSession.rules(this)
         val res = ScoringSession.result(this)
@@ -183,6 +184,11 @@ class ResultsActivity : BaseActivity() {
         }
         binding.tvSubhead.text = buildString {
             append("${rules.name} · ${face.name} · ${UnitsManager.formatDistance(distance)}")
+            append(" · gauge ${rules.gaugeDiameterMm} mm")
+            if (ScoringSession.state.shots.isNotEmpty()) {
+                append("\n(the face and rules a session was scored with are kept; " +
+                    "clear the shots to follow a new selection)")
+            }
             if (res.derivedFigureLabel.isNotEmpty())
                 append("\n${res.derivedFigureLabel}: ${"%.4f".format(res.derivedFigure)}")
             if (res.lowerIsBetter) append("   (lower is better)")

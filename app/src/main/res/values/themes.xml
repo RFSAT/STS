@@ -98,6 +98,26 @@
         <item name="android:textColor">?android:attr/textColorSecondary</item>
     </style>
 
+    <!-- Borderless buttons.
+
+         "?android:attr/borderlessButtonStyle" asks for the PLATFORM style,
+         whose text colour comes from the platform's own attributes rather
+         than from anything this app sets — so under the dark themes every one
+         of the 35 borderless buttons rendered near-black on a dark
+         background: the Home screen's log and resume, everything under
+         Elsewhere in Settings, the undo and reset and clear actions on every
+         other screen. Setting textColor here, on a style applied directly to
+         the view, is the one place the platform cannot override.
+
+         colorAccent rather than textColorPrimary, so a text button reads as
+         an action in all four themes: gold on dark, dark green on white,
+         and the monochrome accent in each night mode. -->
+    <style name="Sts.TextButton" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:textColor">?attr/colorAccent</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
     <style name="Sts.Value" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

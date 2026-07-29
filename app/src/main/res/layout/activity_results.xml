@@ -46,17 +46,17 @@
                 <Button android:id="@+id/btnAddMode"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Sts.TextButton"
                     android:text="Add shot by tapping" />
                 <Button android:id="@+id/btnFullCard"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Sts.TextButton"
                     android:text="Show whole card" />
                 <Button android:id="@+id/btnResetZoom"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Sts.TextButton"
                     android:text="Reset view" />
             </LinearLayout>
 
@@ -134,19 +134,19 @@
                 <Button android:id="@+id/btnCsv"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Export CSV"
-                    style="?android:attr/borderlessButtonStyle" />
+                    style="@style/Sts.TextButton" />
             </LinearLayout>
 
             <Button android:id="@+id/btnClearShots"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                style="?android:attr/borderlessButtonStyle"
+                style="@style/Sts.TextButton"
                 android:text="Clear all shots from this session" />
 
             <Button android:id="@+id/btnNewSession"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                style="?android:attr/borderlessButtonStyle"
+                style="@style/Sts.TextButton"
                 android:text="Finish and start a new session" />
 
         </LinearLayout>

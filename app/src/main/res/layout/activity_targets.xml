@@ -45,11 +45,11 @@
             <Button android:id="@+id/btnEdit"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Copy &amp; edit"
-                style="?android:attr/borderlessButtonStyle" />
+                style="@style/Sts.TextButton" />
             <Button android:id="@+id/btnDelete"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Delete"
-                style="?android:attr/borderlessButtonStyle" />
+                style="@style/Sts.TextButton" />
         </LinearLayout>
 
         <Button android:id="@+id/btnImport"
