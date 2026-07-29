@@ -32,6 +32,49 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.10.0 — feature: direct least-squares ellipse fitting on the ring
+        //          edges, and an evidence-based choice between it and a circle.
+        //   - EllipseFit.kt implements Fitzgibbon/Pilu/Fisher (1999) in the
+        //     numerically stable Halir-Flusser form. Fits all five ellipse
+        //     parameters, where the pooled estimate in HoughCentre fits two
+        //     and assumes three. Verified against an independent
+        //     implementation: axis ratio and orientation agree to five
+        //     decimal places on twelve reference cases.
+        //   - RingShapeSelector picks between circle and ellipse by CROSS
+        //     VALIDATION — fit both on 70% of the outline, score both on the
+        //     untouched 30%. An ellipse always wins on the points it was
+        //     fitted to, so residuals alone would pick it even on a perfectly
+        //     square-on target, where a spurious 3% correction is about half
+        //     a ring at the outer edge.
+        //   - MarkOutline extracts the aiming mark as a connected component
+        //     and checks it has not leaked along a ring line through a bullet
+        //     hole; two ray-casting extractors were tried first and both
+        //     invented ellipticity that was not there.
+        //   - ShapeCorrection de-foreshortens the frame BEFORE the ring pitch
+        //     is measured, so the existing radial fit gets an image its
+        //     circular assumption holds for.
+        //
+        //   Measured, on real targets warped by angles chosen in advance —
+        //   mean absolute score error per shot, ISSF 10 m air rifle face:
+        //     tilt      circle   ellipse
+        //     10 deg     0.092     0.083
+        //     20 deg     0.201     0.154
+        //     30 deg     0.366     0.216
+        //     40 deg     0.565     0.282
+        //   So it recovers roughly half of what a circle discards at 30-40
+        //   degrees. A full ring-family homography would recover about a
+        //   further quarter and is NOT implemented, because it needs the true
+        //   ring radii and would therefore turn a wrong face identification
+        //   into a confident wrong score. This needs no face knowledge.
+        //
+        //   KNOWN OPEN DEFECT, surfaced by this work and NOT caused by it:
+        //   the ring-pitch ladder in RingFinder is unstable on oblique
+        //   photographs, returning 10.4, 36.1 and 7.6 px for the same target
+        //   at three tilts WITHOUT any correction applied. The uncorrected
+        //   fit is now logged alongside the corrected one so the two can be
+        //   compared from a shared field log. Scale should not be trusted on
+        //   an angled photograph until that is fixed.
+        //
         // 1.9.1 — correction: four compile errors from the 1.6.0-1.9.0 run of
         //         releases, none of which had been through a compiler.
         //   - SessionActivity had TWO companion objects, which made
@@ -236,8 +279,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 18
-        versionName = "1.9.1"
+        versionCode = 19
+        versionName = "1.10.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

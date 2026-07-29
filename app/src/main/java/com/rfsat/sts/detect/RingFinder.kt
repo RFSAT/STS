@@ -24,7 +24,15 @@ data class RingFit(
      *  1.0 is circular. Reported, and used to SEED the tilt controls — never
      *  applied on its own; see HoughCentre.TILT_NOISE_FLOOR_DEG. */
     val axisRatio: Double = 1.0,
-    val orientationDeg: Double = 0.0
+    val orientationDeg: Double = 0.0,
+    /** Which shape model won on the aiming-mark outline, and why. Null when
+     *  no outline could be extracted. */
+    val shape: RingShapeChoice? = null,
+    /** The de-foreshortening actually applied before this fit was made. When
+     *  non-null, every pixel coordinate in this RingFit is in CORRECTED
+     *  coordinates, and [correctedFrame] maps them back to the source. */
+    val correction: ShapeCorrection? = null,
+    val correctedFrame: CorrectedFrame? = null
 ) {
     /** The tilt the ring ellipticity implies, degrees. */
     val impliedTiltDeg: Double
@@ -93,7 +101,62 @@ object RingFinder {
     private const val MIN_RINGS = 4
     private const val INLIER_TOLERANCE = 0.16
 
+    /**
+     * Fits the ring family, correcting the foreshortening first when the
+     * evidence supports it.
+     *
+     * ORDER MATTERS. The shape is decided from the aiming-mark outline BEFORE
+     * the radial profile runs, because the radial profile is the thing that
+     * perspective breaks: at an angle a ring is at a different radius on
+     * every bearing, so the profile smears the ring lines and the ladder fit
+     * degrades. De-foreshortening first hands the existing, measured pitch
+     * fit an image where its circular assumption holds — rather than trying
+     * to compensate a pitch that was already smeared, which would need the
+     * correction algebra to be right in a place where being wrong is silent.
+     */
     fun find(frame: LumaFrame, seedX: Double = -1.0, seedY: Double = -1.0): RingFit? {
+        val vote0 = HoughCentre.find(frame)
+        val markX = vote0?.xPx ?: (if (seedX >= 0) seedX else frame.width / 2.0)
+        val markY = vote0?.yPx ?: (if (seedY >= 0) seedY else frame.height / 2.0)
+        val outline = MarkOutline.extract(frame, markX, markY)
+        val choice = outline?.let { RingShapeSelector.choose(it) }
+        val corrected = choice?.correction?.apply(frame)
+        if (choice != null && choice.usedEllipse && corrected == null) {
+            Logger.w("RingFinder", "shape correction was selected but could not be applied; using the source frame")
+        }
+        val working = corrected?.frame ?: frame
+        // Log the uncorrected fit alongside the corrected one. The two should
+        // agree on pitch to within the overall scale change of the warp, and
+        // when they do not, the shared field log is the only place that is
+        // visible. Cheap, and it costs one extra fit per registration rather
+        // than per frame.
+        if (corrected != null) {
+            val plain = fitOn(frame, seedX, seedY)
+            Logger.i(
+                "RingFinder",
+                "uncorrected fit for comparison: %s".format(
+                    if (plain == null) "none"
+                    else "pitch %.2f px over %d rings, residual %.2f, confidence %.2f"
+                        .format(plain.pitchPx, plain.ringCount, plain.residualPx, plain.confidence)
+                )
+            )
+        }
+        val raw = fitOn(
+            working,
+            if (corrected != null) -1.0 else seedX,
+            if (corrected != null) -1.0 else seedY
+        ) ?: return null
+        return raw.copy(
+            shape = choice,
+            correction = if (corrected != null) choice?.correction else null,
+            correctedFrame = corrected
+        )
+    }
+
+    /** The ring fit with no shape correction, for diagnostics and tests. */
+    fun findWithoutShapeCorrection(frame: LumaFrame): RingFit? = fitOn(frame, -1.0, -1.0)
+
+    private fun fitOn(frame: LumaFrame, seedX: Double, seedY: Double): RingFit? {
         val step = maxOf(1, maxOf(frame.width, frame.height) / WORK_MAX)
         val w = frame.width / step
         val h = frame.height / step

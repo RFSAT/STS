@@ -306,12 +306,60 @@ class TargetRegistration private constructor(
                 markEllipticity = 1.0, transform = transform
             ) ?: return null
 
+            // Fold the de-foreshortening back in. The box above was built in
+            // CORRECTED coordinates, because that is where the ring family was
+            // fitted; the homography has to end up mapping millimetres to
+            // SOURCE pixels, since that is the image the holes are detected
+            // in. Composing two projective maps by pushing four corners
+            // through both and refitting is exact, and it reuses the
+            // correspondence solver's existing round-trip check rather than
+            // adding a second matrix path that could disagree with it.
+            val placed = fit.correctedFrame?.let { cf ->
+                val mm = listOf(
+                    reg.uMinMm to reg.vMinMm, reg.uMaxMm to reg.vMinMm,
+                    reg.uMaxMm to reg.vMaxMm, reg.uMinMm to reg.vMaxMm
+                )
+                val px = mm.map { (u, v) ->
+                    val (ci, cj) = reg.homography.mmToPx(u, v)
+                    cf.toSource(ci, cj)
+                }
+                Homography.fromCorrespondences(mm, px)?.let { h ->
+                    TargetRegistration(
+                        face = reg.face, homography = h, mmPerPx = reg.mmPerPx,
+                        uMinMm = reg.uMinMm, uMaxMm = reg.uMaxMm,
+                        vMinMm = reg.vMinMm, vMaxMm = reg.vMaxMm,
+                        warnings = reg.warnings
+                    )
+                } ?: run {
+                    Logger.w(
+                        "TargetRegistration",
+                        "could not compose the shape correction into the homography; " +
+                            "registering without it"
+                    )
+                    null
+                }
+            } ?: reg
+
             // Replace the box's generic caveat with what the fit actually says.
-            val warnings = reg.warnings.filterNot { it.contains("position and scale only") }.toMutableList()
+            val warnings = placed.warnings.filterNot { it.contains("position and scale only") }.toMutableList()
             warnings += ("Scale from the fitted ring family: %.2f px between rings over %d rings, " +
                 "%.4f mm per pixel, residual %.2f px.").format(
                 fit.pitchPx, fit.ringCount, mmPerSourcePx, fit.residualPx
             )
+            fit.shape?.let { sh ->
+                warnings += if (sh.usedEllipse) {
+                    ("Foreshortening corrected: %s. Ring pitch was then measured on the " +
+                        "corrected image.").format(sh.reason)
+                } else {
+                    "Treated as square-on: %s.".format(sh.reason)
+                }
+            }
+            if (fit.shape?.usedEllipse == true && fit.shape.model.axisRatio > 1.15) {
+                warnings += ("The view is oblique enough (axis ratio %.2f) that a residual " +
+                    "perspective error remains after correction — the rings are de-foreshortened " +
+                    "but not fully un-projected. Scores near the outer rings are the least certain.")
+                    .format(fit.shape.model.axisRatio)
+            }
             if (fit.confidence < 0.5) {
                 warnings += ("The ring fit is not confident (%.2f). That usually means the target was " +
                     "photographed at an angle, where the rings project to ellipses and a radial fit " +
@@ -319,8 +367,9 @@ class TargetRegistration private constructor(
                     .format(fit.confidence)
             }
             return TargetRegistration(
-                face = reg.face, homography = reg.homography, mmPerPx = reg.mmPerPx,
-                uMinMm = reg.uMinMm, uMaxMm = reg.uMaxMm, vMinMm = reg.vMinMm, vMaxMm = reg.vMaxMm,
+                face = placed.face, homography = placed.homography, mmPerPx = placed.mmPerPx,
+                uMinMm = placed.uMinMm, uMaxMm = placed.uMaxMm,
+                vMinMm = placed.vMinMm, vMaxMm = placed.vMaxMm,
                 warnings = warnings
             )
         }
