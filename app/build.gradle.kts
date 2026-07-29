@@ -32,6 +32,22 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.10.1 — correction: the unit test source set had never once been
+        //          compiled, and failed the moment it could be.
+        //   - RingFinderTest asserted assertEquals(0xFE, r.toInt(), 6): three
+        //     Ints. JUnit's three-argument form is (double, double, double)
+        //     and Kotlin does not widen Int to Double for overload
+        //     resolution, so it matched nothing. Now doubles.
+        //   - This was reachable only because 1.10.0 was the first release
+        //     whose MAIN source compiled; every earlier CI run stopped at
+        //     compileReleaseKotlin and never reached the tests.
+        //   - tools/offline/run.sh compiles and runs the whole test source
+        //     set without Gradle or the Android SDK, in about a minute, using
+        //     the kotlin-compiler package from npm. All 110 tests pass.
+        //     Its JUnit shim mirrors the real Assert overload set exactly;
+        //     an earlier, more permissive shim accepted the very call CI
+        //     rejected, which is how this reached CI at all.
+        //
         // 1.10.0 — feature: direct least-squares ellipse fitting on the ring
         //          edges, and an evidence-based choice between it and a circle.
         //   - EllipseFit.kt implements Fitzgibbon/Pilu/Fisher (1999) in the
@@ -279,8 +295,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 19
-        versionName = "1.10.0"
+        versionCode = 20
+        versionName = "1.10.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

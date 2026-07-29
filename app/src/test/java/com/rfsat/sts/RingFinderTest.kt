@@ -134,8 +134,11 @@ class RingFinderTest {
         // land between them; the median stays on the card.
         val px = IntArray(3000) { if (it < 2000) 0xFFFEDB83.toInt() else 0xFF1A1A1A.toInt() }
         val (r, g, b) = LumaFrame.paperColourOf(px)
-        assertEquals(0xFE, r.toLong().toInt(), 6)
-        assertEquals(0xDB, g.toLong().toInt(), 6)
-        assertEquals(0x83, b.toLong().toInt(), 6)
+        // Doubles, not Ints: JUnit's three-argument assertEquals is
+        // (double, double, double) and Kotlin does not widen Int to Double
+        // for overload resolution, so an Int triple matches nothing.
+        assertEquals(0xFE.toDouble(), r.toDouble(), 6.0)
+        assertEquals(0xDB.toDouble(), g.toDouble(), 6.0)
+        assertEquals(0x83.toDouble(), b.toDouble(), 6.0)
     }
 }
