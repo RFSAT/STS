@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Path
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -12,6 +13,7 @@ import android.view.View
 import androidx.core.content.ContextCompat
 import com.rfsat.sts.R
 import com.rfsat.sts.scoring.GroupStatistics
+import com.rfsat.sts.scoring.ScoredPhoto
 import com.rfsat.sts.scoring.Shot
 import com.rfsat.sts.targets.TargetFace
 import kotlin.math.hypot
@@ -53,6 +55,20 @@ class TargetPlotView @JvmOverloads constructor(
 
     /** Highlighted shot, drawn larger — used to tie the plot to the shot list. */
     var selectedShotIndex: Int? = null
+
+    /**
+     * Draw the shooter's rectified photograph under the rings.
+     *
+     * The photograph is on the SAME millimetre grid as everything else, so
+     * this needs no coordinate work and none of the interaction changes: a
+     * tap that added a shot on the template adds it in the same place on the
+     * photograph, because both are addressed in millimetres.
+     */
+    var showPhoto: Boolean = false
+        set(value) { field = value; invalidate() }
+
+    /** Dims the photograph so the rings and markers stay legible on top. */
+    var photoDim: Int = 0x55000000
         set(v) { field = v; invalidate() }
 
     /** Called with target-plane mm when the user taps the plot. */
@@ -182,10 +198,35 @@ class TargetPlotView @JvmOverloads constructor(
         if (s <= 0f) return
 
         drawCard(canvas, f, s)
+        if (showPhoto) drawPhoto(canvas, f)
         if (f.zones.isNotEmpty()) drawZones(canvas, f, s) else drawRings(canvas, f, s)
         drawGroup(canvas, f, s)
         drawPoa(canvas, f, s)
         drawShots(canvas, f, s)
+    }
+
+    /**
+     * Lays the rectified photograph over the card, in millimetre space.
+     *
+     * One destination rectangle is enough because [ScoredPhoto] is already on
+     * the scoring grid — the bitmap's edges ARE its millimetre bounds. Returns
+     * false when there is no photograph, so the caller can tell whether the
+     * rings are being drawn over the shooter's own card or over blank paper.
+     */
+    private fun drawPhoto(canvas: Canvas, f: TargetFace): Boolean {
+        val bmp = ScoredPhoto.bitmap ?: return false
+        if (bmp.isRecycled) return false
+        val left = toPxX(f, ScoredPhoto.uMinMm)
+        val right = toPxX(f, ScoredPhoto.uMaxMm)
+        val top = toPxY(f, ScoredPhoto.vMaxMm)     // millimetres run up, rows run down
+        val bottom = toPxY(f, ScoredPhoto.vMinMm)
+        val dst = RectF(left, top, right, bottom)
+        if (dst.width() < 1f || dst.height() < 1f) return false
+        canvas.drawBitmap(bmp, null, dst, null)
+        // Knock the photograph back so the rings, the group and the shot
+        // markers stay readable on a busy card.
+        canvas.drawRect(dst, paint(photoDim, Paint.Style.FILL))
+        return true
     }
 
     private fun drawCard(canvas: Canvas, f: TargetFace, s: Float) {

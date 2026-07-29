@@ -9,6 +9,7 @@ import com.rfsat.sts.detect.DetectedHole
 import com.rfsat.sts.detect.SessionActivity
 import com.rfsat.sts.profiles.ProfileRepository
 import com.rfsat.sts.scoring.ScoringEngine
+import com.rfsat.sts.scoring.ScoredPhoto
 import com.rfsat.sts.scoring.ScoringSession
 import com.rfsat.sts.scoring.Shot
 import com.rfsat.sts.scoring.ShotDistribution
@@ -66,6 +67,25 @@ class ResultsActivity : BaseActivity() {
                 if (binding.plot.fitScoringAreaOnly) "Show whole card" else "Show scoring area"
         }
         binding.btnResetZoom.setOnClickListener { binding.plot.resetZoom() }
+
+        // The photograph is the only view in which a MISSED shot is visible.
+        // On the template an undetected hole leaves nothing behind — there is
+        // simply no marker where one should be, and nothing to notice. Over
+        // the shooter's own card the hole is plainly there with no marker on
+        // it, which is what makes adding it by hand practical.
+        binding.btnShowPhoto.setOnClickListener {
+            if (!ScoredPhoto.available) {
+                notifyUser(
+                    "No photograph is stored for this session. Score a target from a photo " +
+                        "under Import and it will be kept for this view."
+                )
+                return@setOnClickListener
+            }
+            binding.plot.showPhoto = !binding.plot.showPhoto
+            binding.btnShowPhoto.text =
+                if (binding.plot.showPhoto) "Show the target template" else "Show my photo"
+        }
+        binding.btnShowPhoto.isEnabled = ScoredPhoto.available
 
         binding.plot.onTapMm = { u, v -> onPlotTap(u, v) }
 

@@ -2,11 +2,13 @@ package com.rfsat.sts
 
 import com.rfsat.sts.detect.LumaFrame
 import com.rfsat.sts.detect.RingFinder
+import com.rfsat.sts.detect.TargetGeometryCheck
 import com.rfsat.sts.detect.TargetRegistration
 import com.rfsat.sts.rules.Gauge
 import com.rfsat.sts.targets.TargetCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.hypot
@@ -200,5 +202,66 @@ class RingFinderTest {
                 miss > RingFinder.MARK_RUNG_TOLERANCE * 2
             )
         }
+    }
+
+    // ------------------------------------------------------------------
+    //  The face guard
+    // ------------------------------------------------------------------
+
+    /**
+     * The single largest cause of "hole detection does not work". The face
+     * sets millimetres per pixel, the scoring radius and the black region; a
+     * wrong one puts every hole outside the detector's size gates and finds
+     * NOTHING, with no error raised anywhere. Measured on a real 50 yd
+     * smallbore card: registered against its own face the detector found all
+     * five shots, and against ISSF 10 m Air Rifle it found none.
+     */
+    @Test
+    fun `a grossly wrong face is reported before it silently scores nothing`() {
+        val all = listOf(
+            TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_AP10, TargetCatalog.NRA_A23_50YD,
+            TargetCatalog.ISSF_P25_PRECISION, TargetCatalog.ISSF_R300
+        )
+        // A card measured at 4.13 ring widths of black, which is what the real
+        // 50 yd smallbore target gives. Air Rifle expects 6.1.
+        val complaint = TargetGeometryCheck.faceMismatch(
+            TargetCatalog.ISSF_AR10, markRadiusPx = 128.0, pitchPx = 31.0, candidates = all
+        )
+        assertNotNull("a 32% ratio error must be reported", complaint)
+        assertTrue(
+            "the complaint should name a face that does fit",
+            complaint!!.contains("50 yd") || complaint.contains("Smallbore")
+        )
+    }
+
+    @Test
+    fun `the right face is not complained about`() {
+        val all = listOf(TargetCatalog.ISSF_AR10, TargetCatalog.NRA_A23_50YD)
+        // 45.34 mm black over an 11.3 mm pitch is 4.01 ring widths.
+        assertNull(
+            TargetGeometryCheck.faceMismatch(
+                TargetCatalog.NRA_A23_50YD, markRadiusPx = 401.0, pitchPx = 100.0, candidates = all
+            )
+        )
+    }
+
+    /**
+     * The ratio is scale-free, which is what lets it judge a face without
+     * first trusting that face for the scale — and is also exactly why it
+     * cannot separate two faces of similar proportions at different sizes.
+     * Pinned so the limitation stays visible rather than being rediscovered
+     * as a bug.
+     */
+    @Test
+    fun `proportionally similar faces are not separated by the ratio alone`() {
+        val all = listOf(TargetCatalog.NRA_A23_50YD, TargetCatalog.ISSF_P25_PRECISION)
+        assertNull(
+            "ISSF 25/50 m Precision Pistol is within tolerance of a 50 yd smallbore card; " +
+                "ranking by fitted pitch is what separates them, not this",
+            TargetGeometryCheck.faceMismatch(
+                TargetCatalog.ISSF_P25_PRECISION, markRadiusPx = 413.0, pitchPx = 100.0,
+                candidates = all
+            )
+        )
     }
 }

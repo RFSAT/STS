@@ -118,6 +118,24 @@
         <item name="android:textSize">14sp</item>
     </style>
 
+    <!-- A real, visibly raised button.
+
+         Sts.TextButton renders as flat coloured text, and the shot-editing
+         controls used it: "Add shot", "Move shots", "Show whole card" and
+         "Reset view" all looked like labels rather than things to press, and
+         went unnoticed. The same mistake had already been reported once for
+         the photo-import entry points. Anything that PERFORMS an action gets
+         this; Sts.TextButton is now only for genuinely secondary links. -->
+    <style name="Sts.ActionButton" parent="Widget.AppCompat.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingLeft">10dp</item>
+        <item name="android:paddingRight">10dp</item>
+        <item name="android:layout_marginStart">2dp</item>
+        <item name="android:layout_marginEnd">2dp</item>
+    </style>
+
     <style name="Sts.Value" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

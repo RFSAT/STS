@@ -32,6 +32,58 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.12.0 — feature and correction: the real reason hole detection
+        //          "generally fails", plus the photo overlay and real buttons.
+        //
+        //   THE FACE WAS THE PROBLEM, NOT THE DETECTOR. The target face sets
+        //   millimetres per pixel, the radius of the scoring area and which
+        //   region counts as black. Register against the wrong face and the
+        //   rectified card comes out at the wrong scale, so every hole falls
+        //   outside the detector's size gates and NOTHING is found — with no
+        //   error raised anywhere, because each stage did what it was told.
+        //
+        //   Measured on the two real cards supplied, absolute detection,
+        //   ground truth five shots each:
+        //        face used                       o03      o04
+        //        identified from the picture     4        5
+        //        ISSF 10 m Air Rifle forced      0        0
+        //        ISSF 300 m Rifle forced        43       88
+        //
+        //   That is exactly the reported symptom: the one-button route
+        //   identifies the face from the photograph, and registering by hand
+        //   did not check it at all. Both routes now check, two ways:
+        //     - a SCALE-FREE ratio, black width in ring widths, which can
+        //       judge a face without first trusting it for the scale. Catches
+        //       the gross case: 32 to 39 per cent out on the cards above.
+        //     - ranking every catalogue face by the fitted ring pitch, which
+        //       separates faces of similar proportions at different sizes.
+        //   Five of six wrong faces are caught. The sixth is honest: on one
+        //   card the right face fits to 2.86 per cent and ISSF 25/50 m
+        //   Precision Pistol to 3.13, and ring proportions genuinely do not
+        //   separate them.
+        //
+        //   ALSO FIXED: since the de-foreshortening went in at 1.10.0 every
+        //   coordinate in a RingFit has been in the CORRECTED frame, and the
+        //   registration overlay was drawing them straight onto the original
+        //   photograph. The box and ring markers sat up to nine pixels off on
+        //   a mildly angled card and further as the angle grew, so what the
+        //   user saw disagreed with what had been registered — and nudging
+        //   the box by hand started from the wrong place. That is very
+        //   probably why adjusting the box by hand made things worse.
+        //
+        //   NEW: Results can show the hits on the SHOOTER'S OWN PHOTOGRAPH
+        //   rather than only on the template. The photo is rectified onto the
+        //   same millimetre grid as everything else, so tapping to add a shot
+        //   and dragging one to a new place work over it unchanged. This is
+        //   the only view in which a MISSED hole is visible at all: on the
+        //   template an undetected hole leaves nothing behind to notice.
+        //
+        //   NEW: Add shot, Move shots, Show whole card, Reset view, Export
+        //   CSV, Clear all shots and Finish session were flat coloured text
+        //   and read as labels rather than controls. They are real buttons
+        //   now. The same mistake had already been reported once, for the
+        //   photo-import entry points.
+        //
         // 1.11.0 — feature: the ring-pitch ladder now returns the same scale
         //          for the same target photographed at different angles.
         //
@@ -363,8 +415,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 21
-        versionName = "1.11.0"
+        versionCode = 22
+        versionName = "1.12.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

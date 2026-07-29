@@ -1,5 +1,6 @@
 package com.rfsat.sts.detect
 
+import android.graphics.Bitmap
 import com.rfsat.sts.log.Logger
 import com.rfsat.sts.targets.TargetFace
 
@@ -84,6 +85,52 @@ class TargetRegistration private constructor(
             }
         }
         return LumaFrame(rectWidth, rectHeight, out)
+    }
+
+    /**
+     * Resamples a COLOUR bitmap into the same rectified millimetre grid as
+     * [rectify], for showing the shooter their own photograph with the hits
+     * marked on it.
+     *
+     * Deliberately the same grid, because that is what makes it useful: the
+     * rectified image spans [uMinMm]..[uMaxMm] by [vMinMm]..[vMaxMm], so a
+     * view that already draws in millimetres can lay this underneath with one
+     * matrix and every existing millimetre interaction — tapping to add a
+     * shot, dragging one to a new place — keeps working over the photograph
+     * with no coordinate conversion at all.
+     *
+     * [maxPixels] caps the result: a phone photograph rectified at scoring
+     * resolution can run to tens of megapixels, and this one is for looking
+     * at, not for measuring.
+     */
+    fun rectifyColour(source: Bitmap, maxPixels: Int = 4_000_000): Bitmap? {
+        if (rectWidth < 2 || rectHeight < 2) return null
+        var step = 1
+        while ((rectWidth / step).toLong() * (rectHeight / step).toLong() > maxPixels) step++
+        val w = (rectWidth / step).coerceAtLeast(1)
+        val h = (rectHeight / step).coerceAtLeast(1)
+
+        val sw = source.width
+        val sh = source.height
+        val src = IntArray(sw * sh)
+        source.getPixels(src, 0, sw, 0, 0, sw, sh)
+
+        val out = IntArray(w * h)
+        var o = 0
+        for (j in 0 until h) {
+            val v = vMaxMm - (j + 0.5) * mmPerPx * step
+            for (i in 0 until w) {
+                val u = uMinMm + (i + 0.5) * mmPerPx * step
+                val (x, y) = homography.mmToPx(u, v)
+                out[o++] = if (x.isNaN() || y.isNaN()) 0
+                else {
+                    val xi = x.toInt()
+                    val yi = y.toInt()
+                    if (xi < 0 || yi < 0 || xi >= sw || yi >= sh) 0 else src[yi * sw + xi]
+                }
+            }
+        }
+        return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
     }
 
     /** What a square registration box is drawn around. The box gives a

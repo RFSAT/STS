@@ -174,6 +174,76 @@ object TargetGeometryCheck {
             "face that matches the card, or add it under Targets."
     }
 
+    /**
+     * The aiming mark's radius expressed in RING PITCHES, for a catalogue
+     * face. Null when the face has no black or no even pitch.
+     *
+     * Scale-free on purpose. Comparing a photograph to a face normally needs
+     * millimetres per pixel — which comes from the face, so a wrong face
+     * produces a wrong scale that then makes the wrong face look consistent.
+     * This ratio is a pure number measurable from the picture alone, so it
+     * can judge the face without first trusting it.
+     */
+    fun blackInPitchesOf(face: TargetFace): Double? {
+        val pitch = face.ringPitchMm ?: return null
+        val black = face.blackDiameterMm / 2.0
+        if (pitch <= 0.0 || black <= 0.0) return null
+        return black / pitch
+    }
+
+    /**
+     * Complains when the selected face does not match what the picture shows.
+     *
+     * THIS IS THE FAILURE THAT LOOKS LIKE A BROKEN DETECTOR. The face sets
+     * millimetres per pixel, the radius of the scoring area, and which region
+     * counts as black. Choose the wrong one and the rectified card comes out
+     * at the wrong scale, so every hole falls outside the detector's size
+     * gates and NOTHING is found — with no error anywhere, because each stage
+     * did exactly what it was told.
+     *
+     * Measured on a real club target: registered against its own face the
+     * detector found all five shots, and against ISSF 10 m Air Rifle it found
+     * none. The two disagree on this ratio by 32 per cent.
+     */
+    fun faceMismatch(
+        face: TargetFace,
+        markRadiusPx: Double,
+        pitchPx: Double,
+        candidates: List<TargetFace>
+    ): String? {
+        if (markRadiusPx <= 0.0 || pitchPx <= 0.0) return null
+        val expected = blackInPitchesOf(face) ?: return null
+        val observed = markRadiusPx / pitchPx
+        val error = abs(observed - expected) / expected
+        if (error <= RATIO_TOLERANCE) return null
+
+        val better = candidates
+            .mapNotNull { c -> blackInPitchesOf(c)?.let { c to abs(observed - it) / it } }
+            .filter { it.second <= RATIO_TOLERANCE }
+            .minByOrNull { it.second }
+
+        return buildString {
+            append(("This does not look like %s. Its aiming mark should be %.1f ring widths " +
+                "across; the photograph shows %.1f, which is %.0f%% out.")
+                .format(face.name, expected, observed, error * 100))
+            if (better != null) {
+                append(" %s matches to %.0f%% — select it under Target, or tap ".format(
+                    better.first.name, 100 * (1 - better.second)))
+                append("\u201cIdentify and register\u201d to have it chosen for you.")
+            } else {
+                append(" No catalogue face matches these proportions. If this is a club or " +
+                    "custom card, add it under Targets, or the score will be wrong.")
+            }
+            append(" Scoring against the wrong face usually finds no hits at all.")
+        }
+    }
+
+    /** How far the measured black-to-pitch ratio may sit from the face's own
+     *  before the face is called wrong. Real faces in the catalogue span 3.0
+     *  to 7.03, so 12 per cent separates neighbours without flagging honest
+     *  measurement error. */
+    private const val RATIO_TOLERANCE = 0.12
+
     /** Outer diameter over black diameter for a face; 1.0 when it has no black. */
     fun expectedRatioOf(face: TargetFace): Double =
         if (face.blackDiameterMm > 0.0) (face.outerRadiusMm * 2.0) / face.blackDiameterMm else 1.0

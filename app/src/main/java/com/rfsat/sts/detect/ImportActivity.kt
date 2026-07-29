@@ -15,6 +15,7 @@ import com.rfsat.sts.results.ResultsActivity
 import com.rfsat.sts.rules.RuleRepository
 import com.rfsat.sts.rules.RuleSet
 import com.rfsat.sts.scoring.ScoringEngine
+import com.rfsat.sts.scoring.ScoredPhoto
 import com.rfsat.sts.scoring.ScoringSession
 import com.rfsat.sts.scoring.ShotDistribution
 import com.rfsat.sts.targets.TargetFace
@@ -62,6 +63,12 @@ class ImportActivity : BaseActivity() {
     private var cleanUri: Uri? = null
 
     private var registration: TargetRegistration? = null
+
+    /** Last ring fit and aiming-mark radius measured from the shot photo, in
+     *  SOURCE pixels. Cached so that registering by hand can check the
+     *  selected face without repeating a second's work. */
+    private var lastFit: RingFit? = null
+    private var lastMarkRadiusPx = 0.0
     /**
      * Positions this screen selected programmatically, so the callback the
      * Spinner posts for them can be told apart from a real user choice.
@@ -160,7 +167,7 @@ class ImportActivity : BaseActivity() {
         binding.btnAutoDetect.setOnClickListener { doAutoDetect() }
         binding.btnRegister.setOnClickListener { doRegister() }
         binding.btnUndoCorner.setOnClickListener {
-            binding.overlay.clearAll(); registration = null; refreshStatus()
+            binding.overlay.clearAll(); registration = null; lastFit = null; lastMarkRadiusPx = 0.0; refreshStatus()
         }
         binding.cbCornerMode.setOnCheckedChangeListener { _, corners ->
             binding.overlay.mode =
@@ -345,8 +352,64 @@ class ImportActivity : BaseActivity() {
         )
         reg.warnings.forEach { Logger.w("Registration", it) }
 
-        // A box in the right place on the wrong face still scores everything
-        // wrongly, and looks completely normal while doing it.
+        // THE FACE, BEFORE ANYTHING ELSE. A box in the right place on the
+        // wrong face scores everything wrongly and looks completely normal
+        // while doing it — and far more often finds nothing at all, because
+        // the scale is wrong and every hole then fails the detector's size
+        // gates. This is the single largest cause of "detection does not
+        // work" and it is not a detector fault.
+        //
+        // The one-button route already identifies the face from the picture.
+        // Registering by hand did not check it at all, which is exactly why
+        // the two routes gave such different results.
+        runCatching { measureGeometryIfNeeded() }
+        lastFit?.let { f ->
+            val all = TargetRepository(this).allFaces()
+
+            // Two checks, because they fail on different things.
+            //
+            // The ratio test is scale-free — black width in ring widths — so
+            // it works with no idea how big the card is, and it catches the
+            // gross mismatch that finds NOTHING: a 10 m air rifle face on a
+            // 50 yd smallbore card is 32 per cent out on this ratio and
+            // detects zero holes out of five.
+            //
+            // What it cannot do is separate two faces of similar PROPORTIONS
+            // at different sizes. ISSF 25/50 m Precision Pistol is within 7
+            // per cent of both cards tested here and sails through, then
+            // finds 22 holes where there are 4, because its ring pitch is
+            // three times larger and the size gates open far too wide.
+            // Ranking every face by its fitted pitch does separate them —
+            // measured on those cards, the right face scored 0.12 per cent
+            // and Precision Pistol 7.44 — so both run.
+            TargetGeometryCheck.faceMismatch(face, lastMarkRadiusPx, f.pitchPx, all)
+                ?.let { problem ->
+                    Logger.w("Registration", problem)
+                    notifyUser(problem)
+                }
+
+            if (lastMarkRadiusPx > 0.0) {
+                val ranked = RingFinder.identify(f, lastMarkRadiusPx, all)
+                val best = ranked.firstOrNull()
+                val mine = ranked.firstOrNull { it.face.id == face.id }
+                if (best != null && best.face.id != face.id &&
+                    best.relativeError < IDENTIFY_TOLERANCE &&
+                    (mine == null || mine.relativeError > best.relativeError * 3)
+                ) {
+                    val problem = ("The printed rings match %s to %.0f%%, but %s is selected%s. " +
+                        "Registering against the wrong face gives a wrong scale, and a wrong " +
+                        "scale usually means no hits are found at all — or far too many.")
+                        .format(
+                            best.face.name, 100 * (1 - best.relativeError), face.name,
+                            mine?.let { " and only fits to %.0f%%".format(100 * (1 - it.relativeError)) }
+                                ?: " and does not fit these proportions"
+                        )
+                    Logger.w("Registration", problem)
+                    notifyUser(problem)
+                }
+            }
+        }
+
         runCatching {
             shotBitmap?.let { LumaFrame.fromBitmap(it) }?.let { f ->
                 TargetGeometryCheck.verifyRings(f, reg, face)?.let { problem ->
@@ -359,6 +422,27 @@ class ImportActivity : BaseActivity() {
         if (reg.warnings.isNotEmpty()) notifyUser(reg.warnings.joinToString("\n\n"))
         else notifyUser("Registered. Now detect the hits.")
         refreshStatus()
+    }
+
+    /**
+     * Measures the ring pitch and the aiming mark from the shot photo if that
+     * has not already been done. Costs about a second, once per photograph.
+     */
+    private fun measureGeometryIfNeeded() {
+        if (lastFit != null) return
+        val bmp = shotBitmap ?: return
+        val frame = LumaFrame.fromBitmapForDetection(bmp)
+        lastFit = RingFinder.find(frame)
+        if (lastMarkRadiusPx <= 0.0) {
+            val cx = lastFit?.let { fit ->
+                fit.correctedFrame?.toSource(fit.centreXPx, fit.centreYPx)?.first ?: fit.centreXPx
+            } ?: (frame.width / 2.0)
+            val cy = lastFit?.let { fit ->
+                fit.correctedFrame?.toSource(fit.centreXPx, fit.centreYPx)?.second ?: fit.centreYPx
+            } ?: (frame.height / 2.0)
+            lastMarkRadiusPx = MarkOutline.extract(frame, cx, cy)
+                ?.let { RingShapeSelector.choose(it)?.model?.semiMajorPx } ?: 0.0
+        }
     }
 
     private fun doDetect() {
@@ -385,6 +469,20 @@ class ImportActivity : BaseActivity() {
             )
         } else {
             HoleDetector.detectAbsolute(reg, reg.rectify(shotFrame), rules.gaugeDiameterMm)
+        }
+
+        // Keep the shooter's own card, rectified onto the scoring grid, so
+        // the Results plot can show the hits ON THE PHOTOGRAPH. That is the
+        // only view in which a MISSED hole is obvious — on the template a
+        // hole that was never detected leaves nothing behind to notice.
+        runCatching {
+            ScoredPhoto.set(
+                reg.rectifyColour(shot),
+                reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm
+            )
+        }.onFailure {
+            Logger.w("ImportActivity", "could not rectify the photo for display: ${it.message}")
+            ScoredPhoto.clear()
         }
 
         // Replace FIRST, before knowing whether anything was found. Doing it
@@ -512,6 +610,8 @@ class ImportActivity : BaseActivity() {
             return
         }
 
+        lastFit = fit
+        lastMarkRadiusPx = mark?.radiusPx ?: 0.0
         val matches = if (mark != null)
             RingFinder.identify(fit, mark.radiusPx, TargetRepository(this).allFaces())
         else emptyList()
@@ -570,13 +670,26 @@ class ImportActivity : BaseActivity() {
         }
         registration = reg
         boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+        // BACK TO SOURCE PIXELS FIRST. Since the de-foreshortening was added,
+        // every coordinate in a RingFit is in the CORRECTED frame, and the
+        // overlay draws on the original photograph. Using them directly put
+        // the box and the ring markers in the wrong place — by up to nine
+        // pixels on a mildly angled card, and further as the angle grows —
+        // so what the user saw did not agree with what had been registered,
+        // and nudging the box from there started from the wrong place.
+        val cf = fit.correctedFrame
+        val (srcCx, srcCy) = cf?.toSource(fit.centreXPx, fit.centreYPx)
+            ?: (fit.centreXPx to fit.centreYPx)
+        // Radii are unforeshortened along the major axis, so a corrected
+        // length is a source length there. Across it the true outline is an
+        // ellipse, which a square box cannot express in any case.
         val outerPx = (face.outerRadiusMm / (face.ringPitchMm!! / fit.pitchPx)).toFloat()
         binding.overlay.setBoxInSource(
-            (fit.centreXPx - outerPx).toFloat(), (fit.centreYPx - outerPx).toFloat(),
-            (fit.centreXPx + outerPx).toFloat(), (fit.centreYPx + outerPx).toFloat()
+            (srcCx - outerPx).toFloat(), (srcCy - outerPx).toFloat(),
+            (srcCx + outerPx).toFloat(), (srcCy + outerPx).toFloat()
         )
         binding.overlay.detectedMarkers = fit.ringsPx.map {
-            Triple(fit.centreXPx.toFloat(), fit.centreYPx.toFloat(), it.toFloat())
+            Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat())
         }
         reg.warnings.forEach { Logger.w("Registration", it) }
         refreshStatus()
