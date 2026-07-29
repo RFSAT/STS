@@ -52,7 +52,7 @@ class ProfileActivity : BaseActivity() {
         // ---- display ----
         binding.spTheme.adapter = adapter(ThemeMode.values().map { it.label })
         binding.spTheme.setSelection(ThemeMode.values().indexOf(ThemeManager.mode()))
-        binding.spTheme.onItemSelectedListener = onSelected { i ->
+        binding.spTheme.onItemSelectedListener = onSelectedIndex { i ->
             if (suppressThemeCallback) return@onSelected
             val mode = ThemeMode.values()[i]
             if (mode != ThemeManager.mode()) {
@@ -63,7 +63,7 @@ class ProfileActivity : BaseActivity() {
 
         binding.spUnits.adapter = adapter(UnitSystem.values().map { it.label })
         binding.spUnits.setSelection(UnitSystem.values().indexOf(UnitsManager.system()))
-        binding.spUnits.onItemSelectedListener = onSelected { i ->
+        binding.spUnits.onItemSelectedListener = onSelectedIndex { i ->
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
@@ -301,44 +301,149 @@ class ProfileActivity : BaseActivity() {
     //  Catalogues
     // ------------------------------------------------------------------
 
+    /**
+     * The three catalogue pickers, with VTB's filters.
+     *
+     * A flat list of 41 firearms, 68 loads or 51 sights is unusable on a
+     * phone — which is what these were before, a bare setItems() dialog. VTB
+     * solved it with filter spinners above a results list and a live count,
+     * and the same layouts are reused here so the two apps behave
+     * identically: brand and type for a firearm; manufacturer, calibre,
+     * velocity class, weight and bullet type for a load; brand, click value,
+     * magnification class and family for a sight.
+     */
     private fun showRifleCatalog() {
-        val entries = RifleCatalog.entries
-        AlertDialog.Builder(this)
+        val view = layoutInflater.inflate(R.layout.dialog_rifle_catalog, null)
+        val spBrand = view.findViewById<android.widget.Spinner>(R.id.spRifBrand)
+        val spType = view.findViewById<android.widget.Spinner>(R.id.spRifType)
+        val tvCount = view.findViewById<android.widget.TextView>(R.id.tvRifCount)
+        val list = view.findViewById<android.widget.ListView>(R.id.lvRifResults)
+
+        spBrand.adapter = adapter(RifleCatalog.brands())
+        spType.adapter = adapter(RifleCatalog.types())
+
+        var shown: List<RifleCatalog.Entry> = emptyList()
+        fun refilter() {
+            shown = RifleCatalog.filter(
+                spBrand.selectedItem?.toString() ?: RifleCatalog.ALL,
+                spType.selectedItem?.toString() ?: RifleCatalog.ALL
+            )
+            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            tvCount.text = "${shown.size} of ${RifleCatalog.all.size} firearms"
+        }
+        val onFilter = onSelected { refilter() }
+        spBrand.onItemSelectedListener = onFilter
+        spType.onItemSelectedListener = onFilter
+        refilter()
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Firearm catalogue")
-            .setItems(entries.map { it.label() }.toTypedArray()) { _, i ->
-                repo.saveRifle(entries[i].toRifleProfile())
-                loadProfilesIntoFields()
-                notifyUser("Loaded ${entries[i].brand} ${entries[i].model}. Adjust the fields for your own rifle.")
-            }
+            .setView(view)
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        list.setOnItemClickListener { _, _, i, _ ->
+            shown.getOrNull(i)?.let { e ->
+                repo.saveRifle(e.toRifleProfile())
+                loadProfilesIntoFields()
+                notifyUser("Loaded ${e.brand} ${e.model}. Adjust the fields for your own rifle.")
+            }
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     private fun showAmmoCatalog() {
-        val entries = AmmoCatalog.entries
-        AlertDialog.Builder(this)
+        val view = layoutInflater.inflate(R.layout.dialog_ammo_catalog, null)
+        val spMfr = view.findViewById<android.widget.Spinner>(R.id.spCatMfr)
+        val spCal = view.findViewById<android.widget.Spinner>(R.id.spCatCal)
+        val spVel = view.findViewById<android.widget.Spinner>(R.id.spCatVel)
+        val spWeight = view.findViewById<android.widget.Spinner>(R.id.spCatWeight)
+        val spType = view.findViewById<android.widget.Spinner>(R.id.spCatType)
+        val tvCount = view.findViewById<android.widget.TextView>(R.id.tvCatCount)
+        val list = view.findViewById<android.widget.ListView>(R.id.lvCatResults)
+
+        spMfr.adapter = adapter(AmmoCatalog.manufacturers())
+        spCal.adapter = adapter(AmmoCatalog.calibers())
+        spVel.adapter = adapter(AmmoCatalog.velocityClasses())
+        spWeight.adapter = adapter(AmmoCatalog.weights())
+        spType.adapter = adapter(AmmoCatalog.types())
+
+        var shown: List<AmmoCatalog.Entry> = emptyList()
+        fun refilter() {
+            shown = AmmoCatalog.filter(
+                spMfr.selectedItem?.toString() ?: AmmoCatalog.ALL,
+                spCal.selectedItem?.toString() ?: AmmoCatalog.ALL,
+                spVel.selectedItem?.toString() ?: AmmoCatalog.ALL,
+                spWeight.selectedItem?.toString() ?: AmmoCatalog.ALL,
+                spType.selectedItem?.toString() ?: AmmoCatalog.ALL
+            )
+            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            tvCount.text = "${shown.size} of ${AmmoCatalog.all.size} loads"
+        }
+        val onFilter = onSelected { refilter() }
+        listOf(spMfr, spCal, spVel, spWeight, spType).forEach { it.onItemSelectedListener = onFilter }
+        refilter()
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Ammunition catalogue")
-            .setItems(entries.map { it.label() }.toTypedArray()) { _, i ->
-                repo.saveBullet(entries[i].toBulletProfile())
-                loadProfilesIntoFields()
-                notifyUser("Loaded ${entries[i].manufacturer} ${entries[i].product}. Published figures — " +
-                    "refine them against your own chronograph.")
-            }
+            .setView(view)
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        list.setOnItemClickListener { _, _, i, _ ->
+            shown.getOrNull(i)?.let { e ->
+                repo.saveBullet(e.toBulletProfile())
+                loadProfilesIntoFields()
+                notifyUser("Loaded ${e.manufacturer} ${e.product}. Published figures — refine them " +
+                    "against your own chronograph.")
+            }
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     private fun showScopeCatalog() {
-        val entries = ScopeCatalog.entries
-        AlertDialog.Builder(this)
+        val view = layoutInflater.inflate(R.layout.dialog_scope_catalog, null)
+        val spBrand = view.findViewById<android.widget.Spinner>(R.id.spScBrand)
+        val spClick = view.findViewById<android.widget.Spinner>(R.id.spScClick)
+        val spMag = view.findViewById<android.widget.Spinner>(R.id.spScMag)
+        val spFamily = view.findViewById<android.widget.Spinner>(R.id.spScFamily)
+        val tvCount = view.findViewById<android.widget.TextView>(R.id.tvScCount)
+        val list = view.findViewById<android.widget.ListView>(R.id.lvScResults)
+
+        spBrand.adapter = adapter(ScopeCatalog.brands())
+        spClick.adapter = adapter(ScopeCatalog.clickUnits())
+        spMag.adapter = adapter(ScopeCatalog.magClasses())
+        spFamily.adapter = adapter(ScopeCatalog.families())
+
+        var shown: List<ScopeCatalog.Entry> = emptyList()
+        fun refilter() {
+            shown = ScopeCatalog.filter(
+                spBrand.selectedItem?.toString() ?: ScopeCatalog.ALL,
+                spClick.selectedItem?.toString() ?: ScopeCatalog.ALL,
+                spMag.selectedItem?.toString() ?: ScopeCatalog.ALL,
+                spFamily.selectedItem?.toString() ?: ScopeCatalog.ALL
+            )
+            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            tvCount.text = "${shown.size} of ${ScopeCatalog.all.size} sights"
+        }
+        val onFilter = onSelected { refilter() }
+        listOf(spBrand, spClick, spMag, spFamily).forEach { it.onItemSelectedListener = onFilter }
+        refilter()
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Sight catalogue")
-            .setItems(entries.map { it.label() }.toTypedArray()) { _, i ->
-                repo.saveScope(entries[i].toScopeProfile())
-                loadProfilesIntoFields()
-                notifyUser("Loaded ${entries[i].brand} ${entries[i].model}.")
-            }
+            .setView(view)
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        list.setOnItemClickListener { _, _, i, _ ->
+            shown.getOrNull(i)?.let { e ->
+                repo.saveScope(e.toScopeProfile())
+                loadProfilesIntoFields()
+                notifyUser("Loaded ${e.brand} ${e.model}.")
+            }
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     // ------------------------------------------------------------------
@@ -383,7 +488,13 @@ class ProfileActivity : BaseActivity() {
             it.setDropDownViewResource(R.layout.spinner_dropdown_item)
         }
 
-    private fun onSelected(block: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {
+    /** Filter spinners only ever need "something changed". */
+    private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) = block()
+        override fun onNothingSelected(p: AdapterView<*>?) = Unit
+    }
+
+    private fun onSelectedIndex(block: (Int) -> Unit) = object : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) = block(position)
         override fun onNothingSelected(p: AdapterView<*>?) = Unit
     }

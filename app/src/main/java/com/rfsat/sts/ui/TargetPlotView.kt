@@ -58,6 +58,25 @@ class TargetPlotView @JvmOverloads constructor(
     /** Called with target-plane mm when the user taps the plot. */
     var onTapMm: ((Double, Double) -> Unit)? = null
 
+    /**
+     * Drag-to-move. In [editMode] a touch that starts on a shot picks it up
+     * and follows the finger; releasing reports where it ended in target-plane
+     * millimetres, and the caller rescores it there.
+     *
+     * Worth having because the detector's centroid is right far more often
+     * than it is wrong, but when it is wrong it is usually only wrong by a
+     * millimetre or two — a hole partly hidden behind an earlier one, or a
+     * torn edge pulling the weighted centre off. Deleting and re-tapping such
+     * a shot loses the good estimate; nudging it keeps it.
+     */
+    var editMode: Boolean = false
+        set(v) { field = v; draggingIndex = null; invalidate() }
+
+    var onShotMoved: ((Shot, Double, Double) -> Unit)? = null
+
+    private var draggingIndex: Int? = null
+    private var dragMm: Pair<Double, Double>? = null
+
     /** When true the view fills with the SCORING area rather than the whole
      *  card. On a 700 mm rapid-fire card with a 500 mm scoring circle, or any
      *  practical silhouette, showing the whole card wastes most of the screen
@@ -339,8 +358,9 @@ class TargetPlotView @JvmOverloads constructor(
         val minPx = 5 * resources.displayMetrics.density
         for (shot in shots) {
             if (shot.miss && hypot(shot.xMm, shot.yMm) < 1e-6) continue
-            val x = toPxX(f, shot.xMm)
-            val y = toPxY(f, shot.yMm)
+            val live = if (shot.index == draggingIndex) dragMm else null
+            val x = toPxX(f, live?.first ?: shot.xMm)
+            val y = toPxY(f, live?.second ?: shot.yMm)
             val rPx = maxOf(minPx, (shot.diameterEstimateMm(f) / 2.0 * s).toFloat())
             val fill = if (shot === last) shotLastPaint else shotPaint
             // Low-confidence detections are drawn hollow, so a doubtful shot
@@ -380,8 +400,34 @@ class TargetPlotView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 lastX = event.x; lastY = event.y; dragged = false
                 parent?.requestDisallowInterceptTouchEvent(true)
+                draggingIndex = null
+                if (editMode) {
+                    val f = face
+                    if (f != null) {
+                        val grabPx = 28f * resources.displayMetrics.density
+                        val hit = shots.filter { !it.sighter || true }.minByOrNull {
+                            hypot(toPxX(f, it.xMm) - event.x, toPxY(f, it.yMm) - event.y).toDouble()
+                        }
+                        if (hit != null &&
+                            hypot(toPxX(f, hit.xMm) - event.x, toPxY(f, hit.yMm) - event.y) <= grabPx
+                        ) {
+                            draggingIndex = hit.index
+                            dragMm = hit.xMm to hit.yMm
+                        }
+                    }
+                }
             }
             MotionEvent.ACTION_MOVE -> {
+                val di = draggingIndex
+                if (di != null) {
+                    val f = face
+                    if (f != null) {
+                        dragMm = toMm(f, event.x, event.y)
+                        dragged = true
+                        invalidate()
+                    }
+                    return true
+                }
                 if (!scaleDetector.isInProgress && event.pointerCount == 1) {
                     val dx = event.x - lastX
                     val dy = event.y - lastY
@@ -392,6 +438,16 @@ class TargetPlotView @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_UP -> {
+                val di = draggingIndex
+                if (di != null) {
+                    val moved = shots.firstOrNull { it.index == di }
+                    val to = dragMm
+                    draggingIndex = null; dragMm = null
+                    if (moved != null && to != null) onShotMoved?.invoke(moved, to.first, to.second)
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    invalidate()
+                    return true
+                }
                 if (!dragged) {
                     val f = face
                     if (f != null) {

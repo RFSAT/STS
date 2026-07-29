@@ -30,6 +30,7 @@ class ResultsActivity : BaseActivity() {
 
     private lateinit var binding: ActivityResultsBinding
     private var addMode = false
+    private var moveMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,12 +40,26 @@ class ResultsActivity : BaseActivity() {
 
         binding.btnAddMode.setOnClickListener {
             addMode = !addMode
-            binding.btnAddMode.text = if (addMode) "Tap the plot to place a shot" else "Add shot by tapping"
+            if (addMode) { moveMode = false; binding.plot.editMode = false; binding.btnMoveMode.text = "Move shots" }
+            binding.btnAddMode.text = if (addMode) "Tap to place" else "Add shot"
             notifyUser(
                 if (addMode) "Tap where the hole is. The app scores it exactly as it would a detected one."
                 else "Tap-to-add is off."
             )
         }
+        binding.btnMoveMode.setOnClickListener {
+            moveMode = !moveMode
+            if (moveMode) addMode = false
+            binding.btnAddMode.text = "Add shot"
+            binding.btnMoveMode.text = if (moveMode) "Done moving" else "Move shots"
+            binding.plot.editMode = moveMode
+            notifyUser(
+                if (moveMode) "Drag any shot to reposition it. It is rescored where you drop it."
+                else "Move mode off."
+            )
+        }
+        binding.plot.onShotMoved = { shot, x, y -> moveShot(shot, x, y) }
+
         binding.btnFullCard.setOnClickListener {
             binding.plot.fitScoringAreaOnly = !binding.plot.fitScoringAreaOnly
             binding.btnFullCard.text =
@@ -140,6 +155,27 @@ class ResultsActivity : BaseActivity() {
             }
             .setNegativeButton("Keep", null)
             .show()
+    }
+
+    /**
+     * Rescores a shot at the position it was dragged to.
+     *
+     * Re-run through the scoring engine rather than merely moving the marker:
+     * the value, the inner-ten flag and the zone all depend on where it is,
+     * and a moved shot that kept its old value would be the plot and the
+     * total disagreeing with each other.
+     */
+    private fun moveShot(shot: Shot, xMm: Double, yMm: Double) {
+        val face = ScoringSession.face(this)
+        val rules = ScoringSession.rules(this)
+        val hole = DetectedHole(xMm, yMm, rules.gaugeDiameterMm, 0.0, 1.0, 1.0)
+        val rescored = ScoringEngine.scoreHole(
+            hole, face, rules, ProfileRepository(this).getBullet(),
+            index = shot.index, series = shot.series, sighter = shot.sighter, manual = true
+        ).copy(timestampMs = shot.timestampMs)
+        ScoringSession.replaceShot(shot, rescored)
+        refresh()
+        notifyUser("Shot ${shot.index} moved: ${shot.displayValue} → ${rescored.displayValue}")
     }
 
     private fun offerShotActions(shot: Shot) {

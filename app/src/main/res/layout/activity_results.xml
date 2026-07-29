@@ -47,7 +47,12 @@
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
                     style="@style/Sts.TextButton"
-                    android:text="Add shot by tapping" />
+                    android:text="Add shot" />
+                <Button android:id="@+id/btnMoveMode"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    style="@style/Sts.TextButton"
+                    android:text="Move shots" />
                 <Button android:id="@+id/btnFullCard"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"

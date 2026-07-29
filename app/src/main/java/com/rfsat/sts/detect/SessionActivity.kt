@@ -199,6 +199,7 @@ class SessionActivity : BaseActivity() {
         // ---- buttons ----
         binding.overlay.onCornersChanged = { refreshStatus() }
         wireTransformControls()
+        binding.btnIdentify.setOnClickListener { doIdentifyTarget() }
         binding.btnAutoDetect.setOnClickListener { doAutoDetect() }
         binding.btnRegister.setOnClickListener { doRegister() }
         binding.btnUndoCorner.setOnClickListener {
@@ -210,6 +211,7 @@ class SessionActivity : BaseActivity() {
                 else RegistrationOverlayView.Mode.BOX
             binding.overlay.clearAll()
             binding.btnAutoDetect.isEnabled = !corners
+            binding.btnIdentify.isEnabled = !corners
             setTransformControlsEnabled(!corners)
             registration = null
             live = null
@@ -612,6 +614,92 @@ class SessionActivity : BaseActivity() {
     private fun currentRules(): RuleSet =
         selectedRules ?: ruleSets.getOrNull(binding.spRules.selectedItemPosition)
         ?: RuleRepository(this).activeSet()
+
+
+    /**
+     * Identifies the target from the picture and registers it in one step.
+     *
+     * Replaces "find the black mark, multiply by the selected face's ratio,
+     * hope the face is right" with "fit the ring family, let the fit say
+     * which face it is, and take the scale from the ring pitch". Everything
+     * that went wrong before — the box on the 9 ring, the box on the 5 ring,
+     * every distance half its true size — came from the old order.
+     */
+    private fun doIdentifyTarget() {
+        val frame = detectionFrame() ?: run {
+            notifyUser("No picture to work from yet.")
+            return
+        }
+        val mark = BlackMarkDetector.detect(frame)
+        val fit = RingFinder.find(
+            frame,
+            seedX = mark?.centreXPx ?: -1.0,
+            seedY = mark?.centreYPx ?: -1.0
+        )
+        if (fit == null) {
+            notifyUser(
+                "The printed rings could not be fitted — the target may be cropped, very low " +
+                    "contrast, or photographed at too steep an angle. Falling back to the aiming mark."
+            )
+            doAutoDetect()
+            return
+        }
+
+        val matches = if (mark != null)
+            RingFinder.identify(fit, mark.radiusPx, TargetRepository(this).allFaces())
+        else emptyList()
+        val best = matches.firstOrNull()
+
+        if (best != null && best.relativeError < IDENTIFY_TOLERANCE) {
+            faces.indexOfFirst { it.id == best.face.id }.takeIf { it >= 0 }?.let { idx ->
+                pendingTargetSelection = idx
+                binding.spTarget.setSelection(idx)
+                TargetRepository(this).setActiveFace(best.face.id)
+            }
+            val runnerUp = matches.getOrNull(1)
+            notifyUser(buildString {
+                append("Identified as %s (%.0f%% agreement".format(best.face.name, 100 * (1 - best.relativeError)))
+                if (runnerUp != null) append(", next best %s at %.0f%%".format(
+                    runnerUp.face.name, 100 * (1 - runnerUp.relativeError)))
+                append("). Scale from %d fitted rings.".format(fit.ringCount))
+            })
+        } else {
+            notifyUser(
+                "The rings were fitted, but no catalogue face matches these proportions. " +
+                    "Registering against the selected face — check it is the right one, or add " +
+                    "this target under Targets."
+            )
+        }
+
+        val face = currentFace()
+        val rules = currentRules()
+        val reg = TargetRegistration.fromRingFit(face, fit, rules.gaugeDiameterMm, transform)
+        if (reg == null) {
+            notifyUser("${face.name} has unevenly pitched rings, so a fitted pitch cannot set its scale.")
+            return
+        }
+        registration = reg
+        boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+        val outerPx = (face.outerRadiusMm / (face.ringPitchMm!! / fit.pitchPx)).toFloat()
+        binding.overlay.setBoxInSource(
+            (fit.centreXPx - outerPx).toFloat(), (fit.centreYPx - outerPx).toFloat(),
+            (fit.centreXPx + outerPx).toFloat(), (fit.centreYPx + outerPx).toFloat()
+        )
+        binding.overlay.detectedMarkers = fit.ringsPx.map {
+            Triple(fit.centreXPx.toFloat(), fit.centreYPx.toFloat(), it.toFloat())
+        }
+        reg.warnings.forEach { Logger.w("Registration", it) }
+        refreshStatus()
+    }
+
+    private companion object {
+        /** Beyond this the best-matching face is not convincing. On the two
+         *  real targets tested the right face agreed to within 1.3% while the
+         *  runner-up was 8% out, so 5% separates them comfortably. */
+        const val IDENTIFY_TOLERANCE = 0.05
+    }
+
+    private fun detectionFrame(): LumaFrame? = latestFrame.get()
 
     private fun refreshStatus() {
         val reg = registration

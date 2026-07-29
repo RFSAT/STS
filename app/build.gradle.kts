@@ -32,6 +32,29 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.8.0 — five features, and the first two change how registration
+        //         works rather than tuning it.
+        //   COLOUR. Hole detection reads distance from THE PAPER'S OWN COLOUR
+        //     rather than brightness. A pellet hole is brown, not merely dark:
+        //     on a real card that doubles its separation from the paper, 115
+        //     luma levels against 242. Measuring the paper rather than
+        //     assuming it is neutral matters — an ISSF card is yellow, and
+        //     the obvious "brightness minus chroma" channel sends its paper to
+        //     black and every hole with it.
+        //   RING FITTING. The scale now comes from the PRINTED RING SPACING,
+        //     fitted across the whole family and refined by least squares,
+        //     instead of from the aiming mark times a ratio taken from
+        //     whichever face was selected in a menu. Measured on four real
+        //     targets: pitch to within 0.0-1.5%, where the aiming-mark ratio
+        //     was out by 6%. The fit also IDENTIFIES the face — the right one
+        //     agreed to 0.3-1.3% while the runner-up was 8% or worse — which
+        //     removes the wrong-face failure at its source.
+        //   Editing: shots can be added, deleted and DRAGGED, and are
+        //     rescored where they are dropped.
+        //   Catalogues: every VTB rifle, load and sight ported verbatim, with
+        //     VTB's filter dialogs, plus the match sights and pistols STS
+        //     needs. 41 firearms, 68 loads, 51 sights.
+        //   Thumbnails: a drawing of each face beside its name in the picker.
         // 1.7.1 — three corrections, two of which had one cause.
         //   - the black text was NOT the spinners (1.7.0 fixed those); it was
         //     all 35 BORDERLESS BUTTONS. "?android:attr/borderlessButtonStyle"
@@ -175,8 +198,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 15
-        versionName = "1.7.1"
+        versionCode = 16
+        versionName = "1.8.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

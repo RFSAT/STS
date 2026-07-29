@@ -177,40 +177,42 @@ class ProfileRepository(context: Context) {
     fun seedDefaultSetsIfEmpty() {
         if (prefs.getBoolean(KEY_SETS_SEEDED, false) || getSets().isNotEmpty()) return
 
+        // Searched over the WHOLE catalogue — the ported VTB block plus the
+        // STS additions — so a seed can name either.
         fun rifle(brand: String, model: String) =
-            RifleCatalog.entries.firstOrNull { it.brand == brand && it.model == model }?.toRifleProfile()
+            RifleCatalog.all.firstOrNull { it.brand == brand && it.model == model }?.toRifleProfile()
 
         fun ammo(mfr: String, product: String) =
-            AmmoCatalog.entries.firstOrNull { it.manufacturer == mfr && it.product == product }?.toBulletProfile()
+            AmmoCatalog.all.firstOrNull { it.manufacturer == mfr && it.product == product }?.toBulletProfile()
 
         fun sight(brand: String, model: String) =
-            ScopeCatalog.entries.firstOrNull { it.brand == brand && it.model == model }?.toScopeProfile()
+            ScopeCatalog.all.firstOrNull { it.brand == brand && it.model == model }?.toScopeProfile()
 
         val seeds = listOfNotNull(
             build("10 m Air Rifle — Anschütz",
-                rifle("Anschütz", "9015"),
+                rifle("Anschütz", "9015 Air Rifle"),
                 ammo("JSB", "Exact Diabolo 4.50"),
                 sight("Anschütz", "6834 diopter")),
             build("10 m Air Pistol — Steyr",
-                rifle("Steyr", "LP50"),
+                rifle("Steyr", "LP50 Air Pistol"),
                 ammo("RWS", "R10 Match Pistol"),
                 sight("Morini", "CM162 rear sight")),
             build("50 m Smallbore — Anschütz 1913",
-                rifle("Anschütz", "1913 Super Match"),
+                rifle("Anschütz", "1913 Super Match .22LR"),
                 ammo("Lapua", "Center-X"),
                 sight("Anschütz", "7002/20 diopter (50 m)")),
             build("25 m Pistol — Pardini SP",
-                rifle("Pardini", "SP Rapid Fire"),
+                rifle("Pardini", "SP Rapid Fire Pistol .22LR"),
                 ammo("Eley", "Pistol Match"),
                 sight("Pardini", "SP rear sight (25 m)")),
             build(".308 F-TR — Savage 12",
-                rifle("Savage", "12 F/TR .308"),
-                ammo("Berger", "Juggernaut OTM 185gr"),
-                sight("Nightforce", "Competition 15-55x52")),
+                rifle("Savage", "12 F/TR .308 Win"),
+                ammo("Federal", "Gold Medal 175 SMK"),
+                sight("Vector Optics", "Continental 5-30x56")),
             build(".223 Service Rifle — AR-15",
-                rifle("Generic", "AR-15 20\" 1:7"),
-                ammo("Sierra", "MatchKing 77gr"),
-                sight("Vortex", "Viper PST Gen II 5-25x50"))
+                rifle("Generic", "AR-15 20in 1:7 .223 Rem"),
+                ammo("Federal", "Gold Medal 77 SMK"),
+                sight("Vector Optics", "Continental 3-18x50"))
         )
         if (seeds.isEmpty()) return
 

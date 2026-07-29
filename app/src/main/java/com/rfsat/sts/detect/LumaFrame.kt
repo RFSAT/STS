@@ -52,6 +52,101 @@ class LumaFrame(val width: Int, val height: Int, val data: ByteArray) {
 
     companion object {
 
+        /**
+         * Scales the distance-from-paper into the 0..255 the rest of the
+         * pipeline works in. 0.85 puts a brown pellet hole on white card at
+         * the bottom of the range while leaving the paper's own variation
+         * near the top.
+         */
+        const val COLOUR_SCALE = 0.85
+
+        /**
+         * The DETECTION channel: how far each pixel is from THE PAPER.
+         *
+         * WHY NOT LUMINANCE. Everything before this read brightness only, and
+         * on a real card that discards most of the signal. A pellet hole in
+         * white paper is not mainly darker than the paper — it is BROWN, and
+         * the torn fibres and the backing behind it are warm grey. Measured on
+         * a club target, holes came through at 115 luma levels of separation;
+         * in this channel the same holes give 242, more than twice as far from
+         * the paper, which is the difference between a faint fifth hole being
+         * found and being missed.
+         *
+         * WHY DISTANCE FROM PAPER AND NOT FROM NEUTRAL. The obvious channel is
+         * Y minus chroma, and it is WRONG, quietly and catastrophically, on
+         * any card that is not white. An ISSF 10 m card is yellow: its paper
+         * has a chroma of 121, so Y minus twice chroma sends the paper itself
+         * to black and takes every hole down with it. The paper colour is
+         * therefore MEASURED — the per-channel median over the image, which on
+         * any target is the card, since the card is most of it — and the
+         * channel reports distance from that. White card, yellow card, buff
+         * card: all become bright, and everything that is not card becomes
+         * dark.
+         *
+         * The printed rings and the aiming mark are also far from paper and
+         * also come out dark. That is fine and intended: they are removed
+         * afterwards by the radial median in [HoleDetector], which is a far
+         * better tool for the job than colour.
+         */
+        fun fromBitmapForDetection(bmp: Bitmap, scale: Double = COLOUR_SCALE): LumaFrame {
+            val w = bmp.width
+            val h = bmp.height
+            val px = IntArray(w * h)
+            bmp.getPixels(px, 0, w, 0, 0, w, h)
+
+            val (pr, pg, pb) = paperColourOf(px)
+            val out = ByteArray(w * h)
+            for (i in px.indices) {
+                val p = px[i]
+                val d = kotlin.math.abs(((p shr 16) and 0xFF) - pr) +
+                    kotlin.math.abs(((p shr 8) and 0xFF) - pg) +
+                    kotlin.math.abs((p and 0xFF) - pb)
+                out[i] = (255.0 - d * scale).toInt().coerceIn(0, 255).toByte()
+            }
+            return LumaFrame(w, h, out)
+        }
+
+        /**
+         * The card's own colour: the per-channel median, sampled sparsely.
+         *
+         * The median rather than the mean, because a large black aiming mark
+         * would drag a mean well off the paper and shrink every hole's
+         * distance from it. With the card occupying more than half the frame —
+         * true of any usable photograph of a target — the median IS the paper.
+         */
+        fun paperColourOf(px: IntArray): Triple<Int, Int, Int> {
+            val hr = IntArray(256); val hg = IntArray(256); val hb = IntArray(256)
+            var n = 0
+            var i = 0
+            val stride = maxOf(1, px.size / 40000)   // ~40k samples is plenty for a median
+            while (i < px.size) {
+                val p = px[i]
+                hr[(p shr 16) and 0xFF]++
+                hg[(p shr 8) and 0xFF]++
+                hb[p and 0xFF]++
+                n++
+                i += stride
+            }
+            fun median(hist: IntArray): Int {
+                var acc = 0
+                for (v in 0 until 256) { acc += hist[v]; if (acc * 2 >= n) return v }
+                return 255
+            }
+            return Triple(median(hr), median(hg), median(hb))
+        }
+
+        /**
+         * The detection channel from a camera frame.
+         *
+         * The camera path keeps the luma channel: YUV would need the same
+         * paper-colour estimate in a different colour space, and a live
+         * preview is differenced against a reference frame anyway, which
+         * already cancels the paper whatever colour it is. Colour earns its
+         * keep on the single-photograph path, where there is nothing to
+         * difference against.
+         */
+        fun fromImageProxyForDetection(image: ImageProxy): LumaFrame? = fromImageProxy(image)
+
         fun fromBitmap(bmp: Bitmap): LumaFrame {
             val w = bmp.width
             val h = bmp.height

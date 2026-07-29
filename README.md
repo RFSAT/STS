@@ -296,6 +296,62 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.8.0** — colour, ring fitting, hole editing, the full VTB catalogues, and
+target thumbnails.
+
+*Colour.* Hole detection now reads how far each pixel is from **the paper's
+own colour** rather than how dark it is. A pellet hole is brown, not merely
+dark: measured on a club target, holes came through at 115 luma levels of
+separation and 242 in this channel. The paper colour is MEASURED — the
+per-channel median, which on any target is the card — because assuming it is
+neutral is wrong in a way that destroys the image: an ISSF 10 m card is
+yellow, chroma 121, so the obvious "brightness minus chroma" channel sends the
+paper itself to black and takes every hole down with it. That was caught by
+testing the four targets before shipping it, not after.
+
+*Ring fitting, which is the bigger change.* Every registration failure this
+app has had came from deriving the scale from ONE feature — the aiming mark —
+multiplied by a ratio taken from whichever face was selected in a menu. A
+competition target is a family of concentric, evenly spaced rings, and that
+spacing IS the scale. `RingFinder` locates the centre by rotational symmetry,
+reads the ring radii off a radial profile, fits `r_k = r0 + k·pitch` and
+refits by least squares over the whole ladder.
+
+Measured on the four test targets: pitch recovered to within **0.0–1.5%**,
+against 6% for the aiming-mark ratio. And because the pitch is a property of
+the card rather than of the menu, it also says WHICH card: the correct face
+agreed to 0.3–1.3% while the runner-up was 8% or worse, a margin wide enough
+to act on. *Identify target and register* does both in one step.
+
+Two things worth keeping if this is revised. The ladder fitter prefers the
+LARGEST pitch that explains the data densely — each printed line has two
+edges, so a half-pitch ladder fits every real ring plus every spurious edge
+and wins on inlier count alone; an earlier version returned exactly half the
+true pitch on two of four targets. And the method assumes the rings are
+circles, which a scan or a square-on photograph satisfies and an angled one
+does not; the confidence figure falls when the ladder fits badly and the app
+falls back to the aiming mark.
+
+*Editing.* Shots can be added by tapping, deleted, and now DRAGGED. A moved
+shot is put back through the scoring engine at its new position, so the plot
+and the total cannot disagree.
+
+*Catalogues.* Every VTB rifle, ammunition and sight entry ported verbatim
+with VTB's filter dialogs — brand and type for a firearm; manufacturer,
+calibre, velocity class, weight and bullet type for a load; brand, click
+value, magnification class and family for a sight — plus the match diopters,
+target-pistol sights and competition pistols STS needs and VTB has no reason
+to carry. 41 firearms, 68 loads, 51 sights. The ported blocks are kept
+verbatim and the additions appended below them, so the next VTB revision can
+be dropped in by replacing the entry list alone.
+
+*Thumbnails.* Each face in the picker is drawn beside its name. "ISSF 25/50 m
+Precision Pistol" and "ISSF 10 m Air Pistol" are both black circles with
+rings, both plausible, and picking the wrong one silently rescales every
+score — a picture settles it at the point the mistake is cheapest to catch.
+Drawn from the face geometry rather than shipped as assets, so a custom
+target the user adds gets one too.
+
 **1.7.1** — three corrections, and two of them had a single cause.
 
 *The black text was not the spinners.* 1.7.0 fixed those, and they did need

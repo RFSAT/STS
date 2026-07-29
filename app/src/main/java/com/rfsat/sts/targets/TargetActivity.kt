@@ -12,6 +12,7 @@ import com.rfsat.sts.R
 import com.rfsat.sts.databinding.ActivityTargetsBinding
 import com.rfsat.sts.log.Logger
 import com.rfsat.sts.ui.BaseActivity
+import com.rfsat.sts.ui.TargetThumbnail
 
 /**
  * Browse, adopt, copy and create target faces.
@@ -81,16 +82,7 @@ class TargetActivity : BaseActivity() {
             binding.spBody.selectedItem?.toString() ?: TargetCatalog.ALL,
             all
         )
-        binding.list.adapter = ArrayAdapter(
-            this, R.layout.list_item,
-            shown.map { f ->
-                buildString {
-                    append(f.name)
-                    if (f.custom) append("  [mine]")
-                    if (!f.verified) append("  ⚠")
-                }
-            }
-        )
+        binding.list.adapter = FaceAdapter(shown)
         select(shown.firstOrNull { it.id == repo.activeFaceId() } ?: shown.firstOrNull())
     }
 
@@ -116,6 +108,43 @@ class TargetActivity : BaseActivity() {
     }
 
     // ------------------------------------------------------------------
+
+    /**
+     * The picker list, with a drawing of each face beside its name.
+     *
+     * A plain list of names asks the shooter to know that "ISSF 25/50 m
+     * Precision Pistol" is the one with the 50 mm ten ring and "ISSF 10 m Air
+     * Pistol" the one with the 11.5 mm one. Both are black circles with rings
+     * printed on them, both are plausible, and picking the wrong one rescales
+     * every score silently. A picture settles it before the mistake is made.
+     */
+    private inner class FaceAdapter(private val items: List<TargetFace>) :
+        android.widget.BaseAdapter() {
+
+        override fun getCount() = items.size
+        override fun getItem(position: Int) = items[position]
+        override fun getItemId(position: Int) = position.toLong()
+
+        override fun getView(
+            position: Int, convertView: android.view.View?, parent: android.view.ViewGroup?
+        ): android.view.View {
+            val view = convertView ?: layoutInflater.inflate(R.layout.item_target, parent, false)
+            val face = items[position]
+            val img = view.findViewById<android.widget.ImageView>(R.id.imgFace)
+            val name = view.findViewById<android.widget.TextView>(R.id.tvFaceName)
+            val detail = view.findViewById<android.widget.TextView>(R.id.tvFaceDetail)
+
+            val px = (44 * resources.displayMetrics.density).toInt()
+            img.setImageBitmap(TargetThumbnail.of(face, px))
+            name.text = buildString {
+                append(face.name)
+                if (face.custom) append("  [mine]")
+                if (!face.verified) append("  ⚠")
+            }
+            detail.text = face.summary()
+            return view
+        }
+    }
 
     private fun deleteFace(face: TargetFace) {
         if (!face.custom) { notifyUser("Built-in faces cannot be deleted — copy one instead."); return }
@@ -176,6 +205,7 @@ class TargetActivity : BaseActivity() {
                     notes = "Edited copy of ${face.name}."
                 )
                 val saved = repo.saveCustom(edited)
+                TargetThumbnail.invalidate(saved.id)
                 Logger.i("TargetActivity", "Saved custom face ${saved.id}")
                 refreshList()
                 notifyUser("Saved as '${saved.name}'.")

@@ -85,6 +85,18 @@
 
             <TextView style="@style/Sts.SectionHeading" android:text="3. Register the target" />
 
+            <Button android:id="@+id/btnIdentify"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Identify target and register" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="6dp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Fits the printed rings, works out which target face it is, and takes the scale from the ring spacing. More accurate than the aiming mark alone, and it does not depend on the face selected above being right." />
+
             <Button android:id="@+id/btnAutoDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Auto-detect the target" />

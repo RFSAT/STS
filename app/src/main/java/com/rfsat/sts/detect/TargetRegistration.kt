@@ -265,6 +265,67 @@ class TargetRegistration private constructor(
         }
 
         /**
+         * Registration from a FITTED RING FAMILY.
+         *
+         * The best of the three, and the one to prefer whenever the fit
+         * succeeds. The other two derive the scale from a single feature —
+         * four tapped corners, or the aiming mark times a ratio taken from
+         * whichever face is selected in a menu — and an error in that one
+         * measurement scales everything. The ring pitch is measured across
+         * the whole family and is a property of the CARD rather than of the
+         * menu: on four real targets it came out within 0.0 to 1.5 percent,
+         * where the aiming-mark ratio was out by six.
+         *
+         * The face still supplies the ring pitch in millimetres, but that is
+         * a published constant rather than an assumption about the picture,
+         * and [RingFinder.identify] can pick the face from the fit itself.
+         */
+        fun fromRingFit(
+            face: TargetFace,
+            fit: RingFit,
+            gaugeDiameterMm: Double,
+            transform: BoxTransform = BoxTransform.NONE
+        ): TargetRegistration? {
+            val pitchMm = face.ringPitchMm ?: run {
+                Logger.w(
+                    "TargetRegistration",
+                    "${face.name} has unevenly pitched rings, so a fitted pitch cannot set its scale"
+                )
+                return null
+            }
+            if (fit.pitchPx <= 0.0 || pitchMm <= 0.0) return null
+
+            val mmPerSourcePx = pitchMm / fit.pitchPx
+            val outerPx = face.outerRadiusMm / mmPerSourcePx
+            val box = floatArrayOf(
+                (fit.centreXPx - outerPx).toFloat(), (fit.centreYPx - outerPx).toFloat(),
+                (fit.centreXPx + outerPx).toFloat(), (fit.centreYPx + outerPx).toFloat()
+            )
+            val reg = fromBoundingBox(
+                face, box, BoxMeaning.OUTER_SCORING_RING, gaugeDiameterMm,
+                markEllipticity = 1.0, transform = transform
+            ) ?: return null
+
+            // Replace the box's generic caveat with what the fit actually says.
+            val warnings = reg.warnings.filterNot { it.contains("position and scale only") }.toMutableList()
+            warnings += ("Scale from the fitted ring family: %.2f px between rings over %d rings, " +
+                "%.4f mm per pixel, residual %.2f px.").format(
+                fit.pitchPx, fit.ringCount, mmPerSourcePx, fit.residualPx
+            )
+            if (fit.confidence < 0.5) {
+                warnings += ("The ring fit is not confident (%.2f). That usually means the target was " +
+                    "photographed at an angle, where the rings project to ellipses and a radial fit " +
+                    "smears them — check the outline, and use corner registration if it is far out.")
+                    .format(fit.confidence)
+            }
+            return TargetRegistration(
+                face = reg.face, homography = reg.homography, mmPerPx = reg.mmPerPx,
+                uMinMm = reg.uMinMm, uMaxMm = reg.uMaxMm, vMinMm = reg.vMinMm, vMaxMm = reg.vMaxMm,
+                warnings = warnings
+            )
+        }
+
+        /**
          * Registration from a square bounding box drawn around a concentric
          * feature of the face — the aiming mark, or the outer scoring ring.
          *
