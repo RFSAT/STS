@@ -49,12 +49,11 @@ class MainActivity : BaseActivity() {
         )
         binding.tvClaudeCredit.movementMethod = android.text.method.LinkMovementMethod.getInstance()
 
-        binding.btnStart.setOnClickListener {
-            startActivity(Intent(this, SessionActivity::class.java).putExtra(SessionActivity.EXTRA_NEW, true))
-        }
-        binding.btnImport.setOnClickListener {
-            startActivity(Intent(this, com.rfsat.sts.detect.ImportActivity::class.java))
-        }
+        // Live scoring and photo import are reached from the Session tab in
+        // the bottom bar, which is where every other screen lives too. Two
+        // large duplicate entry points on the home screen pushed the active
+        // setup — the one thing worth confirming before firing — below the
+        // fold on a small phone.
         binding.btnLog.setOnClickListener {
             startActivity(Intent(this, com.rfsat.sts.log.LogActivity::class.java))
         }
@@ -81,22 +80,23 @@ class MainActivity : BaseActivity() {
         val rule = rules.activeSet()
         val setName = profiles.getActiveSetName() ?: "custom (edited)"
 
-        binding.tvSetup.text = buildString {
-            appendLine("Profile set : $setName")
-            // Short names here. A full catalogue label carries the type,
-            // the calibre, the barrel and the twist, which wraps this aligned
-            // column into an unreadable block on a phone. The qualifiers are
-            // one tap away under Settings, where they are shown in full.
-            appendLine("Firearm     : ${NameWrap.shortName(profiles.getRifle().label())}")
-            appendLine("Load        : ${NameWrap.shortName(profiles.getBullet().name)}")
-            appendLine("Sight       : ${NameWrap.shortName(profiles.getScope().label())}")
-            appendLine("Target      : ${face.name}")
-            appendLine("Rules       : ${rule.name}")
-            append("Distance    : ${UnitsManager.formatDistance(rule.distanceM)}")
-            if (!face.verified || !rule.verified) {
-                append("\n\nThis combination uses figures that are the commonly published ones " +
-                    "rather than a governing body's own table. Check them before quoting a score.")
-            }
+        binding.tvSetupSet.text = setName
+        // Short names: a full catalogue label carries type, calibre, barrel
+        // and twist, which wraps the value column into a block.
+        binding.tvSetupRifle.text = NameWrap.shortName(profiles.getRifle().label())
+        binding.tvSetupLoad.text = NameWrap.shortName(profiles.getBullet().name)
+        binding.tvSetupSight.text = NameWrap.shortName(profiles.getScope().label())
+        binding.tvSetupTarget.text = face.name
+        binding.tvSetupRules.text = rule.name
+        binding.tvSetupDistance.text = UnitsManager.formatDistance(rule.distanceM)
+
+        val unverified = !face.verified || !rule.verified
+        binding.tvSetupNote.visibility =
+            if (unverified) android.view.View.VISIBLE else android.view.View.GONE
+        if (unverified) {
+            binding.tvSetupNote.text =
+                "This combination uses figures that are the commonly published ones rather than " +
+                    "a governing body's own table. Check them before quoting a score."
         }
 
         // The log is a diagnostic surface, not part of shooting, so it can be

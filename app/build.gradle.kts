@@ -32,6 +32,44 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.13.0 — feature: interface changes across Home, Session,
+        //          Results, Targets, Settings and Import.
+        //   - Home no longer carries the upload-photo and live-session
+        //     buttons. Both remain reachable — live scoring is a bottom-nav
+        //     tab and Import is linked from it — and removing the duplicates
+        //     lifts the active setup, the one thing worth confirming before
+        //     firing, back above the fold on a small phone.
+        //   - The active setup is a two-column TABLE now. It was one TextView
+        //     with the labels padded out with spaces, which only aligns the
+        //     colons in a monospaced font; in the app's proportional face
+        //     they wandered by several characters.
+        //   - Session and Targets: every remaining flat text action is a real
+        //     button. Results had none left.
+        //   - Equal button heights in the Results "Shots" section and the
+        //     Settings "Profile sets" section.
+        //   - Import reopens showing the last photo scored rather than a
+        //     black rectangle. Only the URI is stored, with durable read
+        //     permission taken where the picker grants it, so nothing is
+        //     duplicated; if the file has gone the screen simply starts empty.
+        //
+        //   BUG, and a silent one. On Session, currentFace() preferred a
+        //   selectedFace field over the spinner, and the code that switches
+        //   the spinner after identifying a target suppressed its own
+        //   listener — which was the only thing that updated that field. So
+        //   the screen showed the identified face while every score was
+        //   computed against the previous one, with nothing to indicate it.
+        //   The field is now set alongside the spinner, and the spinner
+        //   outranks it, so what is displayed is what is scored.
+        //
+        //   NEW GATE: tools/kotlin_checks.py now verifies that every
+        //   binding.<id> exists in that screen's layout, following <include>.
+        //   View binding reports a missing id against the GENERATED class,
+        //   some way from the layout edit that caused it, and renaming a
+        //   control mid-interface-work is the usual way in. Written, found to
+        //   catch NOTHING because it built the layout name as "activitymain"
+        //   instead of "activity_main" and so skipped every file, then fixed
+        //   and verified by deleting a control and referencing it again.
+        //
         // 1.12.2 — correction: NameWrapTest asserted nothing and said so
         //          only in CI.
         //   - Under plain unit tests android.jar is stubbed and, with
@@ -460,8 +498,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 24
-        versionName = "1.12.2"
+        versionCode = 25
+        versionName = "1.13.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

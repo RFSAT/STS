@@ -155,6 +155,33 @@
         <item name="android:ellipsize">end</item>
     </style>
 
+    <!-- The active-setup table on the home screen. The label column is
+         wrap_content so it sizes to the longest label, the colon sits in its
+         own column so every colon lands on the same x, and the value column
+         takes the rest. -->
+    <style name="Sts.SetupLabel" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+    </style>
+
+    <style name="Sts.SetupColon" parent="Sts.SetupLabel">
+        <item name="android:text">" : "</item>
+    </style>
+
+    <style name="Sts.SetupValue" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+    </style>
+
     <style name="Sts.Value" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

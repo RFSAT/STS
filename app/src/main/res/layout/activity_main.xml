@@ -54,40 +54,69 @@
                     android:textStyle="bold"
                     android:textColor="?attr/colorAccent" />
 
+                <!-- A two-column table, not a padded string.
+
+                     The setup used to be one TextView with the labels padded
+                     out with spaces, which only lines the colons up in a
+                     monospaced font — in the app's proportional face they
+                     wandered by several characters. A table aligns them by
+                     construction, at any font size and in any language. -->
+                <TableLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:shrinkColumns="2">
+
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Profile set" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupSet" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Firearm" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupRifle" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Load" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupLoad" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Sight" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupSight" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Target" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupTarget" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Rules" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupRules" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                    <TableRow>
+                        <TextView style="@style/Sts.SetupLabel" android:text="Distance" />
+                        <TextView style="@style/Sts.SetupColon" />
+                        <TextView android:id="@+id/tvSetupDistance" style="@style/Sts.SetupValue" />
+                    </TableRow>
+                </TableLayout>
+
                 <TextView
-                    android:id="@+id/tvSetup"
+                    android:id="@+id/tvSetupNote"
                     style="@style/Sts.Value"
-                    android:layout_marginTop="8dp"
-                    android:lineSpacingExtra="3dp" />
-
-                <!-- Two equally weighted choices, and the photo one FIRST.
-                     Scoring a card after the relay is the commoner job and
-                     needs no camera pointed downrange, so it should not be
-                     the secondary option. It must also NOT be a borderless
-                     button: that style renders as flat text with no
-                     background, and sitting under a filled button it reads
-                     as a caption rather than as a control. It was missed
-                     entirely in 1.3.0 for exactly that reason. -->
-                <Button
-                    android:id="@+id/btnImport"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:text="Upload a target photo to score" />
-
-                <Button
-                    android:id="@+id/btnStart"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Start a live scoring session" />
+                    android:layout_marginTop="10dp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:visibility="gone" />
 
                 <Button
                     android:id="@+id/btnLog"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    style="@style/Sts.TextButton"
+                    android:layout_marginTop="14dp"
+                    style="@style/Sts.ActionButton"
                     android:text="Diagnostic log" />
 
                 <Button
@@ -96,7 +125,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:visibility="gone"
-                    style="@style/Sts.TextButton"
+                    style="@style/Sts.ActionButton"
                     android:text="Resume the session in progress" />
             </LinearLayout>
 

@@ -127,6 +127,47 @@ for f in files:
             line=code.count('\n',0,m.start())+1
             problems.append(f"{os.path.basename(f)}:{line}  when over {t} is missing {sorted(missing)} and has no else")
 
-print(f"{len(files)} Kotlin files checked by the new semantic gates")
+# ---- 4. every binding.<id> must exist in that screen's layout ----
+#
+# View binding generates one field per android:id, so referring to an id the
+# layout does not have is a compile error reported against the GENERATED
+# class, some way from the layout edit that caused it. Renaming a control and
+# missing one of its uses is the usual way in, and that happens in the middle
+# of interface work — exactly when the Android toolchain is least available
+# for a quick check.
+LAYOUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "app/src/main/res/layout")
+
+def _ids_of(layout, seen=None):
+    """Ids a layout declares, following <include> so merged screens count."""
+    seen = seen if seen is not None else set()
+    if layout in seen: return set()
+    seen.add(layout)
+    path = os.path.join(LAYOUT_DIR, layout + ".xml")
+    if not os.path.exists(path): return set()
+    text = open(path, encoding="utf-8").read()
+    found = set(re.findall(r'@\+id/([A-Za-z_][A-Za-z0-9_]*)', text))
+    for inc in re.findall(r'<include[^>]*layout="@layout/([A-Za-z0-9_]+)"', text):
+        found |= _ids_of(inc, seen)
+    return found
+
+for f in files:
+    code = strip(open(f).read())
+    m = re.search(r'\b(Activity[A-Za-z0-9]*Binding)\.inflate', code)
+    if not m: continue
+    name = m.group(1)[len("Activity"):-len("Binding")]
+    # ActivityResultsBinding -> activity_results. The underscore after
+    # "activity" is NOT optional: without it every lookup silently found no
+    # layout, every file was skipped, and the gate reported success on a
+    # reference to a control that had been deleted.
+    layout = "activity_" + re.sub(r'(?<!^)([A-Z])', r'_\1', name).lower()
+    declared = _ids_of(layout)
+    if not declared: continue
+    lines = code.splitlines()
+    for u in sorted(set(re.findall(r'\bbinding\.([a-z][A-Za-z0-9_]*)', code)) - declared - {"root"}):
+        ln = next((n for n, l in enumerate(lines, 1) if re.search(r'\bbinding\.' + u + r'\b', l)), 0)
+        problems.append(f"{os.path.basename(f)}:{ln}  binding.{u} is not an id in {layout}.xml")
+
+print(f"{len(files)} Kotlin files checked by the semantic and view-binding gates")
 print(("PROBLEMS:\n  "+"\n  ".join(problems)) if problems else "No problems found.")
 sys.exit(1 if problems else 0)

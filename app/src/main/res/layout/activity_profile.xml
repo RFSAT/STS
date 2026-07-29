@@ -44,16 +44,14 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:orientation="horizontal" android:layout_marginTop="6dp">
                 <Button android:id="@+id/btnApplySet"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Apply" />
+                    style="@style/Sts.GridButton"
+                    android:text="Apply" />
                 <Button android:id="@+id/btnSaveSet"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Save as…"
-                    style="@style/Sts.ActionButton" />
+                    style="@style/Sts.GridButton"
+                    android:text="Save as…" />
                 <Button android:id="@+id/btnDeleteSet"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Delete"
-                    style="@style/Sts.ActionButton" />
+                    style="@style/Sts.GridButton"
+                    android:text="Delete" />
             </LinearLayout>
 
             <!-- ===== Firearm ===== -->

@@ -61,6 +61,7 @@ class ImportActivity : BaseActivity() {
     private var shotBitmap: Bitmap? = null
     private var cleanBitmap: Bitmap? = null
     private var cleanUri: Uri? = null
+    private var shotUri: Uri? = null
 
     private var registration: TargetRegistration? = null
 
@@ -192,7 +193,55 @@ class ImportActivity : BaseActivity() {
         binding.overlay.onCornersChanged = { refreshStatus() }
         wireTransformControls()
 
+        restoreLastImage()
         refreshStatus()
+    }
+
+    /**
+     * Puts the last photo scored back on screen when this page reopens.
+     *
+     * Opening to a black rectangle gives no hint that anything was ever done
+     * here, and someone checking a score they have just taken has to find the
+     * same file in the gallery again. Only the URI is stored, so nothing is
+     * duplicated and no space is used.
+     */
+    private fun restoreLastImage() {
+        if (shotBitmap != null) return
+        val stored = getSharedPreferences(PREFS, MODE_PRIVATE).getString(KEY_LAST_IMAGE, null)
+            ?: return
+        val uri = runCatching { Uri.parse(stored) }.getOrNull() ?: return
+        // The permission behind a gallery URI does not always outlive the
+        // process, and the file itself may simply be gone. Either way this is
+        // a convenience, so it fails quietly and leaves an empty screen.
+        val bmp = runCatching { ImageLoader.load(this, uri) }.getOrNull()
+        if (bmp == null) {
+            Logger.i("ImportActivity", "the last image could not be reopened; starting empty")
+            return
+        }
+        shotBitmap = bmp
+        shotUri = uri
+        binding.image.setImageBitmap(bmp)
+        binding.overlay.setSourceGeometry(
+            bmp.width, bmp.height, RegistrationOverlayView.SourceFit.FIT_CENTER
+        )
+        binding.overlay.clearAll()
+        registration = null
+        notifyUser(
+            "Showing the last photo you scored. Pick another to replace it, or register and " +
+                "score this one again."
+        )
+    }
+
+    private fun rememberLastImage(uri: Uri) {
+        runCatching {
+            // Ask for durable read access where the picker can grant it, so
+            // the photo survives a reboot rather than only this session.
+            contentResolver.takePersistableUriPermission(
+                uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putString(KEY_LAST_IMAGE, uri.toString()).apply()
     }
 
     // ------------------------------------------------------------------
@@ -212,6 +261,8 @@ class ImportActivity : BaseActivity() {
         } else {
             shotBitmap?.recycle()
             shotBitmap = bmp
+            shotUri = uri
+            rememberLastImage(uri)
             binding.image.setImageBitmap(bmp)
             // The overlay maps taps through the bitmap's own dimensions and
             // the ImageView's fitCenter letterboxing. Both have to be right or
@@ -700,6 +751,8 @@ class ImportActivity : BaseActivity() {
          *  real targets tested the right face agreed to within 1.3% while the
          *  runner-up was 8% out, so 5% separates them comfortably. */
         const val IDENTIFY_TOLERANCE = 0.05
+        private const val PREFS = "sts_import"
+        private const val KEY_LAST_IMAGE = "last_image_uri"
     }
 
     /** The picture the detector should work on: the colour channel, which is

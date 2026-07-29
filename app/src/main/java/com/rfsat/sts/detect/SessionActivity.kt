@@ -616,8 +616,18 @@ class SessionActivity : BaseActivity() {
         refreshStatus()
     }
 
+    /**
+     * The face to score against.
+     *
+     * The SPINNER first, because it is what the user can see. selectedFace is
+     * kept as a fallback for the moment before the adapter is populated, but
+     * it must never outrank the visible selection: when the two disagreed the
+     * screen showed one face and scored against another, with nothing to
+     * indicate it.
+     */
     private fun currentFace(): TargetFace =
-        selectedFace ?: faces.getOrNull(binding.spTarget.selectedItemPosition)
+        faces.getOrNull(binding.spTarget.selectedItemPosition)
+        ?: selectedFace
         ?: TargetRepository(this).activeFace()
 
     private fun currentRules(): RuleSet =
@@ -663,6 +673,16 @@ class SessionActivity : BaseActivity() {
             faces.indexOfFirst { it.id == best.face.id }.takeIf { it >= 0 }?.let { idx ->
                 pendingTargetSelection = idx
                 binding.spTarget.setSelection(idx)
+                // AND the field the scorer actually reads.
+                //
+                // currentFace() prefers selectedFace over the spinner, and
+                // suppressing the listener with pendingTargetSelection — which
+                // is what stops the programmatic change being mistaken for the
+                // user's — also stopped the only code that updated it. So the
+                // spinner showed the identified face while every score was
+                // computed against the previous one, silently. Both are set
+                // here, together, for that reason.
+                selectedFace = faces[idx]
                 TargetRepository(this).setActiveFace(best.face.id)
             }
             val runnerUp = matches.getOrNull(1)

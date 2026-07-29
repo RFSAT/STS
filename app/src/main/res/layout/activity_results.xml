@@ -146,22 +146,23 @@
                 android:orientation="horizontal"
                 android:layout_marginTop="14dp">
                 <Button android:id="@+id/btnShare"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Share report" />
+                    style="@style/Sts.GridButton"
+                    android:text="Share report" />
                 <Button android:id="@+id/btnCsv"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Export CSV"
-                    style="@style/Sts.ActionButton" />
+                    style="@style/Sts.GridButton"
+                    android:text="Export CSV" />
             </LinearLayout>
 
             <Button android:id="@+id/btnClearShots"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
                 android:layout_marginTop="6dp"
                 style="@style/Sts.ActionButton"
                 android:text="Clear all shots from this session" />
 
             <Button android:id="@+id/btnNewSession"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
                 android:layout_marginTop="6dp"
                 style="@style/Sts.ActionButton"
                 android:text="Finish and start a new session" />

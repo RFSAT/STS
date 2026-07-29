@@ -125,7 +125,7 @@
                 <Button android:id="@+id/btnUndoCorner"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Reset"
-                    style="@style/Sts.TextButton" />
+                    style="@style/Sts.ActionButton" />
             </LinearLayout>
 
 
@@ -158,12 +158,12 @@
                 <Button android:id="@+id/btnApplyTilt"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    style="@style/Sts.TextButton"
+                    style="@style/Sts.ActionButton"
                     android:text="Apply estimated tilt" />
                 <Button android:id="@+id/btnResetTilt"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    style="@style/Sts.TextButton"
+                    style="@style/Sts.ActionButton"
                     android:text="Reset tilt" />
             </LinearLayout>
 
@@ -205,11 +205,11 @@
                 <Button android:id="@+id/btnUndoShot"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Undo shot"
-                    style="@style/Sts.TextButton" />
+                    style="@style/Sts.ActionButton" />
                 <Button android:id="@+id/btnClearShots"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Clear all recorded shots" />
 
             <Button android:id="@+id/btnResults"
