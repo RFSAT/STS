@@ -2,6 +2,7 @@ package com.rfsat.sts.detect
 
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
+import com.rfsat.sts.log.Logger
 
 /**
  * A single-channel 8-bit luminance image.
@@ -136,16 +137,84 @@ class LumaFrame(val width: Int, val height: Int, val data: ByteArray) {
         }
 
         /**
-         * The detection channel from a camera frame.
+         * The detection channel from a camera frame: distance from the paper,
+         * in YUV.
          *
-         * The camera path keeps the luma channel: YUV would need the same
-         * paper-colour estimate in a different colour space, and a live
-         * preview is differenced against a reference frame anyway, which
-         * already cancels the paper whatever colour it is. Colour earns its
-         * keep on the single-photograph path, where there is nothing to
-         * difference against.
+         * YUV_420_888 hands chroma over already separated and subsampled 2x2,
+         * so this costs one lookup per four pixels and no colour conversion.
+         * The paper is the median (Y, U, V) of the frame for exactly the
+         * reason it is the median RGB on the photograph path: a large black
+         * aiming mark would drag a mean off the card and shrink every hole's
+         * distance from it.
+         *
+         * Chroma is weighted more heavily than luminance. Paper varies in
+         * brightness across a frame — the corner of a card falls into shadow,
+         * a phone's own body shades the near edge — but it barely varies in
+         * HUE, so the chroma difference is the more trustworthy half of the
+         * measurement under range lighting.
          */
-        fun fromImageProxyForDetection(image: ImageProxy): LumaFrame? = fromImageProxy(image)
+        fun fromImageProxyForDetection(image: ImageProxy): LumaFrame? {
+            val base = fromImageProxy(image) ?: return null
+            if (image.planes.size < 3) return base
+            return runCatching {
+                val w = base.width
+                val h = base.height
+                val uPlane = image.planes[1]
+                val vPlane = image.planes[2]
+                val uBuf = uPlane.buffer.duplicate()
+                val vBuf = vPlane.buffer.duplicate()
+                val u = ByteArray(uBuf.remaining()).also { uBuf.get(it) }
+                val v = ByteArray(vBuf.remaining()).also { vBuf.get(it) }
+                val uRow = uPlane.rowStride; val uPix = uPlane.pixelStride
+                val vRow = vPlane.rowStride; val vPix = vPlane.pixelStride
+
+                fun uAt(x: Int, y: Int): Int {
+                    val i = (y / 2) * uRow + (x / 2) * uPix
+                    return if (i in u.indices) u[i].toInt() and 0xFF else 128
+                }
+                fun vAt(x: Int, y: Int): Int {
+                    val i = (y / 2) * vRow + (x / 2) * vPix
+                    return if (i in v.indices) v[i].toInt() and 0xFF else 128
+                }
+
+                // Paper = median of a sparse sample, one channel at a time.
+                val hy = IntArray(256); val hu = IntArray(256); val hv = IntArray(256)
+                var n = 0
+                var y = 0
+                val stride = maxOf(1, minOf(w, h) / 120)
+                while (y < h) {
+                    var x = 0
+                    while (x < w) {
+                        hy[base.data[y * w + x].toInt() and 0xFF]++
+                        hu[uAt(x, y)]++
+                        hv[vAt(x, y)]++
+                        n++
+                        x += stride
+                    }
+                    y += stride
+                }
+                fun median(hist: IntArray): Int {
+                    var acc = 0
+                    for (k in 0 until 256) { acc += hist[k]; if (acc * 2 >= n) return k }
+                    return 128
+                }
+                val my = median(hy); val mu = median(hu); val mv = median(hv)
+
+                for (j in 0 until h) {
+                    for (i in 0 until w) {
+                        val idx = j * w + i
+                        val dY = kotlin.math.abs((base.data[idx].toInt() and 0xFF) - my)
+                        val dU = kotlin.math.abs(uAt(i, j) - mu)
+                        val dV = kotlin.math.abs(vAt(i, j) - mv)
+                        val d = dY + 2 * dU + 2 * dV
+                        base.data[idx] = (255.0 - d * COLOUR_SCALE).toInt().coerceIn(0, 255).toByte()
+                    }
+                }
+                base
+            }.onFailure {
+                Logger.w("LumaFrame", "colour channel unavailable for this frame; using luminance")
+            }.getOrDefault(base)
+        }
 
         fun fromBitmap(bmp: Bitmap): LumaFrame {
             val w = bmp.width

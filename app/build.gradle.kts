@@ -32,6 +32,31 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.9.0 — the two gaps from 1.8.0, and Hough centre voting.
+        //   - the target spinners on the detection screens now show a picture
+        //     of each face. 1.8.0 put thumbnails only in the Targets tab,
+        //     which is where a face is browsed; the spinner is where one is
+        //     CHOSEN, moments before scoring against it, and that is the half
+        //     that mattered.
+        //   - live camera detection uses the colour channel too, computed in
+        //     YUV from the frame's own median. 1.8.0 left it on luminance,
+        //     which was a defensible decision taken silently.
+        //   - HoughCentre: every edge on a ring has a normal pointing at the
+        //     common centre, so each votes along it. Measured on four real
+        //     targets, within 2-4 px every time, and unlike a symmetry search
+        //     it survives a thumb over a corner or a target filling part of
+        //     the frame. It now seeds RingFinder.
+        //
+        //   HONEST LIMIT, since Hough was asked for to handle ANGLED targets
+        //   and does not by itself: under perspective a ring projects to an
+        //   ELLIPSE, which a circle accumulator has no parameter for, and a
+        //   five-dimensional ellipse Hough is not a phone computation. What is
+        //   affordable is measuring the ellipticity, pooled across every ring
+        //   — and on four real targets that sits at a ~4 degree noise floor:
+        //   3.1 and 3.9 degrees on targets that are perfect circles, against
+        //   5.1 on a genuinely angled photograph. So it is reported and it
+        //   seeds the tilt sliders above 8 degrees, and it is never applied
+        //   on its own.
         // 1.8.0 — five features, and the first two change how registration
         //         works rather than tuning it.
         //   COLOUR. Hole detection reads distance from THE PAPER'S OWN COLOUR
@@ -198,8 +223,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 16
-        versionName = "1.8.0"
+        versionCode = 17
+        versionName = "1.9.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -296,6 +296,54 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
+**1.9.0** — the two gaps from 1.8.0, and Hough centre voting.
+
+*Thumbnails where they matter.* 1.8.0 drew a face beside each name in the
+Targets tab. That is where a face is browsed; the SPINNER on the detection
+screens is where one is chosen, moments before registering and scoring
+against it, and choosing wrongly has silently rescaled whole score sheets.
+Both spinners now show the picture, in the closed state and the dropdown, with
+ring pitch and black diameter in the dropdown — which is what actually
+separates two faces that are both black circles with rings on them.
+
+*Colour on the live path.* 1.8.0 left live camera detection on luminance. The
+reasoning was that differencing against a reference cancels the paper anyway,
+which is true but was a decision taken silently against a request with no
+such qualification. Live frames now use the same distance-from-paper channel,
+computed in YUV from the frame's own median, with chroma weighted above
+luminance: paper varies in brightness across a frame as corners fall into
+shadow, but it barely varies in hue.
+
+*Hough centre voting.* Every edge on a printed ring has a normal pointing at
+the common centre, so each edge votes along its own normal and the centre is
+where the votes pile up. On the four test targets it landed within 2 to 4
+pixels every time, and because it works from edges it survives a thumb across
+a corner, a club logo, or a target filling only part of the frame — all of
+which mislead a symmetry search that assumes the target dominates the picture.
+It now seeds `RingFinder`, which still measures the pitch from the radial
+profile because it does that better: 0.0–1.5% against 0.9–3.8% for a radius
+histogram off the same edges.
+
+**On Hough and angled targets, which is what it was asked for.** It does not
+solve that by itself, and it is worth being plain about why. Under perspective
+a ring projects to an ELLIPSE, and a circle accumulator has no parameter for
+one; a full ellipse Hough needs a five-dimensional accumulator and is not a
+phone computation. What IS affordable is measuring the ellipticity directly.
+All the rings on a card share one projection, so `r(θ,k) = R_k·g(θ)` — take
+logs, subtract each ring's own mean, and every edge point on every ring
+becomes a sample of the same `g(θ)`, thousands of samples for two parameters.
+Fitting each ring separately was tried first and sat at 5–8 degrees of error
+on targets that were perfect circles.
+
+Pooling brought that to about 4 degrees, and that is still the floor: the two
+synthetic targets, which are exactly circular, measured 3.1 and 3.9 degrees,
+while the genuinely angled photograph measured 5.1. The measurement therefore
+cannot separate a real 5-degree tilt from a perfect circle. It is reported,
+and above 8 degrees it seeds the tilt sliders, and it is never applied on its
+own — the same policy as the aiming mark's ellipticity, for the same reason.
+For a target angled enough to matter, corner registration remains exact where
+all of this is approximate.
+
 **1.8.0** — colour, ring fitting, hole editing, the full VTB catalogues, and
 target thumbnails.
 

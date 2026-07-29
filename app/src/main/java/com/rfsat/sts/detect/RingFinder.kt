@@ -19,8 +19,21 @@ data class RingFit(
     val ringsPx: List<Double>,
     /** Mean absolute departure from a perfect progression, pixels. */
     val residualPx: Double,
-    val confidence: Double
+    val confidence: Double,
+    /** Semi-minor over semi-major of the ring family, from [HoughCentre].
+     *  1.0 is circular. Reported, and used to SEED the tilt controls — never
+     *  applied on its own; see HoughCentre.TILT_NOISE_FLOOR_DEG. */
+    val axisRatio: Double = 1.0,
+    val orientationDeg: Double = 0.0
 ) {
+    /** The tilt the ring ellipticity implies, degrees. */
+    val impliedTiltDeg: Double
+        get() = Math.toDegrees(kotlin.math.acos(axisRatio.coerceIn(0.0, 1.0)))
+
+    /** True only when the ellipticity is clear of its own noise floor. */
+    val tiltWorthSuggesting: Boolean
+        get() = impliedTiltDeg > HoughCentre.TILT_NOISE_FLOOR_DEG
+
     val ringCount: Int get() = ringsPx.size
     val outermostPx: Double get() = ringsPx.maxOrNull() ?: 0.0
 }
@@ -89,8 +102,23 @@ object RingFinder {
         val small = IntArray(w * h)
         for (y in 0 until h) for (x in 0 until w) small[y * w + x] = frame.at(x * step, y * step)
 
-        val sx = if (seedX >= 0) seedX / step else w / 2.0
-        val sy = if (seedY >= 0) seedY / step else h / 2.0
+        // Seed from the Hough vote where it succeeds. Voting works from edge
+        // normals, so it copes with a thumb over a corner, a club logo, or a
+        // target filling only part of the frame — all of which mislead a
+        // symmetry search that assumes the target dominates the picture. The
+        // symmetry search then refines it, because it is the more accurate of
+        // the two once it is looking in the right place.
+        val vote = HoughCentre.find(frame)
+        val sx = when {
+            vote != null -> vote.xPx / step
+            seedX >= 0 -> seedX / step
+            else -> w / 2.0
+        }
+        val sy = when {
+            vote != null -> vote.yPx / step
+            seedY >= 0 -> seedY / step
+            else -> h / 2.0
+        }
         val (cx, cy) = symmetryCentre(small, w, h, sx, sy) ?: return null
 
         val profile = radialProfile(small, w, h, cx, cy) ?: return null
@@ -110,7 +138,9 @@ object RingFinder {
             pitchPx = fit.pitch * step,
             ringsPx = fit.rings.map { it * step },
             residualPx = fit.residual * step,
-            confidence = fit.confidence
+            confidence = fit.confidence,
+            axisRatio = vote?.axisRatio ?: 1.0,
+            orientationDeg = vote?.orientationDeg ?: 0.0
         )
         Logger.i(
             "RingFinder",

@@ -138,7 +138,9 @@ class ImportActivity : BaseActivity() {
             refreshStatus()
         }
 
-        binding.spTarget.adapter = adapter(faces.map { it.name + if (it.verified) "" else "  (unverified)" })
+        // A picture of each face, because this is the spinner where the
+        // choice is actually made.
+        binding.spTarget.adapter = com.rfsat.sts.ui.TargetSpinnerAdapter(this, faces)
         pendingTargetSelection = faceIndex
         binding.spTarget.setSelection(faceIndex)
         binding.spTarget.onItemSelectedListener = onSelected { i ->
@@ -533,6 +535,29 @@ class ImportActivity : BaseActivity() {
                 "The rings were fitted, but no catalogue face matches these proportions. " +
                     "Registering against the selected face — check it is the right one, or add " +
                     "this target under Targets."
+            )
+        }
+
+        // The ring family's ellipticity is an INDEPENDENT read on the tilt,
+        // from thousands of edge samples rather than the outline of one
+        // aiming mark. Offered on the same terms: above the noise floor it
+        // seeds the sliders, and it is never applied by itself, because the
+        // sign is still a guess and 4 degrees of the reading is noise.
+        if (fit.tiltWorthSuggesting) {
+            suggestedTilt = BoxTransform(
+                rotationDeg = 0.0,
+                tiltXDeg = (fit.impliedTiltDeg * -kotlin.math.sin(Math.toRadians(fit.orientationDeg)))
+                    .coerceIn(-BoxTransform.MAX_TILT_DEG, BoxTransform.MAX_TILT_DEG),
+                tiltYDeg = (fit.impliedTiltDeg * -kotlin.math.cos(Math.toRadians(fit.orientationDeg)))
+                    .coerceIn(-BoxTransform.MAX_TILT_DEG, BoxTransform.MAX_TILT_DEG)
+            )
+            binding.btnApplyTilt.isEnabled = true
+            notifyUser(
+                ("The rings measure %.0f%% out of round, which suggests about %.0f° of tilt. " +
+                    "Tap “Apply estimated tilt” to try it — below roughly %.0f° the measurement is " +
+                    "inside its own noise, so nothing is applied for you.")
+                    .format(100 * (1 - fit.axisRatio), fit.impliedTiltDeg,
+                        HoughCentre.TILT_NOISE_FLOOR_DEG)
             )
         }
 
