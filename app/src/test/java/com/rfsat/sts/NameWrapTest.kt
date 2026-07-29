@@ -1,6 +1,5 @@
 package com.rfsat.sts
 
-import android.graphics.Paint
 import com.rfsat.sts.ui.NameWrap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -8,21 +7,27 @@ import org.junit.Test
 
 class NameWrapTest {
 
-    /** Measures one unit per character, so "fits" is a question of length. */
-    private fun paintOf(): Paint = Paint()
+    /**
+     * Tests the PREDICATE form, never the Paint one.
+     *
+     * Under plain unit tests android.jar is stubbed and Paint.measureText
+     * returns 0.0f, so a test that measured with a real Paint concluded that
+     * every string fits, wrapped nothing, and proved nothing — which is how
+     * the first version of this test passed in a sandbox and failed in CI.
+     */
+    private val neverFits: (String) -> Boolean = { false }
+    private val alwaysFits: (String) -> Boolean = { true }
 
     @Test
     fun `a name that fits is left alone`() {
-        val p = paintOf()
-        val short = "Anschutz 1907"
-        assertEquals(short, NameWrap.wrapAtDash(short, p, 10_000f))
+        val short = "Anschutz 1907 — match rifle, 22 LR"
+        assertEquals(short, NameWrap.wrapAtDash(short, alwaysFits))
     }
 
     @Test
     fun `a long name breaks at the dash and nowhere else`() {
-        val p = paintOf()
         val long = "Anschutz 1907 — match rifle, 22 LR, 26in barrel"
-        val wrapped = NameWrap.wrapAtDash(long, p, 1f)
+        val wrapped = NameWrap.wrapAtDash(long, neverFits)
         assertEquals(1, wrapped.count { it == '\n' })
         assertEquals("Anschutz 1907", wrapped.substringBefore('\n'))
         assertTrue(wrapped.substringAfter('\n').startsWith("—"))
@@ -30,9 +35,8 @@ class NameWrapTest {
 
     @Test
     fun `a long name with no dash is not broken`() {
-        val p = paintOf()
         val long = "a name with no dash in it at all"
-        assertEquals(long, NameWrap.wrapAtDash(long, p, 1f))
+        assertEquals(long, NameWrap.wrapAtDash(long, neverFits))
     }
 
     @Test
@@ -51,6 +55,6 @@ class NameWrapTest {
     @Test
     fun `a name starting with the dash is left alone`() {
         assertEquals("— odd", NameWrap.shortName("— odd"))
-        assertEquals("— odd", NameWrap.wrapAtDash("— odd", paintOf(), 1f))
+        assertEquals("— odd", NameWrap.wrapAtDash("— odd", neverFits))
     }
 }

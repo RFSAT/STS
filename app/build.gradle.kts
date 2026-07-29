@@ -32,6 +32,25 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.12.2 — correction: NameWrapTest asserted nothing and said so
+        //          only in CI.
+        //   - Under plain unit tests android.jar is stubbed and, with
+        //     unitTests.isReturnDefaultValues = true, Paint.measureText
+        //     returns 0.0f. The test measured with a real Paint, so every
+        //     string "fitted", nothing was wrapped, and the logic under test
+        //     never ran.
+        //   - NameWrap.wrapAtDash now takes a PREDICATE, with the Paint form
+        //     as a thin overload over it. The decision is pure string logic
+        //     and only the measurement needs Android; keeping them apart is
+        //     what makes the decision testable.
+        //   - The offline harness's Paint stub measured text properly, which
+        //     is why this passed there and failed here. It now returns 0.0f
+        //     like the real one. Same lesson as the JUnit shim in 1.10.1: a
+        //     stub more capable than the environment it stands in for hides
+        //     exactly the failures it exists to catch. Verified by running
+        //     the old formulation against the corrected stub — it now fails
+        //     locally too.
+        //
         // 1.12.1 — correction: seven interface changes, all reported.
         //   - The shot controls are now two rows of identically sized
         //     buttons. They were weighted with wrap_content heights, so a
@@ -441,8 +460,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 23
-        versionName = "1.12.1"
+        versionCode = 24
+        versionName = "1.12.2"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
