@@ -29,10 +29,27 @@
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card" />
 
-        <TextView android:id="@+id/tvDetail"
+        <!-- Face detail in three parts: summary, an aligned parameter
+             table, then any caveats. The dimensions used to run inline as
+             prose — "Card 80 x 80 mm", "Aiming black 30.5 mm" — so nothing
+             lined up and the numbers could not be compared down the column.
+             Same treatment as the rules screen, sharing its row layout. -->
+        <TextView android:id="@+id/tvDetailHead"
             style="@style/Sts.Value"
             android:layout_marginTop="8dp"
             android:textSize="12sp" />
+
+        <TableLayout android:id="@+id/tblFace"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:shrinkColumns="1" />
+
+        <TextView android:id="@+id/tvDetailFoot"
+            style="@style/Sts.Value"
+            android:layout_marginTop="6dp"
+            android:textSize="12sp"
+            android:justificationMode="inter_word" />
 
         <LinearLayout
             android:layout_width="match_parent"

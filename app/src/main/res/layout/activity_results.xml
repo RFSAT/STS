@@ -121,9 +121,16 @@
                 android:justificationMode="inter_word" />
 
             <TextView style="@style/Sts.SectionHeading" android:text="Stage time (practical disciplines)" />
+            <!-- 13sp to sit with the rest of the body text on this screen,
+                 which runs 12-13sp. These two fields were on the platform's
+                 default EditText size, several points larger than everything
+                 around them, so they read as headings rather than as fields.
+                 13 rather than 12 because they are editable: text being typed
+                 into should not be the smallest thing on the screen. -->
             <EditText android:id="@+id/etTime"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:inputType="numberDecimal"
+                android:textSize="13sp"
                 android:hint="seconds"
                 android:autofillHints="" />
 
@@ -132,6 +139,7 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:inputType="textMultiLine"
                 android:minLines="2"
+                android:textSize="13sp"
                 android:hint="conditions, hold-off, anything worth remembering"
                 android:autofillHints="" />
 

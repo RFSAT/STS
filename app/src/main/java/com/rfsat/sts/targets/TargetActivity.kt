@@ -6,6 +6,7 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.R
@@ -91,20 +92,46 @@ class TargetActivity : BaseActivity() {
         binding.plot.face = face
         binding.plot.shots = emptyList()
         binding.btnDelete.isEnabled = face?.custom == true
-        binding.tvDetail.text = face?.let { f ->
-            buildString {
-                appendLine(f.summary())
-                appendLine("Card ${fmt(f.faceWidthMm)} × ${fmt(f.faceHeightMm)} mm")
-                if (f.blackDiameterMm > 0) appendLine("Aiming black ${fmt(f.blackDiameterMm)} mm")
-                if (f.hasInnerTen) appendLine("${f.innerTenLabel} ${fmt(f.innerTenDiameterMm)} mm")
-                f.ringPitchMm?.let { appendLine("Ring pitch ${fmt(it)} mm — decimal scoring available") }
-                if (!f.verified) appendLine(
-                    "⚠ Nominal published figures, not a governing body's own table. Verify before " +
-                        "quoting a score from this face."
-                )
-                if (f.notes.isNotBlank()) append(f.notes)
+        val f = face
+        if (f == null) {
+            binding.tvDetailHead.text = "No target selected."
+            binding.tblFace.removeAllViews()
+            binding.tvDetailFoot.text = ""
+            binding.tvDetailFoot.visibility = View.GONE
+            return
+        }
+
+        binding.tvDetailHead.text = f.summary()
+
+        val params = buildList {
+            add("Card" to "${fmt(f.faceWidthMm)} \u00d7 ${fmt(f.faceHeightMm)} mm")
+            add("Outer ring" to "${fmt(f.outerRadiusMm * 2)} mm")
+            if (f.blackDiameterMm > 0) add("Aiming black" to "${fmt(f.blackDiameterMm)} mm")
+            if (f.hasInnerTen) add(f.innerTenLabel to "${fmt(f.innerTenDiameterMm)} mm")
+            f.ringPitchMm?.let {
+                add("Ring pitch" to "${fmt(it)} mm \u2014 decimal scoring available")
             }
-        } ?: "No target selected."
+        }
+        binding.tblFace.removeAllViews()
+        for ((name, value) in params) {
+            val row = layoutInflater.inflate(R.layout.item_param_row, binding.tblFace, false)
+            row.findViewById<TextView>(R.id.tvParamName).text = name
+            row.findViewById<TextView>(R.id.tvParamValue).text = value
+            binding.tblFace.addView(row)
+        }
+
+        binding.tvDetailFoot.text = buildString {
+            if (!f.verified) {
+                append(
+                    "\u26a0 Nominal published figures, not a governing body's own table. Verify " +
+                        "before quoting a score from this face."
+                )
+                if (f.notes.isNotBlank()) { appendLine(); appendLine() }
+            }
+            if (f.notes.isNotBlank()) append(f.notes)
+        }
+        binding.tvDetailFoot.visibility =
+            if (binding.tvDetailFoot.text.isBlank()) View.GONE else View.VISIBLE
     }
 
     // ------------------------------------------------------------------

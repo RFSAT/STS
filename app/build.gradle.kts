@@ -32,6 +32,35 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.14.1 — correction: two presentation fixes, and a third static
+        //          gate that found a real error while being written.
+        //   - The Stage time and Notes fields on Results were on the
+        //     platform's default EditText size, several points larger than
+        //     the 12-13sp body text around them, so they read as headings.
+        //     Both are 13sp now: with the body range, but not the smallest
+        //     thing on the screen, which text being typed into should not be.
+        //   - The selected target face on the Targets screen lists its
+        //     dimensions in a two-column table, both columns left aligned,
+        //     sharing item_param_row.xml with the rules screen. They ran
+        //     inline as prose before — "Card 80 x 80 mm", "Aiming black 30.5
+        //     mm" — so nothing lined up and the numbers could not be read
+        //     down the column. The outer ring diameter is listed too; it was
+        //     not shown at all, and it is the figure the scale depends on.
+        //
+        //   NEW GATE: android widget types used by simple name must be
+        //   imported. Kotlin has no implicit android.* imports, and neither
+        //   the view-binding gate nor the offline harness can see this — the
+        //   activities are excluded from the harness because they need the
+        //   whole framework to compile.
+        //
+        //   Written because this very change introduced one:
+        //   findViewById<TextView> in TargetActivity, which had no TextView
+        //   import. The first version of the gate passed it, because the file
+        //   used android.widget.TextView fully qualified elsewhere and the
+        //   gate treated that as sufficient. It is not — a qualified use does
+        //   not make the bare name available. Corrected to look for
+        //   SIMPLE-NAME uses specifically, which then reported it.
+        //
         // 1.14.0 — feature: justified description text, and an aligned
         //          parameter table on the rules screen.
         //   - Sixteen descriptive paragraphs are now fully justified with
@@ -522,8 +551,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 26
-        versionName = "1.14.0"
+        versionCode = 27
+        versionName = "1.14.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -168,6 +168,40 @@ for f in files:
         ln = next((n for n, l in enumerate(lines, 1) if re.search(r'\bbinding\.' + u + r'\b', l)), 0)
         problems.append(f"{os.path.basename(f)}:{ln}  binding.{u} is not an id in {layout}.xml")
 
-print(f"{len(files)} Kotlin files checked by the semantic and view-binding gates")
+# ---- 5. android widget types used by simple name must be imported ----
+#
+# Kotlin has no implicit imports for the android.* packages, so referring to
+# TextView without importing it is a compile error. It is an easy one to
+# introduce when adding a findViewById to an activity that did not previously
+# need that type, and neither the view-binding gate nor the offline test
+# harness can see it: the activities are excluded from the harness because
+# they need the whole Android framework to compile at all.
+#
+# Restricted to a known list of widget types rather than every capitalised
+# name, because "is this a type that needs importing" is not decidable from
+# the source alone and a gate with false positives gets ignored.
+WIDGETS = [
+    "TextView", "Button", "EditText", "ImageView", "ImageButton", "TableRow",
+    "TableLayout", "LinearLayout", "FrameLayout", "Spinner", "CheckBox",
+    "RadioButton", "SeekBar", "ProgressBar", "ScrollView", "ListView",
+    "GridLayout", "Switch", "ArrayAdapter", "Toast",
+]
+for f in files:
+    code = strip(open(f).read())
+    for w in WIDGETS:
+        # A SIMPLE-NAME use: not preceded by a dot or a word character, so
+        # android.widget.TextView does not count. That distinction is the
+        # whole check — a fully qualified use elsewhere in the file does NOT
+        # make the bare name available, and treating it as if it did made an
+        # earlier version of this gate pass over a genuine missing import.
+        m = re.search(r'(?<![.\w])' + w + r'\b', code)
+        if not m: continue
+        if re.search(r'^import\s+[\w.]*\.' + w + r'$', code, re.M): continue
+        if re.search(r'^import\s+[\w.]*\.' + w + r'\s+as\b', code, re.M): continue
+        if re.search(r'\b(class|object|interface)\s+' + w + r'\b', code): continue
+        ln = code.count('\n', 0, m.start()) + 1
+        problems.append(f"{os.path.basename(f)}:{ln}  {w} is used by simple name but not imported")
+
+print(f"{len(files)} Kotlin files checked by the semantic, view-binding and import gates")
 print(("PROBLEMS:\n  "+"\n  ".join(problems)) if problems else "No problems found.")
 sys.exit(1 if problems else 0)
