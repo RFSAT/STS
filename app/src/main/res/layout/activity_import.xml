@@ -32,7 +32,7 @@
             android:layout_gravity="bottom"
             android:background="#AA000000"
             android:padding="8dp"
-            android:textColor="#FFFFFF"
+            android:textColor="?attr/colorAccent"
             android:textSize="12sp"
             android:maxLines="5" />
     </FrameLayout>
@@ -52,7 +52,8 @@
 
             <Button android:id="@+id/btnPickShot"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Photo of the shot target" />
+                android:text="Photo of the shot target"
+                style="@style/Sts.ActionButton" />
 
             <Button android:id="@+id/btnPickClean"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -88,7 +89,8 @@
 
             <Button android:id="@+id/btnIdentify"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Identify target and register" />
+                android:text="Identify target and register"
+                style="@style/Sts.ActionButton" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -101,7 +103,8 @@
 
             <Button android:id="@+id/btnAutoDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Auto-detect the target" />
+                android:text="Auto-detect the target"
+                style="@style/Sts.ActionButton" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -121,7 +124,8 @@
                 android:orientation="horizontal" android:layout_marginTop="8dp">
                 <Button android:id="@+id/btnRegister"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Register" />
+                    android:layout_height="wrap_content" android:text="Register"
+                style="@style/Sts.ActionButton" />
                 <Button android:id="@+id/btnUndoCorner"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Reset"
@@ -183,7 +187,8 @@
 
             <Button android:id="@+id/btnDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Detect the hits and score them" />
+                android:text="Detect the hits and score them"
+                style="@style/Sts.ActionButton" />
 
             <TextView android:id="@+id/tvResult"
                 style="@style/Sts.Value"
@@ -202,7 +207,8 @@
             <Button android:id="@+id/btnResults"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="Open the full results" />
+                android:text="Open the full results"
+                style="@style/Sts.ActionButton" />
 
         </LinearLayout>
     </ScrollView>

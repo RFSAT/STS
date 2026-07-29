@@ -173,7 +173,8 @@
             <Button android:id="@+id/btnSave"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Save the active profiles" />
+                android:text="Save the active profiles"
+                style="@style/Sts.ActionButton" />
 
             <!-- ===== Elsewhere ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Elsewhere" />

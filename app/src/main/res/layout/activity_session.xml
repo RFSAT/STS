@@ -43,7 +43,7 @@
             android:layout_gravity="bottom"
             android:background="#AA000000"
             android:padding="8dp"
-            android:textColor="#FFFFFF"
+            android:textColor="?attr/colorAccent"
             android:textSize="12sp"
             android:maxLines="4" />
     </FrameLayout>
@@ -90,7 +90,8 @@
 
             <Button android:id="@+id/btnIdentify"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Identify target and register" />
+                android:text="Identify target and register"
+                style="@style/Sts.ActionButton" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -103,7 +104,8 @@
 
             <Button android:id="@+id/btnAutoDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Auto-detect the target" />
+                android:text="Auto-detect the target"
+                style="@style/Sts.ActionButton" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -123,7 +125,8 @@
                 android:orientation="horizontal" android:layout_marginTop="8dp">
                 <Button android:id="@+id/btnRegister"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Register" />
+                    android:layout_height="wrap_content" android:text="Register"
+                style="@style/Sts.ActionButton" />
                 <Button android:id="@+id/btnUndoCorner"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Reset"
@@ -178,7 +181,8 @@
                  live-capture workflow to find it. -->
             <Button android:id="@+id/btnImport"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Upload a target photo to score" />
+                android:text="Upload a target photo to score"
+                style="@style/Sts.ActionButton" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -190,17 +194,20 @@
 
             <Button android:id="@+id/btnReference"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Capture clean target (reference)" />
+                android:text="Capture clean target (reference)"
+                style="@style/Sts.ActionButton" />
 
             <Button android:id="@+id/btnLive"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Start live detection" />
+                android:text="Start live detection"
+                style="@style/Sts.ActionButton" />
 
             <Button android:id="@+id/btnScoreNow"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Score the target now (single frame)" />
+                android:text="Score the target now (single frame)"
+                style="@style/Sts.ActionButton" />
 
             <LinearLayout
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -217,7 +224,8 @@
 
             <Button android:id="@+id/btnResults"
                     android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:text="Results" />
+                    android:layout_height="wrap_content" android:text="Results"
+                style="@style/Sts.ActionButton" />
             </LinearLayout>
 
             <CheckBox android:id="@+id/cbSighter"

@@ -32,6 +32,36 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.15.0 — feature: the interface follows the theme, and buttons
+        //          are consistent.
+        //   - 18 buttons across Import, Session, Targets, Rules and Settings
+        //     had no style at all and were rendering at the platform's own
+        //     size and in capitals, next to styled ones at 14sp. Every button
+        //     in the app now carries a style, and all three button styles are
+        //     14sp.
+        //   - The status text over the viewfinder and over an imported photo
+        //     was hardcoded #FFFFFF, and the registration overlay was a fixed
+        //     gold box with white handles and white labels. All of it takes
+        //     colorAccent now.
+        //   - The crosshair follows the theme too. This one is not cosmetic:
+        //     under night-red a white crosshair is the single brightest thing
+        //     on a screen whose whole purpose is preserving dark adaptation,
+        //     and it undoes what the theme is for.
+        //   - Catalogue list rows lost the platform's listPreferredItemHeight
+        //     minimum and half their vertical padding, so more of a long
+        //     firearm or ammunition list fits on screen.
+        //
+        //   DELIBERATELY NOT THEMED, so it is not filed as a miss:
+        //     - The target plot. Its colours are representational — paper
+        //       #FAFAF5, ink #1A1A1A — because it depicts a real card. Tinting
+        //       it red would make the drawing wrong rather than themed.
+        //     - The detection markers on the registration overlay. They are a
+        //       different colour from the box because they mean something
+        //       different: what the app FOUND, as against what the user is
+        //       placing. Recolouring them to the accent would lose that.
+        //     - The dark scrims behind overlay text, which exist to make
+        //       anything legible over a photograph of unknown brightness.
+        //
         // 1.14.1 — correction: two presentation fixes, and a third static
         //          gate that found a real error while being written.
         //   - The Stage time and Notes fields on Results were on the
@@ -551,8 +581,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 27
-        versionName = "1.14.1"
+        versionCode = 28
+        versionName = "1.15.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

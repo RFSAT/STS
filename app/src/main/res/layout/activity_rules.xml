@@ -62,7 +62,8 @@
             android:layout_marginTop="6dp">
             <Button android:id="@+id/btnUse"
                 android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="wrap_content" android:text="Use this" />
+                android:layout_height="wrap_content" android:text="Use this"
+                style="@style/Sts.ActionButton" />
             <Button android:id="@+id/btnEdit"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Copy &amp; edit"

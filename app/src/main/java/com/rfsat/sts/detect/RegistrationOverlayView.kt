@@ -87,35 +87,48 @@ class RegistrationOverlayView @JvmOverloads constructor(
     private val minBoxSourcePx get() = 24.0
 
     // ---- paints ----
-    private val gold = Color.parseColor("#FFC107")
+    /**
+     * Overlay chrome follows the THEME, not a fixed gold.
+     *
+     * This is drawn over the live viewfinder, and under the night-red theme a
+     * gold box with white handles and white labels is the brightest thing on
+     * a screen whose entire purpose is to preserve dark adaptation. The
+     * detection markers below keep their own colour: those encode a meaning
+     * — what the app found, as against what the user is placing — and
+     * recolouring them to match the box would lose that distinction.
+     */
+    private val accent = themeAccent()
+
     private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = gold; style = Paint.Style.STROKE; strokeWidth = 3f * density
+        color = accent; style = Paint.Style.STROKE; strokeWidth = 3f * density
     }
     private val handleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = gold; style = Paint.Style.FILL
+        color = accent; style = Paint.Style.FILL
     }
+    /** A dark ring round each handle, not a white one: it separates the
+     *  handle from a pale card without adding a bright source. */
     private val handleRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 2f * density
+        color = Color.argb(190, 0, 0, 0); style = Paint.Style.STROKE; strokeWidth = 2f * density
     }
     private val scrim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#66000000") }
     private val frameGhost = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#55FFC107"); style = Paint.Style.STROKE; strokeWidth = 2f * density
+        color = alpha(accent, 0x55); style = Paint.Style.STROKE; strokeWidth = 2f * density
     }
     private val guide = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#88FFC107"); style = Paint.Style.STROKE; strokeWidth = 1f * density
+        color = alpha(accent, 0x88); style = Paint.Style.STROKE; strokeWidth = 1f * density
         pathEffect = android.graphics.DashPathEffect(floatArrayOf(8f, 8f), 0f)
     }
     private val markPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = gold; style = Paint.Style.STROKE; strokeWidth = 4f
+        color = accent; style = Paint.Style.STROKE; strokeWidth = 4f
     }
     private val markFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#66FFC107"); style = Paint.Style.FILL
+        color = alpha(accent, 0x66); style = Paint.Style.FILL
     }
     private val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = gold; style = Paint.Style.STROKE; strokeWidth = 3f
+        color = accent; style = Paint.Style.STROKE; strokeWidth = 3f
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; textSize = 34f; isFakeBoldText = true
+        color = accent; textSize = 34f; isFakeBoldText = true
     }
     private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#AA000000"); style = Paint.Style.FILL
@@ -217,6 +230,18 @@ class RegistrationOverlayView @JvmOverloads constructor(
     }
 
     // ---- source <-> view mapping, both directions and both fits ----
+
+    /** colorAccent from the active theme, falling back to the dark theme's
+     *  gold if the attribute cannot be resolved. */
+    private fun themeAccent(): Int {
+        val tv = android.util.TypedValue()
+        return if (context.theme.resolveAttribute(
+                androidx.appcompat.R.attr.colorAccent, tv, true)) tv.data
+        else Color.parseColor("#FFC107")
+    }
+
+    private fun alpha(colour: Int, a: Int): Int =
+        Color.argb(a, Color.red(colour), Color.green(colour), Color.blue(colour))
 
     private fun srcScale(): Float = when (sourceFit) {
         SourceFit.CENTER_CROP -> max(width.toFloat() / srcWidth, height.toFloat() / srcHeight)

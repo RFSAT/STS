@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.util.TypedValue
 import android.util.AttributeSet
 import android.view.View
 import kotlin.math.min
@@ -34,10 +35,17 @@ class CrosshairView @JvmOverloads constructor(
      *  thing being aimed at — a ten ring is a small dot on some faces. */
     private val gapFraction = 0.018f
 
+    /**
+     * The crosshair takes the theme's accent, so it is gold on the dark
+     * theme, dark green on the day one, and RED under night-red — which is
+     * the point of that theme: a white crosshair on a red-preserving screen
+     * is the one bright thing on it, and undoes the dark adaptation the theme
+     * exists to protect.
+     */
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 2f
-        color = Color.argb(210, 255, 255, 255)
+        color = withAlpha(themeAccent(context), 210)
     }
 
     /** Drawn under the white line, one pixel wider, so the crosshair stays
@@ -51,6 +59,20 @@ class CrosshairView @JvmOverloads constructor(
     init {
         isClickable = false
         isFocusable = false
+    }
+
+    private companion object {
+        /** colorAccent from the theme, or the dark theme's gold if the
+         *  attribute is somehow missing. */
+        fun themeAccent(context: Context): Int {
+            val tv = TypedValue()
+            return if (context.theme.resolveAttribute(
+                    androidx.appcompat.R.attr.colorAccent, tv, true)) tv.data
+            else 0xFFC9A24B.toInt()
+        }
+
+        fun withAlpha(colour: Int, alpha: Int): Int =
+            Color.argb(alpha, Color.red(colour), Color.green(colour), Color.blue(colour))
     }
 
     override fun onDraw(canvas: Canvas) {
