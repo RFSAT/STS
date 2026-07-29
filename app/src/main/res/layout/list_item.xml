@@ -13,4 +13,5 @@
     android:paddingBottom="12dp"
     android:textSize="15sp"
     android:textColor="?android:attr/textColorPrimary"
+    android:lineSpacingExtra="1dp"
     android:gravity="center_vertical" />

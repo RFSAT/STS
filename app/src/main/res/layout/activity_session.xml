@@ -29,6 +29,13 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <!-- Above the registration overlay so it is never hidden by it, and
+             below the status text so a long message still reads. -->
+        <com.rfsat.sts.ui.CrosshairView
+            android:id="@+id/crosshair"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="match_parent"

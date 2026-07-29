@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.R
+import com.rfsat.sts.ui.WrappingNameAdapter
 import com.rfsat.sts.backup.AppBackup
 import com.rfsat.sts.databinding.ActivityProfileBinding
 import com.rfsat.sts.log.LogActivity
@@ -328,7 +329,7 @@ class ProfileActivity : BaseActivity() {
                 spBrand.selectedItem?.toString() ?: RifleCatalog.ALL,
                 spType.selectedItem?.toString() ?: RifleCatalog.ALL
             )
-            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            list.adapter = WrappingNameAdapter(this, shown.map { it.label() })
             tvCount.text = "${shown.size} of ${RifleCatalog.all.size} firearms"
         }
         val onFilter = onSelected { refilter() }
@@ -377,7 +378,7 @@ class ProfileActivity : BaseActivity() {
                 spWeight.selectedItem?.toString() ?: AmmoCatalog.ALL,
                 spType.selectedItem?.toString() ?: AmmoCatalog.ALL
             )
-            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            list.adapter = WrappingNameAdapter(this, shown.map { it.label() })
             tvCount.text = "${shown.size} of ${AmmoCatalog.all.size} loads"
         }
         val onFilter = onSelected { refilter() }
@@ -423,7 +424,7 @@ class ProfileActivity : BaseActivity() {
                 spMag.selectedItem?.toString() ?: ScopeCatalog.ALL,
                 spFamily.selectedItem?.toString() ?: ScopeCatalog.ALL
             )
-            list.adapter = ArrayAdapter(this, R.layout.list_item, shown.map { it.label() })
+            list.adapter = WrappingNameAdapter(this, shown.map { it.label() })
             tvCount.text = "${shown.size} of ${ScopeCatalog.all.size} sights"
         }
         val onFilter = onSelected { refilter() }

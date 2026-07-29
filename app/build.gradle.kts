@@ -32,6 +32,32 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.12.1 — correction: seven interface changes, all reported.
+        //   - The shot controls are now two rows of identically sized
+        //     buttons. They were weighted with wrap_content heights, so a
+        //     label that wrapped to two lines made its own button taller than
+        //     its neighbours; labels are short now for the same reason.
+        //   - DELETE for a detected shot. It acts on the SELECTED shot rather
+        //     than the last one, because detection order has nothing to do
+        //     with shooting order and "the last one" would be the wrong shot
+        //     as often as not.
+        //   - A centred crosshair over the viewfinder. Worth more than
+        //     tidiness here: the flatter the card sits in frame, the less the
+        //     ring fit has to correct, and residual perspective is the one
+        //     error the scorer cannot fully undo.
+        //   - Every remaining text action in Settings is a real button, and
+        //     its section headings went from 16sp to 19sp — they were
+        //     competing with the body text they introduce rather than
+        //     standing above it.
+        //   - Firearm, ammunition and sight lists break a name at its dash
+        //     when it will not fit on one line, so the names line up down the
+        //     left and the qualifiers sit underneath. Measured at draw time
+        //     against the row's real width and the user's own font scale,
+        //     and only broken when the break is actually needed.
+        //   - The home screen shows only the part before the dash. A full
+        //     catalogue label carries type, calibre, barrel and twist, which
+        //     wrapped that aligned column into an unreadable block.
+        //
         // 1.12.0 — feature and correction: the real reason hole detection
         //          "generally fails", plus the photo overlay and real buttons.
         //
@@ -415,8 +441,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 22
-        versionName = "1.12.0"
+        versionCode = 23
+        versionName = "1.12.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

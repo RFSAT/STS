@@ -49,18 +49,18 @@
                 <Button android:id="@+id/btnSaveSet"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Save as…"
-                    style="@style/Sts.TextButton" />
+                    style="@style/Sts.ActionButton" />
                 <Button android:id="@+id/btnDeleteSet"
                     android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Delete"
-                    style="@style/Sts.TextButton" />
+                    style="@style/Sts.ActionButton" />
             </LinearLayout>
 
             <!-- ===== Firearm ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Firearm" />
             <Button android:id="@+id/btnRifleCatalog"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Pick from the catalogue…" />
 
             <TextView style="@style/Sts.FieldLabel" android:text="Name" />
@@ -95,7 +95,7 @@
             <TextView style="@style/Sts.SectionHeading" android:text="Load" />
             <Button android:id="@+id/btnAmmoCatalog"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Pick from the catalogue…" />
 
             <TextView style="@style/Sts.FieldLabel" android:text="Name" />
@@ -125,7 +125,7 @@
             <TextView style="@style/Sts.SectionHeading" android:text="Sight" />
             <Button android:id="@+id/btnScopeCatalog"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Pick from the catalogue…" />
 
             <TextView style="@style/Sts.FieldLabel" android:text="Name" />
@@ -181,23 +181,23 @@
             <TextView style="@style/Sts.SectionHeading" android:text="Elsewhere" />
             <Button android:id="@+id/btnRules"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Competition rules…" />
             <Button android:id="@+id/btnLog"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Diagnostic log…" />
             <Button android:id="@+id/btnBackup"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Export a backup of everything" />
             <Button android:id="@+id/btnRestore"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Restore from a backup" />
             <Button android:id="@+id/btnReset"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                style="@style/Sts.TextButton"
+                style="@style/Sts.ActionButton"
                 android:text="Reset the active profiles to defaults" />
 
         </LinearLayout>

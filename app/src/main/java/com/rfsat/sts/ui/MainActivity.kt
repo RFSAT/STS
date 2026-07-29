@@ -83,9 +83,13 @@ class MainActivity : BaseActivity() {
 
         binding.tvSetup.text = buildString {
             appendLine("Profile set : $setName")
-            appendLine("Firearm     : ${profiles.getRifle().label()}")
-            appendLine("Load        : ${profiles.getBullet().name}")
-            appendLine("Sight       : ${profiles.getScope().label()}")
+            // Short names here. A full catalogue label carries the type,
+            // the calibre, the barrel and the twist, which wraps this aligned
+            // column into an unreadable block on a phone. The qualifiers are
+            // one tap away under Settings, where they are shown in full.
+            appendLine("Firearm     : ${NameWrap.shortName(profiles.getRifle().label())}")
+            appendLine("Load        : ${NameWrap.shortName(profiles.getBullet().name)}")
+            appendLine("Sight       : ${NameWrap.shortName(profiles.getScope().label())}")
             appendLine("Target      : ${face.name}")
             appendLine("Rules       : ${rule.name}")
             append("Distance    : ${UnitsManager.formatDistance(rule.distanceM)}")

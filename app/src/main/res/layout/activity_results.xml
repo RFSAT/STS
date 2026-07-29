@@ -38,39 +38,44 @@
                 android:layout_height="360dp"
                 android:background="@drawable/bg_card" />
 
+            <!-- Two rows of identically sized buttons.
+
+                 Every one of these is the same width and the same height, so
+                 the row reads as a set of equal controls. They were weighted
+                 with wrap_content heights before, which meant a label that
+                 wrapped to two lines made its own button taller than its
+                 neighbours. Labels are kept short for the same reason. -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="6dp">
                 <Button android:id="@+id/btnAddMode"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    style="@style/Sts.ActionButton"
-                    android:text="Add shot" />
+                    style="@style/Sts.GridButton"
+                    android:text="Add" />
                 <Button android:id="@+id/btnMoveMode"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    style="@style/Sts.ActionButton"
-                    android:text="Move shots" />
-                <Button android:id="@+id/btnFullCard"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    style="@style/Sts.ActionButton"
-                    android:text="Show whole card" />
-                <Button android:id="@+id/btnResetZoom"
-                    android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    style="@style/Sts.ActionButton"
-                    android:text="Reset view" />
+                    style="@style/Sts.GridButton"
+                    android:text="Move" />
+                <Button android:id="@+id/btnDeleteShot"
+                    style="@style/Sts.GridButton"
+                    android:text="Delete" />
             </LinearLayout>
 
-            <Button android:id="@+id/btnShowPhoto"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                style="@style/Sts.ActionButton"
-                android:text="Show my photo" />
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+                <Button android:id="@+id/btnFullCard"
+                    style="@style/Sts.GridButton"
+                    android:text="Whole card" />
+                <Button android:id="@+id/btnResetZoom"
+                    style="@style/Sts.GridButton"
+                    android:text="Reset view" />
+                <Button android:id="@+id/btnShowPhoto"
+                    style="@style/Sts.GridButton"
+                    android:text="My photo" />
+            </LinearLayout>
 
             <TextView style="@style/Sts.SectionHeading" android:text="Sight correction" />
             <TextView android:id="@+id/tvCorrection"

@@ -41,8 +41,8 @@ class ResultsActivity : BaseActivity() {
 
         binding.btnAddMode.setOnClickListener {
             addMode = !addMode
-            if (addMode) { moveMode = false; binding.plot.editMode = false; binding.btnMoveMode.text = "Move shots" }
-            binding.btnAddMode.text = if (addMode) "Tap to place" else "Add shot"
+            if (addMode) { moveMode = false; binding.plot.editMode = false; binding.btnMoveMode.text = "Move" }
+            binding.btnAddMode.text = if (addMode) "Placing" else "Add"
             notifyUser(
                 if (addMode) "Tap where the hole is. The app scores it exactly as it would a detected one."
                 else "Tap-to-add is off."
@@ -51,20 +51,42 @@ class ResultsActivity : BaseActivity() {
         binding.btnMoveMode.setOnClickListener {
             moveMode = !moveMode
             if (moveMode) addMode = false
-            binding.btnAddMode.text = "Add shot"
-            binding.btnMoveMode.text = if (moveMode) "Done moving" else "Move shots"
+            binding.btnAddMode.text = "Add"
+            binding.btnMoveMode.text = if (moveMode) "Done" else "Move"
             binding.plot.editMode = moveMode
             notifyUser(
                 if (moveMode) "Drag any shot to reposition it. It is rescored where you drop it."
                 else "Move mode off."
             )
         }
+        // Deleting needs a shot chosen first, and the plot already has a
+        // selection: a tap outside add- and move-mode picks the nearest shot.
+        // Deleting "the last one" instead would be the wrong shot as often as
+        // not, since detection order has nothing to do with shooting order.
+        binding.btnDeleteShot.setOnClickListener {
+            val shots = ScoringSession.state.shots
+            val idx = binding.plot.selectedShotIndex
+            if (idx == null || idx !in shots.indices) {
+                notifyUser(
+                    "Tap a shot on the plot first — with Add and Move both off — and it will be " +
+                        "highlighted. Delete then removes that one."
+                )
+                return@setOnClickListener
+            }
+            val shot = shots[idx]
+            ScoringSession.removeShot(shot)
+            binding.plot.selectedShotIndex = null
+            refresh()
+            notifyUser("Removed shot %d, worth %s, at %.1f, %.1f mm."
+                .format(shot.index, shot.displayValue, shot.xMm, shot.yMm))
+        }
+
         binding.plot.onShotMoved = { shot, x, y -> moveShot(shot, x, y) }
 
         binding.btnFullCard.setOnClickListener {
             binding.plot.fitScoringAreaOnly = !binding.plot.fitScoringAreaOnly
             binding.btnFullCard.text =
-                if (binding.plot.fitScoringAreaOnly) "Show whole card" else "Show scoring area"
+                if (binding.plot.fitScoringAreaOnly) "Whole card" else "Scoring area"
         }
         binding.btnResetZoom.setOnClickListener { binding.plot.resetZoom() }
 
@@ -83,7 +105,7 @@ class ResultsActivity : BaseActivity() {
             }
             binding.plot.showPhoto = !binding.plot.showPhoto
             binding.btnShowPhoto.text =
-                if (binding.plot.showPhoto) "Show the target template" else "Show my photo"
+                if (binding.plot.showPhoto) "Template" else "My photo"
         }
         binding.btnShowPhoto.isEnabled = ScoredPhoto.available
 
