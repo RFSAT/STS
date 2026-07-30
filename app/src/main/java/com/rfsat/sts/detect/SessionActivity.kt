@@ -230,7 +230,7 @@ class SessionActivity : BaseActivity() {
         binding.btnReference.setOnClickListener { doSetReference() }
         binding.spResolution.adapter = adapter(CaptureResolution.values().map { it.label })
         binding.spResolution.setSelection(CaptureResolution.values().indexOf(captureResolution))
-        binding.spResolution.onItemSelectedListener = onSelectedIndex { i ->
+        binding.spResolution.onItemSelectedListener = onSelected { i ->
             val chosen = CaptureResolution.values()[i]
             if (chosen != captureResolution) {
                 captureResolution = chosen
@@ -240,7 +240,7 @@ class SessionActivity : BaseActivity() {
                     "Analysis resolution set to ${chosen.label}. The camera has been rebound and " +
                         "the registration cleared — register the card again."
                 )
-                startCamera()
+                startCameraIfPermitted()
                 refreshStatus()
             }
         }

@@ -202,6 +202,58 @@ for f in files:
         ln = code.count('\n', 0, m.start()) + 1
         problems.append(f"{os.path.basename(f)}:{ln}  {w} is used by simple name but not imported")
 
-print(f"{len(files)} Kotlin files checked by the semantic, view-binding and import gates")
+# ---- 6. a private function may only be called from its own file ----
+#
+# Copying a few lines from one activity to another and keeping a helper name
+# that only exists in the original is the single most repeated mistake in this
+# project — it has reached CI three times. The offline harness cannot catch it
+# because the activities need the whole Android framework to compile, so they
+# are excluded from it.
+#
+# This check is sound rather than heuristic: a private function is visible
+# only inside its own file, so calling one by an unqualified name from a
+# DIFFERENT file is always an error, never a style question. It says nothing
+# about names that exist nowhere at all — that needs a compiler.
+# Names that are also ordinary members of the Kotlin standard library, so a
+# bare call to one inside a builder or a lambda receiver means the stdlib
+# member and not some private function of ours that happens to share a name.
+STDLIB_COLLISIONS = {
+    "add", "remove", "set", "get", "clear", "close", "contains", "put",
+    "invoke", "apply", "also", "let", "run", "with", "to", "copy", "toString",
+    "equals", "hashCode", "plus", "minus", "times", "div", "compareTo",
+}
+
+private_funs = {}          # name -> set of files declaring it
+for f in files:
+    code = strip(open(f).read())
+    for m in re.finditer(r'\bprivate\s+(?:inline\s+|suspend\s+)*fun\s+(?:<[^>]*>\s*)?(\w+)\s*\(', code):
+        private_funs.setdefault(m.group(1), set()).add(f)
+
+for f in files:
+    code = strip(open(f).read())
+    lines = code.splitlines()
+    # every function this file can legitimately reach by a bare name
+    declared_here = set(re.findall(r'\bfun\s+(?:<[^>]*>\s*)?(\w+)\s*\(', code))
+    # A bare name in this file may also be a PARAMETER or a PROPERTY holding a
+    # function — FrameSource.start takes an onFrame lambda, and calling it is
+    # not a call to SessionActivity's private onFrame. Anything bound by a
+    # name here shadows the question entirely.
+    bound_here = set(re.findall(r'\b(?:val|var)\s+(\w+)', code))
+    bound_here |= set(re.findall(r'(?:fun[^(]*\(|,\s*)(\w+)\s*:\s*\(', code))
+    for name, owners in private_funs.items():
+        if f in owners or name in declared_here or name in bound_here:
+            continue
+        if name in STDLIB_COLLISIONS:
+            continue
+        # an unqualified call: not preceded by a dot, and not a declaration
+        call = re.search(r'(?<![.\w])' + name + r'\s*[({]', code)
+        if not call:
+            continue
+        ln = code.count('\n', 0, call.start()) + 1
+        where = ", ".join(sorted(os.path.basename(o) for o in owners))
+        problems.append(
+            f"{os.path.basename(f)}:{ln}  {name}() is private to {where} and cannot be called here")
+
+print(f"{len(files)} Kotlin files checked by the semantic, view-binding, import and visibility gates")
 print(("PROBLEMS:\n  "+"\n  ".join(problems)) if problems else "No problems found.")
 sys.exit(1 if problems else 0)

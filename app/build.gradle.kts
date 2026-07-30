@@ -32,6 +32,37 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.19.1 — correction: two compile errors that have been in the
+        //          tree since 1.18.0, through two releases.
+        //
+        //   Both came from copying the resolution spinner out of
+        //   ImportActivity into SessionActivity and keeping the original's
+        //   helper names: onSelectedIndex, which is private to another file,
+        //   and startCamera(), which here is called startCameraIfPermitted.
+        //
+        //   THE OFFLINE HARNESS CANNOT SEE THIS. The activities are excluded
+        //   from it because they need the whole Android framework to compile,
+        //   so anything wrong inside one reaches CI untouched. That is now
+        //   three times.
+        //
+        //   NEW GATE, and a sound one rather than a heuristic: a private
+        //   function is visible only inside its own file, so an unqualified
+        //   call to one from a DIFFERENT file is always an error. It reports
+        //   exactly the failure above. Verified by putting the error back —
+        //   "onSelectedIndex() is private to ProfileActivity.kt and cannot be
+        //   called here" — and then restoring.
+        //
+        //   Its first run found three FALSE positives, all now excluded:
+        //   add() inside a buildList, which is the standard library's and not
+        //   Logger's; and onFrame in FrameSource, which is a lambda parameter
+        //   rather than SessionActivity's private function of that name.
+        //
+        //   WHAT IT STILL CANNOT CATCH: a call to a name that exists nowhere
+        //   at all, which is what startCamera() was. That needs a compiler and
+        //   an android.jar. Generating view-binding stubs from the layouts
+        //   would make the activities compilable offline and close this
+        //   properly; it is the obvious next step for the toolchain.
+        //
         // 1.19.0 — feature: 9x19 service pistols and factory loads.
         //
         //   FIREARMS. Beretta 92X Performance and Performance Defensive
@@ -805,8 +836,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 33
-        versionName = "1.19.0"
+        versionCode = 34
+        versionName = "1.19.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
