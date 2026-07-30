@@ -28,7 +28,14 @@ object RifleCatalog {
         val twistRateInPerTurn: Double,
         val zeroDistanceM: Double
     ) {
-        fun label(): String = "$brand $model \u2014 $type, ${barrelLengthIn}\" barrel, 1:${twistRateInPerTurn.toInt()}\""
+        fun label(): String =
+            "$brand $model \u2014 $type, ${trim(barrelLengthIn)}\" barrel, 1:${trim(twistRateInPerTurn)}\""
+
+        /** Drops a trailing .0 but keeps real decimals. Service pistols are
+         *  rifled 1 turn in 250 mm, which is 1:9.84 inches — truncating that
+         *  to an integer displayed it as 1:9, a rate nothing uses. */
+        private fun trim(v: Double): String =
+            if (v == v.toLong().toDouble()) v.toLong().toString() else "%.2f".format(v).trimEnd('0').trimEnd('.')
         /** VTB carries the type as a display string; STS additionally keeps
          *  a [FirearmType] and a calibre label, both derived here so the
          *  ported entry list needs no edits. */
@@ -38,14 +45,32 @@ object RifleCatalog {
                 type.contains("Air", true) -> FirearmType.AIR_RIFLE
                 type.contains("Rimfire", true) && model.contains("pistol", true) -> FirearmType.RIMFIRE_PISTOL
                 type.contains("Rimfire", true) -> FirearmType.RIMFIRE_RIFLE
+                // The TYPE as well as the model, so a service pistol does not
+                // have to carry the word "pistol" in its name to be classed
+                // as one. "Glock 17 Gen5" would otherwise have come out a
+                // centrefire rifle, and with it the wrong default sight
+                // height and zero.
+                type.contains("pistol", true) -> FirearmType.CENTREFIRE_PISTOL
                 model.contains("pistol", true) -> FirearmType.CENTREFIRE_PISTOL
                 else -> FirearmType.CENTREFIRE_RIFLE
             }
 
-        /** The calibre as it appears in the model name, e.g. ".22LR". */
+        /**
+         * The calibre as it appears in the model name, e.g. ".22LR" or
+         * "9x19".
+         *
+         * The metric form is matched FIRST and case-sensitively, because a
+         * case-insensitive pattern reads "Glock 19X 9x19" as "19X 9" — it
+         * finds the model number, an upper-case X and the leading 9 of the
+         * calibre before it ever reaches the calibre itself.
+         */
         val caliber: String
-            get() = Regex("\\.\\d+\\s*(LR|WMR|Rem|Win)?|\\d+\\.\\d+\\s*mm", RegexOption.IGNORE_CASE)
-                .find(model)?.value?.trim() ?: type
+            get() = Regex("(?<![\\dA-Za-z])\\d{1,2}x\\d{2}(?![\\d])").find(model)?.value
+                ?: Regex(
+                    "\\.\\d+\\s*(LR|WMR|Rem|Win)?|\\d+\\.\\d+\\s*mm",
+                    RegexOption.IGNORE_CASE
+                ).find(model)?.value?.trim()
+                ?: type
 
         fun toRifleProfile(): RifleProfile = RifleProfile(
             name = "$brand $model",
@@ -116,7 +141,46 @@ object RifleCatalog {
     )
 
     /** The VTB block plus the STS additions. */
-    val all: List<Entry> get() = entries + stsAdditions
+    /**
+     * Service pistols in 9x19.
+     *
+     * Barrel lengths are the manufacturers' own published figures. Twist is
+     * 1 turn in 250 mm — 9.84 inches — for both makers: Beretta publishes the
+     * 92 series rifling as 250 mm, and Glock's 9 mm barrels are the same
+     * pitch. It is quoted here in inches to match the rest of the catalogue.
+     *
+     * Zero distance is set at 25 m, the ISSF and IPSC precision distance,
+     * rather than the 10 m used for air or the 50 m used for rimfire.
+     *
+     * The Glock line is listed by model number without a generation, because
+     * the barrel and its twist do not change between generations — only the
+     * frame, the trigger and the sights do, and none of those are in this
+     * table.
+     */
+    private val pistols9mm: List<Entry> = listOf(
+        // ---- Beretta. 92X Performance first, as asked. ----
+        Entry("Beretta", "92X Performance 9x19", "Centrefire pistol", 4.9, 9.84, 25.0),
+        Entry("Beretta", "92X Performance Defensive 9x19", "Centrefire pistol", 4.9, 9.84, 25.0),
+        Entry("Beretta", "92X Full Size 9x19", "Centrefire pistol", 4.7, 9.84, 25.0),
+        Entry("Beretta", "92X Centurion 9x19", "Centrefire pistol", 4.3, 9.84, 25.0),
+        Entry("Beretta", "92X Compact 9x19", "Centrefire pistol", 4.3, 9.84, 25.0),
+        Entry("Beretta", "92FS 9x19", "Centrefire pistol", 4.9, 9.84, 25.0),
+
+        // ---- Glock, 9x19 only ----
+        Entry("Glock", "17 9x19", "Centrefire pistol", 4.49, 9.84, 25.0),
+        Entry("Glock", "17L 9x19", "Centrefire pistol", 6.02, 9.84, 25.0),
+        Entry("Glock", "19 9x19", "Centrefire pistol", 4.02, 9.84, 25.0),
+        Entry("Glock", "19X 9x19", "Centrefire pistol", 4.02, 9.84, 25.0),
+        Entry("Glock", "26 9x19", "Centrefire pistol", 3.43, 9.84, 25.0),
+        Entry("Glock", "34 9x19", "Centrefire pistol", 5.31, 9.84, 25.0),
+        Entry("Glock", "43 9x19", "Centrefire pistol", 3.41, 9.84, 25.0),
+        Entry("Glock", "43X 9x19", "Centrefire pistol", 3.41, 9.84, 25.0),
+        Entry("Glock", "45 9x19", "Centrefire pistol", 4.02, 9.84, 25.0),
+        Entry("Glock", "47 9x19", "Centrefire pistol", 4.49, 9.84, 25.0),
+        Entry("Glock", "48 9x19", "Centrefire pistol", 4.17, 9.84, 25.0)
+    )
+
+    val all: List<Entry> get() = entries + stsAdditions + pistols9mm
 
     const val ALL = "All"
     fun brands(): List<String> = listOf(ALL) + all.map { it.brand }.distinct().sorted()

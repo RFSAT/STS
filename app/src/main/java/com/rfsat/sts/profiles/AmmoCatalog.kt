@@ -151,7 +151,48 @@ object AmmoCatalog {
     )
 
     /** The VTB block plus the STS additions. */
-    val all: List<Entry> get() = entries + stsAdditions
+    /**
+     * 9x19 factory loads from Fiocchi, Federal and CCI.
+     *
+     * WEIGHT AND MUZZLE VELOCITY are the makers' published figures, from
+     * their own catalogues. BALLISTIC COEFFICIENT IS NOT: none of these three
+     * publishes a G1 BC for pistol ammunition, so the values here are the
+     * conventional ones for the bullet weight and shape — about 0.14 for a
+     * 115 gr round-nose jacketed bullet, 0.15 for a 124, 0.19 for a 147, and
+     * a little lower for a flat nose, which carries less well.
+     *
+     * That is a real difference from the rest of this catalogue, whose BCs
+     * come from the maker, and it is stated rather than hidden. It matters
+     * very little at pistol distances: between BC 0.14 and 0.19 the drop at
+     * 25 m differs by well under a millimetre, far below anything this app
+     * can measure on a target. It would matter at 100 m, where none of these
+     * loads belongs.
+     *
+     * Deliberately NOT a complete listing of every product line. Loads are
+     * here only where a published velocity could be found for that exact
+     * product; several defensive lines are left out rather than guessed at.
+     */
+    private val nineMm: List<Entry> = listOf(
+        // ---- Fiocchi Range Dynamics ----
+        Entry("Fiocchi", "Range Dynamics FMJ", "9x19", 0.355, 115.0, 1200.0, 0.140, "FMJ"),
+        Entry("Fiocchi", "Range Dynamics FMJ", "9x19", 0.355, 124.0, 1150.0, 0.148, "FMJ"),
+        Entry("Fiocchi", "Range Dynamics FMJ Subsonic", "9x19", 0.355, 147.0, 975.0, 0.190, "FMJ"),
+
+        // ---- Federal ----
+        Entry("Federal", "American Eagle FMJ", "9x19", 0.355, 115.0, 1180.0, 0.140, "FMJ"),
+        Entry("Federal", "Syntech Range TSJ", "9x19", 0.355, 115.0, 1180.0, 0.135, "TSJ"),
+        Entry("Federal", "Syntech Range TSJ", "9x19", 0.355, 124.0, 1110.0, 0.143, "TSJ"),
+        Entry("Federal", "Syntech Training Match TSJ FN", "9x19", 0.355, 147.0, 1000.0, 0.178, "TSJ"),
+        Entry("Federal", "Syntech Action Pistol TSJ FN", "9x19", 0.355, 150.0, 890.0, 0.180, "TSJ"),
+        Entry("Federal", "HST JHP", "9x19", 0.355, 147.0, 1000.0, 0.180, "HP"),
+
+        // ---- CCI Blazer Brass ----
+        Entry("CCI", "Blazer Brass FMJ", "9x19", 0.355, 115.0, 1145.0, 0.140, "FMJ"),
+        Entry("CCI", "Blazer Brass FMJ", "9x19", 0.355, 124.0, 1090.0, 0.148, "FMJ"),
+        Entry("CCI", "Blazer Brass FMJ", "9x19", 0.355, 147.0, 950.0, 0.190, "FMJ")
+    )
+
+    val all: List<Entry> get() = entries + stsAdditions + nineMm
 
     const val ALL = "All"
 

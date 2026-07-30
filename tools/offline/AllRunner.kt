@@ -3,7 +3,7 @@ fun main() {
         "com.rfsat.sts.DetectorRegressionTest", "com.rfsat.sts.EllipseFitTest",
         "com.rfsat.sts.RegistrationBoxTest", "com.rfsat.sts.RingFinderTest",
         "com.rfsat.sts.ScoringGeometryTest", "com.rfsat.sts.ScoringRulesTest",
-        "com.rfsat.sts.ShotDistributionTest", "com.rfsat.sts.NameWrapTest", "com.rfsat.sts.ScaleChoiceTest"
+        "com.rfsat.sts.ShotDistributionTest", "com.rfsat.sts.NameWrapTest", "com.rfsat.sts.ScaleChoiceTest", "com.rfsat.sts.NineMillimetreCatalogueTest"
     )
     var pass = 0; var fail = 0
     val failures = ArrayList<String>()

@@ -32,6 +32,46 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.19.0 — feature: 9x19 service pistols and factory loads.
+        //
+        //   FIREARMS. Beretta 92X Performance and Performance Defensive
+        //   first, as asked, then 92X Full Size, Centurion, Compact and the
+        //   92FS; Glock 17, 17L, 19, 19X, 26, 34, 43, 43X, 45, 47 and 48.
+        //   Barrel lengths are the makers' published figures. Twist is 1 turn
+        //   in 250 mm for both — 9.84 inches — which is what Beretta and
+        //   Glock each publish for 9 mm. Zeroed at 25 m rather than the 10 m
+        //   used for air or the 50 m for rimfire.
+        //
+        //   AMMUNITION. Fiocchi Range Dynamics in 115, 124 and 147 gr;
+        //   Federal American Eagle, Syntech Range, Syntech Training Match,
+        //   Syntech Action Pistol and HST; CCI Blazer Brass in 115, 124 and
+        //   147 gr. Weights and muzzle velocities are the makers' published
+        //   figures.
+        //
+        //   BALLISTIC COEFFICIENTS ARE NOT PUBLISHED by any of these three
+        //   for pistol ammunition, so those are the conventional values for
+        //   the bullet weight and shape. That is a real difference from the
+        //   rest of the catalogue, whose BCs come from the maker, and it is
+        //   recorded in the source rather than glossed over. It matters very
+        //   little here — between BC 0.14 and 0.19 the drop at 25 m differs
+        //   by well under a millimetre — and would matter at 100 m, where
+        //   none of these loads belongs.
+        //
+        //   NOT a complete listing of every product line. Loads appear only
+        //   where a published velocity could be found for that exact product;
+        //   several defensive lines are left out rather than invented.
+        //
+        //   THREE DEFECTS THE NEW TESTS FOUND, all pre-existing:
+        //     - A centrefire PISTOL whose model name lacked the word "pistol"
+        //       was classed as a centrefire RIFLE, and would have taken a
+        //       rifle's default sight height and zero.
+        //     - Twist was displayed through toInt(), so 1 turn in 250 mm read
+        //       as "1:9" — a rate nothing is rifled at. The CZ Shadow 2 and
+        //       the Tanfoglio Stock II were already being shown wrongly.
+        //     - The calibre regex, being case-insensitive, read "Glock 19X
+        //       9x19" as calibre "19X 9": it found the model number, an
+        //       upper-case X and the leading 9 before reaching the calibre.
+        //
         // 1.18.1 — correction and feature: in-app capture actually exists
         //          now, and it is guarded.
         //
@@ -765,8 +805,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 32
-        versionName = "1.18.1"
+        versionCode = 33
+        versionName = "1.19.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
