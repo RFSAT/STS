@@ -32,6 +32,68 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.16.0 — feature: the scale is now measured two independent ways
+        //          and cross-checked. Accuracy, not speed.
+        //
+        //   Every scoring error is proportional to millimetres-per-pixel, so
+        //   it is the most consequential number the app measures. Until now
+        //   it came from one source: the spacing of the fitted ring ladder.
+        //   That is precise when the rings are found — 0 to 1.5 per cent on a
+        //   square-on card — and it degrades badly when they are not.
+        //
+        //   The aiming mark gives a completely separate reading: its measured
+        //   radius, divided by the black-to-pitch ratio the catalogue states
+        //   for that face. One high-contrast boundary instead of a family of
+        //   faint lines, and no ladder to lose.
+        //
+        //   MEASURED, four real cards warped by tilts of 0 to 25 degrees with
+        //   the face held fixed, so this is scale consistency and not
+        //   identification noise. Rotation about an axis through the centre
+        //   leaves depth there unchanged, so the true scale is IDENTICAL at
+        //   every angle and all of the spread is error:
+        //
+        //       card    ladder     mark    cross-check
+        //       t01       2.7%     1.0%       1.6%
+        //       t02      13.5%     1.1%       1.1%
+        //       t03      21.8%     1.4%       2.9%
+        //       t04      90.5%     1.9%       1.4%
+        //
+        //   And on absolute accuracy, measured offline against the two cards
+        //   whose faces are known, the mark reading alone gave -0.8% and
+        //   +0.7% against the true pitch — as good as the ladder at its best,
+        //   from a single measurement with no search.
+        //
+        //   CROSS_CHECK is the default: within noise of the mark alone on
+        //   consistency, and it additionally REPORTS when the two disagree,
+        //   which on these images fired on 3 to 6 cases out of 6 and is
+        //   usually the sign of a wrong face. When they agree to within 6 per
+        //   cent their mean is used, because averaging two independent
+        //   readings of comparable accuracy beats either.
+        //
+        //   Selectable under Settings > Detection algorithms, per the
+        //   development rule that every new algorithm gets a switch until the
+        //   accuracy is good enough to fix the choice.
+        //
+        //   WHAT THIS IS NOT. It needs the face, so it cannot identify one —
+        //   used that way it would be circular, since identification already
+        //   uses the mark. It verifies a face that has already been chosen.
+        //
+        //   NOT INTEGRATED, and why: template alignment by iterative
+        //   optimisation (P2a). Six cost functions were prototyped offline
+        //   and every one degraded a good seed — intensity correlation
+        //   collapses onto the black; summed gradient locks the half-pitch
+        //   harmonic (-49%, -47%); freeing the centre took one card from
+        //   -4.3% to +27%; and refining against the exact known radii still
+        //   shrank the scale by ~4% on both cards tested. The value in that
+        //   line of work turned out to be the arithmetic seed above, not the
+        //   optimisation.
+        //
+        //   KNOWN, and deferred on instruction: registration has become slow
+        //   enough to obstruct measurement — around 20 s per frame at 800 px
+        //   in the offline harness. The likely cause is the aiming-mark
+        //   constraint added to fitLadder in 1.11.0, which calls a least
+        //   squares fit inside the innermost loop of an O(n^3) search.
+        //
         // 1.15.0 — feature: the interface follows the theme, and buttons
         //          are consistent.
         //   - 18 buttons across Import, Session, Targets, Rules and Settings
@@ -581,8 +643,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 28
-        versionName = "1.15.0"
+        versionCode = 29
+        versionName = "1.16.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

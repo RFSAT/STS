@@ -47,7 +47,7 @@ for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/H
          scoring/CorrectionCalculator scoring/GroupStatistics scoring/ScoringEngine \
          scoring/Shot scoring/ShotDistribution \
          targets/PracticalGeometry targets/TargetCatalog targets/TargetFace \
-         scoring/ScoredPhoto ui/NameWrap; do
+         scoring/ScoredPhoto ui/NameWrap detect/ScaleSettings; do
   cp "$M/$f.kt" "$WORK/src/$(basename $f).kt"
 done
 

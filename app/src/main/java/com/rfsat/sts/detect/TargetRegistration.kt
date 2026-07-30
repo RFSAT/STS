@@ -1,6 +1,7 @@
 package com.rfsat.sts.detect
 
 import android.graphics.Bitmap
+import kotlin.math.abs
 import com.rfsat.sts.log.Logger
 import com.rfsat.sts.targets.TargetFace
 
@@ -342,7 +343,8 @@ class TargetRegistration private constructor(
             }
             if (fit.pitchPx <= 0.0 || pitchMm <= 0.0) return null
 
-            val mmPerSourcePx = pitchMm / fit.pitchPx
+            val scale = chooseScale(face, fit, pitchMm)
+            val mmPerSourcePx = scale.mmPerPx
             val outerPx = face.outerRadiusMm / mmPerSourcePx
             val box = floatArrayOf(
                 (fit.centreXPx - outerPx).toFloat(), (fit.centreYPx - outerPx).toFloat(),
@@ -389,10 +391,8 @@ class TargetRegistration private constructor(
 
             // Replace the box's generic caveat with what the fit actually says.
             val warnings = placed.warnings.filterNot { it.contains("position and scale only") }.toMutableList()
-            warnings += ("Scale from the fitted ring family: %.2f px between rings over %d rings, " +
-                "%.4f mm per pixel, residual %.2f px.").format(
-                fit.pitchPx, fit.ringCount, mmPerSourcePx, fit.residualPx
-            )
+            warnings += scale.explanation
+            if (scale.disagreement != null) warnings += scale.disagreement
             fit.shape?.let { sh ->
                 warnings += if (sh.usedEllipse) {
                     ("Foreshortening corrected: %s. Ring pitch was then measured on the " +
@@ -418,6 +418,82 @@ class TargetRegistration private constructor(
                 uMinMm = placed.uMinMm, uMaxMm = placed.uMaxMm,
                 vMinMm = placed.vMinMm, vMaxMm = placed.vMaxMm,
                 warnings = warnings
+            )
+        }
+
+        /** A scale, where it came from, and whether the two sources agreed. */
+        class ScaleChoice(
+            val mmPerPx: Double,
+            val explanation: String,
+            val disagreement: String?,
+            val agreementError: Double
+        )
+
+        /**
+         * Picks the millimetres-per-pixel scale from the ring ladder, the
+         * aiming mark, or both.
+         *
+         * The two are independent: one measures the spacing of a family of
+         * faint printed lines, the other one high-contrast boundary against a
+         * ratio the catalogue states. When they agree their MEAN is used,
+         * because averaging two independent measurements of comparable
+         * accuracy beats either. When they disagree the mark is preferred and
+         * the disagreement is reported — the mark holds its value as a card
+         * tilts, while the ladder loses rings and drifts, which is exactly
+         * when the two part company.
+         */
+        fun chooseScale(face: TargetFace, fit: RingFit, pitchMm: Double): ScaleChoice {
+            val fromLadder = pitchMm / fit.pitchPx
+
+            val blackRadiusMm = face.blackDiameterMm / 2.0
+            val markPx = fit.shape?.model?.semiMajorPx ?: 0.0
+            val ratio = if (pitchMm > 0.0) blackRadiusMm / pitchMm else 0.0
+            val markPitchPx = if (markPx > 0.0 && ratio > 0.0) markPx / ratio else 0.0
+            val fromMark = if (markPitchPx > 0.0) pitchMm / markPitchPx else 0.0
+
+            val ladderText = "ring spacing %.2f px over %d rings (residual %.2f px)"
+                .format(fit.pitchPx, fit.ringCount, fit.residualPx)
+            val markText = "aiming mark %.1f px across %.2f ring widths".format(markPx, ratio)
+
+            if (fromMark <= 0.0 || ScaleSettings.mode() == ScaleMode.LADDER_ONLY) {
+                val why = if (fromMark <= 0.0)
+                    "no aiming mark was measured, so the scale rests on the rings alone"
+                else "set to use the ring spacing only"
+                return ScaleChoice(
+                    fromLadder,
+                    "Scale from %s: %.4f mm per pixel — %s.".format(ladderText, fromLadder, why),
+                    null, 0.0
+                )
+            }
+            if (ScaleSettings.mode() == ScaleMode.MARK_ONLY) {
+                return ScaleChoice(
+                    fromMark,
+                    "Scale from %s: %.4f mm per pixel — set to use the aiming mark only."
+                        .format(markText, fromMark),
+                    null, 0.0
+                )
+            }
+
+            val err = abs(fromLadder - fromMark) / ((fromLadder + fromMark) / 2.0)
+            if (err <= ScaleSettings.AGREEMENT_TOLERANCE) {
+                val mean = (fromLadder + fromMark) / 2.0
+                return ScaleChoice(
+                    mean,
+                    ("Scale %.4f mm per pixel, from two measurements that agree to %.1f%%: " +
+                        "%s, and %s.").format(mean, err * 100, ladderText, markText),
+                    null, err
+                )
+            }
+            return ScaleChoice(
+                fromMark,
+                "Scale %.4f mm per pixel, from the %s.".format(fromMark, markText),
+                ("The rings and the aiming mark disagree about the scale by %.0f%% — " +
+                    "%s gives %.4f mm per pixel, the mark gives %.4f. The mark has been used " +
+                    "because it holds up better on an angled card, but a disagreement this " +
+                    "large usually means the wrong target face is selected, or the rings were " +
+                    "only partly found. Check the face before quoting this score.")
+                    .format(err * 100, ladderText, fromLadder, fromMark),
+                err
             )
         }
 

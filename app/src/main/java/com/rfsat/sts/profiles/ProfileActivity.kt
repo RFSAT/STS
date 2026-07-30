@@ -7,6 +7,8 @@ import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
+import com.rfsat.sts.detect.ScaleMode
+import com.rfsat.sts.detect.ScaleSettings
 import com.rfsat.sts.R
 import com.rfsat.sts.ui.WrappingNameAdapter
 import com.rfsat.sts.backup.AppBackup
@@ -66,6 +68,19 @@ class ProfileActivity : BaseActivity() {
         binding.spUnits.setSelection(UnitSystem.values().indexOf(UnitsManager.system()))
         binding.spUnits.onItemSelectedListener = onSelectedIndex { i ->
             UnitsManager.setSystem(this, UnitSystem.values()[i])
+        }
+
+        binding.spScaleMode.adapter = adapter(ScaleMode.values().map { it.label })
+        binding.spScaleMode.setSelection(ScaleMode.values().indexOf(ScaleSettings.mode()))
+        binding.spScaleMode.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = ScaleMode.values()[i]
+            if (chosen != ScaleSettings.mode()) {
+                ScaleSettings.setMode(this, chosen)
+                notifyUser(
+                    "Scale source set to \u201c${chosen.label}\u201d. Re-register any target " +
+                        "already open for it to take effect."
+                )
+            }
         }
 
         binding.cbShowLog.isChecked = getSharedPreferences(BaseActivity.PREFS, MODE_PRIVATE)

@@ -34,6 +34,24 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Full screen (hide the system bars)" />
 
+            <!-- ===== Algorithms =====
+                 Every new detection algorithm gets a switch here while the
+                 app is being developed, so each can be measured on its own
+                 and in combination. What stays selectable is a decision for
+                 the point at which the accuracy is good enough to ship. -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Detection algorithms" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Where the scale comes from" />
+            <Spinner android:id="@+id/spScaleMode"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Millimetres per pixel can be measured from the spacing of the printed rings, or from the radius of the black aiming mark against the ratio the catalogue gives for this face. The two are independent. Cross-checking averages them when they agree and reports it when they do not, which usually means the wrong face is selected." />
+
             <!-- ===== Profile sets ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Profile sets" />
 

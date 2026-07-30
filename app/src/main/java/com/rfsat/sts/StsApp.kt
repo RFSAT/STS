@@ -45,6 +45,7 @@ class StsApp : Application() {
         runCatching { Logger.init(this) }
         runCatching { ThemeManager.init(this) }
         runCatching { UnitsManager.init(this) }
+        runCatching { com.rfsat.sts.detect.ScaleSettings.init(this) }
         runCatching { com.rfsat.sts.targets.TargetRepository(this).seedBuiltInsIfEmpty() }
         runCatching { com.rfsat.sts.profiles.ProfileRepository(this).seedDefaultSetsIfEmpty() }
 
