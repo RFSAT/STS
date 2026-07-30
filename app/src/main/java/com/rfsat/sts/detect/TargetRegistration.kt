@@ -134,6 +134,36 @@ class TargetRegistration private constructor(
         return Bitmap.createBitmap(out, w, h, Bitmap.Config.ARGB_8888)
     }
 
+    /**
+     * The same registration expressed against a source image of a different
+     * size — a full-resolution still, where it was measured on the preview.
+     *
+     * Valid ONLY when the two streams show the same scene and differ merely
+     * in sampling. That is usual but not guaranteed: a device may crop the
+     * still differently from the analysis stream, and then this mapping is
+     * wrong everywhere while looking entirely reasonable. The caller must
+     * therefore CHECK the result against the picture rather than trust it —
+     * see TargetGeometryCheck.verifyRings — and fall back if it fails.
+     */
+    fun scaledToSource(scaleX: Double, scaleY: Double): TargetRegistration? {
+        if (scaleX <= 0.0 || scaleY <= 0.0) return null
+        if (kotlin.math.abs(scaleX - 1.0) < 1e-9 && kotlin.math.abs(scaleY - 1.0) < 1e-9) return this
+        val mm = listOf(
+            uMinMm to vMinMm, uMaxMm to vMinMm, uMaxMm to vMaxMm, uMinMm to vMaxMm
+        )
+        val px = mm.map { (u, v) ->
+            val (x, y) = homography.mmToPx(u, v)
+            (x * scaleX) to (y * scaleY)
+        }
+        if (px.any { it.first.isNaN() || it.second.isNaN() }) return null
+        val h = Homography.fromCorrespondences(mm, px) ?: return null
+        return TargetRegistration(
+            face = face, homography = h, mmPerPx = mmPerPx,
+            uMinMm = uMinMm, uMaxMm = uMaxMm, vMinMm = vMinMm, vMaxMm = vMaxMm,
+            warnings = warnings
+        )
+    }
+
     /** What a square registration box is drawn around. The box gives a
      *  DIAMETER, and the diameter is meaningless until you say of what. */
     enum class BoxMeaning(val label: String) {

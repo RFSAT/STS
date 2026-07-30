@@ -84,6 +84,7 @@ class SessionActivity : BaseActivity() {
 
     private var provider: ProcessCameraProvider? = null
     private var camera: androidx.camera.core.Camera? = null
+    private var stills: androidx.camera.core.ImageCapture? = null
     private var captureResolution: CaptureResolution = CaptureResolution.DEFAULT
     private var externalSource: FrameSource? = null
     private val audio = AudioShotDetector()
@@ -348,8 +349,31 @@ class SessionActivity : BaseActivity() {
                     }
                 }
 
+                // A SEPARATE full-resolution still capture.
+                //
+                // The analysis stream is bounded by what the device will
+                // deliver continuously — 1080p on most phones, 2 megapixels —
+                // because it has to arrive thirty times a second. A still has
+                // no such constraint and comes off the sensor at its full
+                // size, commonly 12 megapixels. That is 2.4 times the linear
+                // resolution on every hole, and holes are the smallest thing
+                // this app has to measure. Scoring a card from a preview
+                // frame when the camera could have given a photograph was
+                // throwing most of the available detail away.
+                val capture = androidx.camera.core.ImageCapture.Builder()
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                            .build()
+                    )
+                    .setCaptureMode(
+                        androidx.camera.core.ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
+                    )
+                    .build()
+                stills = capture
+
                 camera = p.bindToLifecycle(
-                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis
+                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis, capture
                 )
                 // A rebind releases any lock, so the flag must not outlive it.
                 CameraTuning.forget()
@@ -559,10 +583,23 @@ class SessionActivity : BaseActivity() {
 
     private fun doSetReference() {
         val reg = registration ?: run { notifyUser("Register the target first."); return }
-        val frame = latestFrame.get() ?: run { notifyUser("No frame yet — is the source running?"); return }
+        val frame = latestFrame.get()
+            ?: run { notifyUser("No frame yet — is the source running?"); return }
+        // THE ANALYSIS STREAM, deliberately, and not a full-resolution still.
+        //
+        // The reference is differenced against every later frame, and those
+        // arrive continuously from the analysis stream. LiveHitDetector
+        // rectifies the reference and each frame through ONE registration, so
+        // the two must come from the same stream: a still reference would be
+        // compared against analysis frames through geometry that fits neither.
+        // The resolution is worth having, but not at the price of differencing
+        // two images that are not aligned.
         val detector = live ?: LiveHitDetector(reg, currentRules().gaugeDiameterMm).also { live = it }
         detector.setReference(frame)
-        notifyUser("Reference captured. Everything that appears from now on is treated as a shot.")
+        notifyUser(
+            "Reference captured at ${frame.width} x ${frame.height}. Everything that appears " +
+                "from now on is treated as a shot. Do not move the phone or the card."
+        )
         refreshStatus()
     }
 
@@ -589,8 +626,36 @@ class SessionActivity : BaseActivity() {
      * counted as a shot) looks exactly like a real detection on the plot.
      */
     private fun doScoreNow() {
-        val reg = registration ?: run { notifyUser("Register the target first."); return }
-        val frame = latestFrame.get() ?: run { notifyUser("No frame available yet."); return }
+        if (registration == null) { notifyUser("Register the target first."); return }
+
+        // A reference exists, so this frame has to be comparable with it —
+        // which means the analysis stream, at the analysis stream's
+        // resolution. Only the referenceless case is free to take a
+        // photograph, because there is nothing it has to align with.
+        val detector = live
+        if (detector != null && detector.isArmed) {
+            latestFrame.get()?.let { scoreFrame(it, registration) }
+                ?: notifyUser("No frame available yet.")
+            return
+        }
+
+        notifyUser("Taking a full-resolution photograph\u2026")
+        captureStill { frame, _ ->
+            val stillReg = frame?.let { registrationForStill(it) }
+            if (frame != null && stillReg != null) scoreFrame(frame, stillReg)
+            else {
+                if (frame != null) notifyUser(
+                    "The photograph could not be matched to the registration, so the preview " +
+                        "frame was scored instead. Re-register if this keeps happening."
+                )
+                latestFrame.get()?.let { scoreFrame(it, registration) }
+                    ?: notifyUser("No frame available yet.")
+            }
+        }
+    }
+
+    private fun scoreFrame(frame: LumaFrame, regIn: TargetRegistration?) {
+        val reg = regIn ?: return
         val rules = currentRules()
         val detector = live
 
@@ -666,6 +731,94 @@ class SessionActivity : BaseActivity() {
      * screen showed one face and scored against another, with nothing to
      * indicate it.
      */
+    /**
+     * A registration valid for [still], or null if it cannot be trusted.
+     *
+     * The registration was measured on the analysis stream. Rescaling it to
+     * the still's pixel grid is correct only if both streams frame the same
+     * scene, which is usual and NOT guaranteed. So the rescaled mapping is
+     * checked against the printed rings in the still itself before it is
+     * used, and a failure falls back to the analysis frame rather than
+     * scoring confidently against the wrong geometry.
+     */
+    private fun registrationForStill(still: LumaFrame): TargetRegistration? {
+        val reg = registration ?: return null
+        val analysis = latestFrame.get() ?: return null
+        if (analysis.width <= 0 || analysis.height <= 0) return null
+        val sx = still.width.toDouble() / analysis.width
+        val sy = still.height.toDouble() / analysis.height
+        if (kotlin.math.abs(sx - sy) / ((sx + sy) / 2.0) > 0.02) {
+            Logger.w(
+                "SessionActivity",
+                ("the still is %dx%d and the analysis frame %dx%d — different shapes, so the " +
+                    "registration cannot simply be rescaled; using the analysis frame")
+                    .format(still.width, still.height, analysis.width, analysis.height)
+            )
+            return null
+        }
+        val scaled = reg.scaledToSource(sx, sy) ?: return null
+        val problem = runCatching {
+            TargetGeometryCheck.verifyRings(still, scaled, currentFace())
+        }.getOrNull()
+        if (problem != null) {
+            Logger.w(
+                "SessionActivity",
+                "the rescaled registration does not match the rings in the still ($problem); " +
+                    "falling back to the analysis frame"
+            )
+            return null
+        }
+        Logger.i(
+            "SessionActivity",
+            "scoring a %dx%d still through a registration rescaled by %.3f from %dx%d"
+                .format(still.width, still.height, sx, analysis.width, analysis.height)
+        )
+        return scaled
+    }
+
+    /**
+     * Takes a full-resolution photograph and hands it back as a frame.
+     *
+     * Asynchronous, because the sensor has to be read out — a still is not
+     * simply the next preview frame. [then] runs on the main thread with the
+     * captured frame, or with null if the capture failed, so callers can be
+     * written as though it were ordinary code.
+     */
+    private fun captureStill(then: (LumaFrame?, android.graphics.Bitmap?) -> Unit) {
+        val cap = stills ?: run { then(null, null); return }
+        cap.takePicture(
+            ContextCompat.getMainExecutor(this),
+            object : androidx.camera.core.ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: androidx.camera.core.ImageProxy) {
+                    val bmp = runCatching {
+                        val buf = image.planes[0].buffer
+                        val bytes = ByteArray(buf.remaining()).also { buf.get(it) }
+                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    }.getOrNull()
+                    val rotated = runCatching {
+                        val deg = image.imageInfo.rotationDegrees
+                        if (bmp == null || deg == 0) bmp else {
+                            val m = android.graphics.Matrix().apply { postRotate(deg.toFloat()) }
+                            android.graphics.Bitmap.createBitmap(
+                                bmp, 0, 0, bmp.width, bmp.height, m, true
+                            )
+                        }
+                    }.getOrNull() ?: bmp
+                    image.close()
+                    if (rotated == null) { then(null, null); return }
+                    Logger.i("SessionActivity",
+                        "captured a still at ${rotated.width}x${rotated.height}")
+                    then(LumaFrame.fromBitmapForDetection(rotated), rotated)
+                }
+
+                override fun onError(exception: androidx.camera.core.ImageCaptureException) {
+                    Logger.e("SessionActivity", "still capture failed", exception)
+                    then(null, null)
+                }
+            }
+        )
+    }
+
     /** The centre of the preview, as a metering point. */
     private fun centreMeteringPoint(): androidx.camera.core.MeteringPoint? = runCatching {
         binding.preview.meteringPointFactory.createPoint(

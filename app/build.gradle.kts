@@ -32,6 +32,48 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.18.1 — correction and feature: in-app capture actually exists
+        //          now, and it is guarded.
+        //
+        //   THE ANSWER TO "DO YOU CAPTURE AT FULL RESOLUTION" WAS NO, BECAUSE
+        //   THE APP DID NOT CAPTURE AT ALL. There was no ImageCapture use case
+        //   and no VideoCapture use case; the only camera output was the
+        //   analysis stream, and "Score the target now" read a preview frame
+        //   from it. So there was nothing to set to 4K — 1.18.0's resolution
+        //   selector governs that analysis stream, which was all there was.
+        //
+        //   ImageCapture is now bound at HIGHEST_AVAILABLE_STRATEGY and
+        //   MAXIMIZE_QUALITY. A still comes off the sensor at its full size,
+        //   commonly 12 megapixels against the analysis stream's 2 — some 2.4
+        //   times the linear resolution on every hole, which are the smallest
+        //   things this app measures.
+        //
+        //   TWO COUPLINGS THAT WOULD HAVE MADE THIS SILENTLY WRONG, both found
+        //   before shipping and both worth recording:
+        //
+        //   1. The registration maps millimetres to ANALYSIS-frame pixels. A
+        //      still has different dimensions, so putting one through that
+        //      registration maps the wrong pixels — a plausible score computed
+        //      from the wrong geometry. The registration is now rescaled for
+        //      the still, and then CHECKED against the printed rings in that
+        //      still before use; a failure falls back to the analysis frame
+        //      and says so. Rescaling assumes the two streams frame the same
+        //      scene, which is usual and not guaranteed, so it is verified
+        //      rather than trusted.
+        //
+        //   2. LiveHitDetector rectifies the reference AND every later frame
+        //      through one registration, and later frames arrive from the
+        //      analysis stream. A full-resolution reference would therefore be
+        //      differenced against frames it is not aligned with. The
+        //      reference deliberately stays on the analysis stream, and "score
+        //      now" only reaches for a photograph when there is no reference
+        //      to align with.
+        //
+        //   Still not implemented: VIDEO capture. camera-video is on the
+        //   classpath and unused. Recording, storage and frame extraction is a
+        //   larger piece than belongs in this change, and the phone's own
+        //   camera app records perfectly well for collecting test material.
+        //
         // 1.18.0 — feature: the camera is held still, and its resolution
         //          can be chosen.
         //
@@ -723,8 +765,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 31
-        versionName = "1.18.0"
+        versionCode = 32
+        versionName = "1.18.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
