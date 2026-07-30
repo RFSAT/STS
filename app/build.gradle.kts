@@ -32,6 +32,38 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.18.0 — feature: the camera is held still, and its resolution
+        //          can be chosen.
+        //
+        //   NEITHER WAS BEING DONE. Nothing in the app touched CameraControl,
+        //   so exposure, white balance and focus ran free the whole time.
+        //   For the differential path that is close to fatal: differencing
+        //   assumes two frames of one card differ only where a shot arrived,
+        //   and a camera that re-meters between them changes EVERY pixel by
+        //   more than the 40 or so levels a hole is worth. Re-focusing is
+        //   worse again — the lens moves, the field of view shifts slightly
+        //   on nearly every phone, and the registration silently goes stale.
+        //   Auto white balance moves the colour channel that hole detection
+        //   is measured in.
+        //
+        //   All three are now locked, automatically, at the moment a card is
+        //   registered — which is exactly when the framing has settled — and
+        //   there is a button under the preview to release them when the
+        //   light changes for real. Focus is locked by metering once with
+        //   auto-cancel disabled rather than by switching AF off, which on
+        //   many devices then needs the lens driven by hand and parks at
+        //   infinity if you do not.
+        //
+        //   ANALYSIS RESOLUTION is selectable: 720p, 1080p, 1440p or 4K, with
+        //   CameraX falling back to the nearest supported size. It was fixed
+        //   at 1080p, so live scoring never saw more than that however good
+        //   the phone. Changing it rebinds the camera and CLEARS the
+        //   registration, because that was measured in the old frame's pixels.
+        //
+        //   Not changed: the photo path still imports from the gallery rather
+        //   than capturing, so a still comes in at whatever the camera app
+        //   produced, capped by ImageLoader at 3000 px on the long side.
+        //
         // 1.17.0 — feature: face identification stabilised, and the two
         //          largest costs in registration removed.
         //
@@ -691,8 +723,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 30
-        versionName = "1.17.0"
+        versionCode = 31
+        versionName = "1.18.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

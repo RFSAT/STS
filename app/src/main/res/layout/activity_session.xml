@@ -192,6 +192,26 @@
                 android:textColor="?android:attr/textColorSecondary"
                 android:text="Or score live, as you shoot:" />
 
+            <!-- Camera, above the capture controls because both of these have
+                 to be right BEFORE anything is captured. -->
+            <TextView style="@style/Sts.FieldLabel" android:text="Analysis resolution" />
+            <Spinner android:id="@+id/spResolution"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <Button android:id="@+id/btnLockCamera"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Lock exposure and focus"
+                style="@style/Sts.ActionButton" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="A phone camera re-meters and re-focuses continuously. Between two frames of the same card that changes the brightness of everything, which is precisely what differential detection looks for, and re-focusing shifts the field of view enough to make the registration stale. Locking happens automatically when you register; this releases it if the light changes for real." />
+
             <Button android:id="@+id/btnReference"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Capture clean target (reference)"

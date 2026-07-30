@@ -83,6 +83,8 @@ class SessionActivity : BaseActivity() {
     private lateinit var analysisExecutor: ExecutorService
 
     private var provider: ProcessCameraProvider? = null
+    private var camera: androidx.camera.core.Camera? = null
+    private var captureResolution: CaptureResolution = CaptureResolution.DEFAULT
     private var externalSource: FrameSource? = null
     private val audio = AudioShotDetector()
 
@@ -225,6 +227,35 @@ class SessionActivity : BaseActivity() {
             refreshStatus()
         }
         binding.btnReference.setOnClickListener { doSetReference() }
+        binding.spResolution.adapter = adapter(CaptureResolution.values().map { it.label })
+        binding.spResolution.setSelection(CaptureResolution.values().indexOf(captureResolution))
+        binding.spResolution.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = CaptureResolution.values()[i]
+            if (chosen != captureResolution) {
+                captureResolution = chosen
+                // The registration was measured in the old frame's pixels.
+                registration = null
+                notifyUser(
+                    "Analysis resolution set to ${chosen.label}. The camera has been rebound and " +
+                        "the registration cleared — register the card again."
+                )
+                startCamera()
+                refreshStatus()
+            }
+        }
+
+        binding.btnLockCamera.setOnClickListener {
+            if (CameraTuning.locked) {
+                CameraTuning.unlock(camera)
+                notifyUser("Camera released. It will meter and focus by itself again.")
+            } else if (CameraTuning.lock(camera, centreMeteringPoint())) {
+                notifyUser("Exposure, white balance and focus locked at the centre of frame.")
+            } else {
+                notifyUser("This camera would not accept the lock; carry on without it.")
+            }
+            refreshLockButton()
+        }
+
         binding.btnLive.setOnClickListener { toggleLive() }
         binding.btnScoreNow.setOnClickListener { doScoreNow() }
         binding.btnUndoShot.setOnClickListener {
@@ -295,7 +326,7 @@ class SessionActivity : BaseActivity() {
                         ResolutionSelector.Builder()
                             .setResolutionStrategy(
                                 ResolutionStrategy(
-                                    Size(1920, 1080),
+                                    captureResolution.size,
                                     ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
                                 )
                             ).build()
@@ -317,8 +348,13 @@ class SessionActivity : BaseActivity() {
                     }
                 }
 
-                p.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
-                Logger.i("SessionActivity", "Camera bound")
+                camera = p.bindToLifecycle(
+                    this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis
+                )
+                // A rebind releases any lock, so the flag must not outlive it.
+                CameraTuning.forget()
+                refreshLockButton()
+                Logger.i("SessionActivity", "Camera bound at ${captureResolution.label}")
             }.onFailure {
                 Logger.e("SessionActivity", "Camera bind failed", it)
                 notifyUser("The camera could not be started: ${it.message}")
@@ -490,6 +526,11 @@ class SessionActivity : BaseActivity() {
             }
         }
         registration = reg
+        // Registering means the framing is settled, which is the moment to
+        // stop the camera adjusting itself underneath it. Anything the camera
+        // changes from here — brightness, colour, or the field of view when
+        // the lens moves to refocus — invalidates the mapping just measured.
+        lockCameraForScoring()
         Logger.i(
             "SessionActivity",
             "registered %s: face '%s', rules '%s', gauge %.2f mm, %s".format(
@@ -625,6 +666,30 @@ class SessionActivity : BaseActivity() {
      * screen showed one face and scored against another, with nothing to
      * indicate it.
      */
+    /** The centre of the preview, as a metering point. */
+    private fun centreMeteringPoint(): androidx.camera.core.MeteringPoint? = runCatching {
+        binding.preview.meteringPointFactory.createPoint(
+            binding.preview.width / 2f, binding.preview.height / 2f
+        )
+    }.getOrNull()
+
+    /** Locks the camera when a registration is made, once, quietly. */
+    private fun lockCameraForScoring() {
+        if (CameraTuning.locked || camera == null) return
+        if (CameraTuning.lock(camera, centreMeteringPoint())) {
+            notifyUser(
+                "Exposure, white balance and focus are now locked so that later frames can be " +
+                    "compared with this one. Release them under the preview if the light changes."
+            )
+            refreshLockButton()
+        }
+    }
+
+    private fun refreshLockButton() {
+        binding.btnLockCamera.text =
+            if (CameraTuning.locked) "Release exposure and focus" else "Lock exposure and focus"
+    }
+
     private fun currentFace(): TargetFace =
         faces.getOrNull(binding.spTarget.selectedItemPosition)
         ?: selectedFace
@@ -734,6 +799,11 @@ class SessionActivity : BaseActivity() {
             return
         }
         registration = reg
+        // Registering means the framing is settled, which is the moment to
+        // stop the camera adjusting itself underneath it. Anything the camera
+        // changes from here — brightness, colour, or the field of view when
+        // the lens moves to refocus — invalidates the mapping just measured.
+        lockCameraForScoring()
         boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
         val outerPx = (face.outerRadiusMm / (face.ringPitchMm!! / fit.pitchPx)).toFloat()
         binding.overlay.setBoxInSource(
