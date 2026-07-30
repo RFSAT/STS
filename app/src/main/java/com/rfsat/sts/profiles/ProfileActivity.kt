@@ -70,6 +70,17 @@ class ProfileActivity : BaseActivity() {
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
+        binding.cbWedge.isChecked = ScaleSettings.wedgeEnabled()
+        binding.cbWedge.setOnClickListener {
+            ScaleSettings.setWedge(this, binding.cbWedge.isChecked)
+            notifyUser(
+                if (binding.cbWedge.isChecked)
+                    "Ring spacing will be measured along the tilt axis only. Re-register any " +
+                        "target already open."
+                else "Ring spacing will be measured over the whole ring again."
+            )
+        }
+
         binding.spScaleMode.adapter = adapter(ScaleMode.values().map { it.label })
         binding.spScaleMode.setSelection(ScaleMode.values().indexOf(ScaleSettings.mode()))
         binding.spScaleMode.onItemSelectedListener = onSelectedIndex { i ->

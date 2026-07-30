@@ -131,6 +131,10 @@ object RingFinder {
      *  printed ring. Deliberately far below any real ring spacing. */
     private const val DUPLICATE_LIMIT = 3.0
 
+    /** Most candidates the ladder search will consider. Its cost is cubic in
+     *  this, and no catalogue face has more than a dozen rings. */
+    private const val MAX_CANDIDATES = 24
+
     /**
      * Run the whole fit a SECOND time without the shape correction, purely so
      * the log can compare them.
@@ -271,11 +275,16 @@ object RingFinder {
                 )
             )
         }
+        // The wedge needs a direction, which only an ellipse fit supplies.
+        // With no correction there is no measured axis and no drift to remove.
+        val axisRad = if (ScaleSettings.wedgeEnabled() && choice?.usedEllipse == true)
+            choice.model.orientationRad else Double.NaN
         val raw = fitOn(
             working,
             if (corrected != null) -1.0 else seedX,
             if (corrected != null) -1.0 else seedY,
-            markRadiusPx
+            markRadiusPx,
+            axisRad
         ) ?: return null
         return raw.copy(
             shape = choice,
@@ -287,7 +296,10 @@ object RingFinder {
     /** The ring fit with no shape correction, for diagnostics and tests. */
     fun findWithoutShapeCorrection(frame: LumaFrame): RingFit? = fitOn(frame, -1.0, -1.0, 0.0)
 
-    private fun fitOn(frame: LumaFrame, seedX: Double, seedY: Double, markRadiusPx: Double): RingFit? {
+    private fun fitOn(
+        frame: LumaFrame, seedX: Double, seedY: Double, markRadiusPx: Double,
+        axisRad: Double = Double.NaN
+    ): RingFit? {
         val step = maxOf(1, maxOf(frame.width, frame.height) / WORK_MAX)
         val w = frame.width / step
         val h = frame.height / step
@@ -315,7 +327,7 @@ object RingFinder {
         }
         val (cx, cy) = symmetryCentre(small, w, h, sx, sy) ?: return null
 
-        val rh = radialHistogram(small, w, h, cx, cy) ?: return null
+        val rh = radialHistogram(small, w, h, cx, cy, axisRad) ?: return null
         val peaks = pooledCandidates(rh)
         if (peaks.size < MIN_RINGS) {
             Logger.i("RingFinder", "only ${peaks.size} ring candidates; not enough to fit")
@@ -480,7 +492,9 @@ object RingFinder {
 
     private class RadialHistogram(val hist: Array<IntArray>, val count: IntArray, val maxR: Int)
 
-    private fun radialHistogram(img: IntArray, w: Int, h: Int, cx: Double, cy: Double): RadialHistogram? {
+    private fun radialHistogram(
+        img: IntArray, w: Int, h: Int, cx: Double, cy: Double, axisRad: Double = Double.NaN
+    ): RadialHistogram? {
         val maxR = min(min(cx, cy), min(w - cx, h - cy)).toInt()
         if (maxR < 30) return null
         val hist = Array(maxR + 1) { IntArray(256) }
@@ -488,7 +502,15 @@ object RingFinder {
         for (y in 0 until h) {
             for (x in 0 until w) {
                 val r = hypot(x - cx, y - cy).toInt()
-                if (r <= maxR) { hist[r][img[y * w + x]]++; count[r]++ }
+                if (r > maxR) continue
+                // Optionally only the bearings near the tilt axis. cos(2*b)
+                // is +1 along the axis and -1 across it, so one comparison
+                // covers both lobes without a branch on the sign.
+                if (!axisRad.isNaN() && r > 0) {
+                    val b = kotlin.math.atan2(y - cy, x - cx) - axisRad
+                    if (kotlin.math.cos(2 * b) < ScaleSettings.WEDGE_COS2) continue
+                }
+                hist[r][img[y * w + x]]++; count[r]++
             }
         }
         return RadialHistogram(hist, count, maxR)
@@ -520,8 +542,13 @@ object RingFinder {
      * single printed line.
      */
     private fun pooledCandidates(rh: RadialHistogram): List<Double> {
+        val strength = HashMap<Double, Int>()
         val perProfile = ArrayList<Double>()
         for (q in PROFILE_PERCENTILES) {
+            for ((r, d) in ringCandidatesWithStrength(percentileProfile(rh, q))) {
+                val prev = strength[r] ?: 0
+                if (d > prev) strength[r] = d
+            }
             // mergeClose FIRST, per profile. Its threshold is a fraction of
             // the median gap between peaks, which is calibrated for the peaks
             // of one profile. Pooling before merging would fill that gap
@@ -529,6 +556,27 @@ object RingFinder {
             // percentiles, drag the median to about a pixel, and leave the
             // threshold too small to merge anything at all.
             perProfile += mergeClose(ringCandidates(percentileProfile(rh, q)))
+        }
+
+        // CAP THE POOL. fitLadder tries every pair of candidates against nine
+        // possible divisors, so its cost grows with the CUBE of this list. On
+        // a noisy or heavily warped frame the pooled list ran long enough to
+        // make a single registration take minutes — on a 753 px image, which
+        // is smaller than ones that finish in a second. A hole detector that
+        // hangs is worse than one that misses.
+        //
+        // Cut by peak strength rather than by radius, so what survives is the
+        // clearest evidence rather than whatever happened to be innermost.
+        // MAX_CANDIDATES is comfortably more than any real face has rings.
+        if (perProfile.size > MAX_CANDIDATES) {
+            Logger.i(
+                "RingFinder",
+                "${perProfile.size} ring candidates is more than a real face has; " +
+                    "keeping the $MAX_CANDIDATES strongest"
+            )
+            val kept = perProfile.sortedByDescending { strength[it] ?: 0 }.take(MAX_CANDIDATES)
+            perProfile.clear()
+            perProfile += kept
         }
         // Then collapse only what is unambiguously the same ring. Two
         // percentiles locate one printed line within a pixel or two of each
@@ -546,7 +594,10 @@ object RingFinder {
         return out
     }
 
-    private fun ringCandidates(profile: IntArray): List<Double> {
+    private fun ringCandidates(profile: IntArray): List<Double> =
+        ringCandidatesWithStrength(profile).map { it.first }
+
+    private fun ringCandidatesWithStrength(profile: IntArray): List<Pair<Double, Int>> {
         val n = profile.size
         val dev = DoubleArray(n)
         for (r in 0 until n) {
@@ -554,17 +605,17 @@ object RingFinder {
             val window = profile.copyOfRange(lo, hi).sortedArray()
             dev[r] = abs(profile[r] - window[window.size / 2]).toDouble()
         }
-        val peaks = mutableListOf<Double>()
+        val peaks = mutableListOf<Pair<Double, Int>>()
         for (r in 3 until n - 3) {
             if (dev[r] < MIN_DEVIATION) continue
             var isPeak = true
             for (k in 1..3) if (dev[r] < dev[r - k] || dev[r] < dev[r + k]) { isPeak = false; break }
             if (!isPeak) continue
-            if (peaks.isNotEmpty() && r - peaks.last() < 5) {
-                if (dev[r] > dev[peaks.last().toInt()]) peaks[peaks.size - 1] = r.toDouble()
+            if (peaks.isNotEmpty() && r - peaks.last().first < 5) {
+                if (dev[r] > dev[peaks.last().first.toInt()]) peaks[peaks.size - 1] = r.toDouble() to dev[r].toInt()
                 continue
             }
-            peaks.add(r.toDouble())
+            peaks.add(r.toDouble() to dev[r].toInt())
         }
         return peaks
     }

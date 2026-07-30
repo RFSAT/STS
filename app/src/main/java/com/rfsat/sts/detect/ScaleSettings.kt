@@ -55,14 +55,49 @@ object ScaleSettings {
 
     private const val PREFS = "sts_algorithms"
     private const val KEY_MODE = "scale_mode"
+    private const val KEY_WEDGE = "axis_wedge"
 
     private var mode: ScaleMode = ScaleMode.CROSS_CHECK
+    private var wedge: Boolean = false
 
     fun init(context: Context) {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_MODE, null)
         mode = ScaleMode.values().firstOrNull { it.name == saved } ?: ScaleMode.CROSS_CHECK
+        wedge = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_WEDGE, false)
     }
+
+    /**
+     * Measure the ring pitch only in a wedge about the fitted major axis.
+     *
+     * The radial profile averages over every bearing, including the ones a
+     * residual perspective distorts. Along the TILT AXIS depth does not change
+     * at all, so the scale there is exactly uniform — which is why the fitted
+     * pitch drifts monotonically with tilt while the true pitch cannot.
+     * Restricting the profile to that direction should remove the drift, at
+     * the cost of fewer pixels per radius bin and so a noisier profile.
+     *
+     * Off by default until it is measured on real range photographs.
+     */
+    fun wedgeEnabled(): Boolean = wedge
+
+    fun setWedge(context: Context, value: Boolean) {
+        wedge = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_WEDGE, value).apply()
+    }
+
+    /** Test hook: no Context, no storage. */
+    fun forceWedge(value: Boolean) { wedge = value }
+
+    /**
+     * Half-width of the wedge, as cos(2*angle). 0.17 is +-35 degrees either
+     * side of the axis, which keeps about 40 per cent of each ring's
+     * circumference — enough for a stable percentile, narrow enough to
+     * exclude the bearings the gradient is worst on.
+     */
+    const val WEDGE_COS2 = 0.17
 
     fun mode(): ScaleMode = mode
 

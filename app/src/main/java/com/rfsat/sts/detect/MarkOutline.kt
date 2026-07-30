@@ -64,6 +64,51 @@ object MarkOutline {
      * or null if no compact mark is there.
      */
     fun extract(frame: LumaFrame, seedX: Double, seedY: Double): List<EdgePoint>? {
+        // WORK AT A BOUNDED RESOLUTION, and return the outline in SOURCE
+        // pixels.
+        //
+        // This ran at full resolution while everything around it did not —
+        // RingFinder works at 700 px and HoughCentre at 420. On a phone
+        // photograph arriving at 3000 px that meant five threshold passes,
+        // each with a morphological closing of four separable passes, over
+        // nine megapixels: comfortably the largest single cost in a
+        // registration.
+        //
+        // The precision is not thrown away with the pixels. The outline feeds
+        // an ellipse fit over several hundred boundary points, and a fit's
+        // error falls as the square root of the count, so halving the linear
+        // resolution costs far less than it saves. That claim was measured
+        // rather than assumed — see the note on WORK_MAX.
+        val step = maxOf(1, maxOf(frame.width, frame.height) / WORK_MAX)
+        val work = if (step == 1) frame else downsample(frame, step)
+        val outline = extractAt(work, seedX / step, seedY / step) ?: return null
+        return if (step == 1) outline
+        else outline.map { EdgePoint(it.x * step + (step - 1) / 2.0, it.y * step + (step - 1) / 2.0) }
+    }
+
+    /**
+     * Longest side of the image the mark is found on.
+     *
+     * 700, matching RingFinder, so both stages see the same geometry at the
+     * same scale and a radius measured by one is directly comparable with a
+     * pitch measured by the other — which since 1.16.0 they are, because the
+     * scale is cross-checked between them.
+     */
+    private const val WORK_MAX = 700
+
+    private fun downsample(frame: LumaFrame, step: Int): LumaFrame {
+        val w = frame.width / step
+        val h = frame.height / step
+        val out = ByteArray(w * h)
+        for (y in 0 until h) {
+            for (x in 0 until w) {
+                out[y * w + x] = frame.at(x * step, y * step).toByte()
+            }
+        }
+        return LumaFrame(w, h, out)
+    }
+
+    private fun extractAt(frame: LumaFrame, seedX: Double, seedY: Double): List<EdgePoint>? {
         val w = frame.width
         val h = frame.height
         val sx = seedX.toInt()

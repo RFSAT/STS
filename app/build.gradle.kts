@@ -32,6 +32,51 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.20.0 — feature: resolution discipline, a bound on the ladder
+        //          search, and the tilt-axis wedge behind a switch.
+        //
+        //   RESOLUTION DISCIPLINE. MarkOutline ran at FULL resolution while
+        //   everything around it did not — RingFinder works at 700 px and
+        //   HoughCentre at 420. On a phone photograph arriving at 3000 px
+        //   that meant five threshold passes, each with a morphological
+        //   closing of four separable passes, over nine megapixels. It now
+        //   works at 700 px and returns the outline in source pixels.
+        //
+        //   Measured on one card at four sizes, 460 to 3000 px. The mark
+        //   radius scales exactly linearly (84.0, 164.8, 329.6, 549.3 against
+        //   expected factors of 1.96, 2.00, 1.67), and the SCALE-FREE ratio of
+        //   mark radius to ring pitch holds to 0.24 per cent from 900 px
+        //   upward. Time is now bounded rather than growing with pixels: 999
+        //   ms at nine megapixels against 1311 ms at 0.8.
+        //
+        //   A HANG, found while measuring the above and worth its own note.
+        //   fitLadder tries every PAIR of candidates against nine divisors, so
+        //   its cost grows with the CUBE of the candidate list. On a warped
+        //   753 px frame — smaller than images that finish in a second — the
+        //   pooled list grew enough that a single registration ran for
+        //   MINUTES. The pool is now capped at 24, cut by peak strength so
+        //   what survives is the clearest evidence rather than whatever
+        //   happened to be innermost. No catalogue face has more than a dozen
+        //   rings. The same frames now finish in 0.8 to 1.5 s.
+        //
+        //   THE TILT-AXIS WEDGE, off by default, under Settings. Along the
+        //   axis a card tilts about, depth does not change, so the scale there
+        //   is exact — which is why the fitted pitch drifts monotonically with
+        //   tilt while the true pitch cannot. Measuring only in that direction
+        //   should remove the drift.
+        //
+        //   Measured on four frames it is NOT a clear win: unchanged on one
+        //   (37.00 to 37.06), better on one in the sense that it REFUSED a fit
+        //   that was 15 per cent wrong rather than returning it, and worse on
+        //   a third (31.01 to 32.50). It ships off, with a switch, until real
+        //   range photographs can settle it.
+        //
+        //   NOT ADDED, because it was already there: persistence for live
+        //   scoring. LiveHitDetector has required three consecutive frames
+        //   since it was written, with a stability tolerance, a global-change
+        //   veto, deduplication against the accepted set, and optional
+        //   acoustic gating. Proposing it as missing was my error.
+        //
         // 1.19.2 — toolchain: the activities can finally be compiled
         //          offline, closing the gap that let three failures reach CI.
         //
@@ -875,8 +920,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 35
-        versionName = "1.19.2"
+        versionCode = 36
+        versionName = "1.20.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
