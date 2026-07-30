@@ -153,7 +153,7 @@ class TargetActivity : BaseActivity() {
         override fun getItemId(position: Int) = position.toLong()
 
         override fun getView(
-            position: Int, convertView: android.view.View?, parent: android.view.ViewGroup?
+            position: Int, convertView: android.view.View?, parent: android.view.ViewGroup
         ): android.view.View {
             val view = convertView ?: layoutInflater.inflate(R.layout.item_target, parent, false)
             val face = items[position]

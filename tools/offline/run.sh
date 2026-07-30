@@ -27,12 +27,15 @@
 #  errors it exists to catch — an earlier version of it accepted the very
 #  assertEquals(Int, Int, Int) that CI then rejected.
 set -euo pipefail
+# Scratch space on a fast local filesystem. The compiler writes thousands of
+# class files, and putting them on a slow or network-backed mount turned a
+# forty-second type-check into several minutes. Override with STS_TMP.
 BIN="${1:-}"
 [ -n "$BIN" ] && export PATH="$BIN:$PATH"
 command -v kotlinc >/dev/null || { echo "kotlinc not on PATH; pass its bin directory as \$1"; exit 2; }
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-WORK="$(mktemp -d)"
+WORK="$(mktemp -d -p "${STS_TMP:-/tmp}")"
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/src"
 
@@ -71,7 +74,9 @@ open(sys.argv[2], 'w').write(
 PY
 
 # One package declaration per file: these must stay SEPARATE files.
-cp "$ROOT"/tools/offline/{JUnit4Shim,StubLog,StubContext,StubGraphics,StubCameraX,LoggerStub,AllRunner}.kt "$WORK/src/"
+cp "$ROOT"/tools/offline/{JUnit4Shim,LoggerStub,AllRunner}.kt "$WORK/src/"
+# StubUtilPkg carries android.util.Log, so StubLog is not copied here as well.
+cp "$ROOT"/tools/offline/{StubPlatformPkg,StubGraphicsPkg,StubUtilPkg,StubNetPkg,StubCameraX,StubCameraRes}.kt "$WORK/src/"
 cp "$ROOT"/app/src/test/java/com/rfsat/sts/*.kt "$WORK/src/"
 
 echo "compiling $(ls "$WORK/src" | wc -l) files..."
@@ -81,3 +86,6 @@ echo "compiling $(ls "$WORK/src" | wc -l) files..."
 # "no main manifest attribute" long after the compile appeared to succeed.
 kotlinc -nowarn "$WORK"/src/*.kt -include-runtime -d "$WORK/all.jar"
 java -cp "$WORK/all.jar" AllRunnerKt
+
+echo
+echo "The UI is type-checked separately: tools/offline/typecheck_ui.sh"

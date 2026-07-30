@@ -32,6 +32,45 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.19.2 — toolchain: the activities can finally be compiled
+        //          offline, closing the gap that let three failures reach CI.
+        //
+        //   tools/offline/typecheck_ui.sh compiles EVERY source file in the
+        //   app — 62 of them, activities and custom views included — against:
+        //     - view-binding classes GENERATED from the real layouts, so a
+        //       field that is not in the layout is not in the stub either;
+        //     - an R GENERATED from the real resources, for the same reason;
+        //     - a hand-written slice of the Android framework, roughly 25
+        //       files across android.view, android.widget, android.graphics,
+        //       androidx and the CameraX and Material pieces the app touches.
+        //
+        //   It runs nothing. The point is only that the compiler resolves
+        //   every name, which is exactly what the three CI failures were.
+        //
+        //   THE STUBS ARE DELIBERATELY NARROW. Each class carries only the
+        //   members the app actually uses, because a stub that answered to
+        //   anything would resolve a typo as readily as a real name — the
+        //   lesson from the JUnit shim in 1.10.1 and the Paint stub in
+        //   1.12.2, both of which were too generous and hid the very failure
+        //   they existed to catch. Using a new framework API therefore means
+        //   adding a line to tools/offline/Stub*.kt.
+        //
+        //   Getting there took the error count from 2490 to zero over seven
+        //   rounds. Two things had to change in the APP rather than the
+        //   stubs, and both are improvements in their own right:
+        //     - three adapters disagreed about whether getView's parent was
+        //       nullable. Android never passes null there; they now agree.
+        //       Kotlin cannot express a Java platform type, so a stub cannot
+        //       accept both spellings at once.
+        //
+        //   RUN IT SEPARATELY from run.sh. Two compiler invocations back to
+        //   back contend badly — chained, the check went from forty seconds
+        //   to several minutes.
+        //
+        //   WHAT IT STILL DOES NOT COVER: resource merging, manifests, data
+        //   binding generation and R8. Gradle remains the authority, and this
+        //   is a filter in front of it, not a replacement.
+        //
         // 1.19.1 — correction: two compile errors that have been in the
         //          tree since 1.18.0, through two releases.
         //
@@ -836,8 +875,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 34
-        versionName = "1.19.1"
+        versionCode = 35
+        versionName = "1.19.2"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

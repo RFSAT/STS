@@ -36,10 +36,10 @@ class TargetSpinnerAdapter(
     override fun getItem(position: Int) = faces[position]
     override fun getItemId(position: Int) = position.toLong()
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View =
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View =
         bind(convertView, parent, faces[position], compact = true)
 
-    override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup?): View =
+    override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View =
         bind(convertView, parent, faces[position], compact = false)
 
     private fun bind(convertView: View?, parent: ViewGroup?, face: TargetFace, compact: Boolean): View {
