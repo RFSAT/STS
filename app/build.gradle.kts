@@ -32,6 +32,54 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.17.0 — feature: face identification stabilised, and the two
+        //          largest costs in registration removed.
+        //
+        //   T1 WAS THE LIMITING FACTOR, and measurably so: across six tilt
+        //   angles of the SAME card the identified face changed up to four
+        //   times. That matters more since 1.16.0, because the scale now uses
+        //   the face's own black-to-pitch ratio.
+        //
+        //   The cause is not noise. Black radius over ring pitch CANNOT
+        //   separate this catalogue at any precision — 4.00 for ISSF 25/50 m
+        //   Precision Pistol, 4.00 for the German 100 m face, 4.01 for the
+        //   NRA A-23/5; 6.10 for 10 m Air Rifle against 6.00 for 300 m Rifle.
+        //   Those are the same shape at different sizes.
+        //
+        //   DISTANCE separates every one of those collisions, and the session
+        //   has known its distance all along from the rule set. Candidates
+        //   are now filtered by it before the ratio is compared, falling back
+        //   to the whole catalogue if nothing survives — a face used at a
+        //   distance it was not drawn for should give a worse answer, not no
+        //   answer.
+        //
+        //   HYSTERESIS. A face already in use is kept unless a rival beats it
+        //   by more than the margin the fitted pitch itself wanders by. That
+        //   is what stops the answer flapping between frames of one target.
+        //
+        //   MEASURED, distinct faces chosen across six tilts of each card:
+        //       card   before   after
+        //       t01      1        1     (and 300 m -> 10 m, i.e. plausible)
+        //       t02      2        2
+        //       t03      4        1
+        //       t04      3        2
+        //   Ten identifications down to six, and no 300 m face proposed for a
+        //   10 m session.
+        //
+        //   PERFORMANCE, first two items by expected gain. Registration was
+        //   taking around 20 s a frame in the harness, which had begun to
+        //   obstruct the accuracy work.
+        //     - fitLadder called leastSquares INSIDE the innermost loop of an
+        //       O(n^3) search for the aiming-mark test, sorting a map and
+        //       allocating every time. The anchor already defines the line, so
+        //       no fit is needed there; the least-squares runs once, on the
+        //       winner.
+        //     - The diagnostic second pass, which re-ran the whole fit without
+        //       the shape correction purely so the log could compare, is now
+        //       off by default.
+        //   Measured over six frames: 591 ms each down to 335 ms, with an
+        //   identical pitch on every frame — same answers, less work.
+        //
         // 1.16.0 — feature: the scale is now measured two independent ways
         //          and cross-checked. Accuracy, not speed.
         //
@@ -643,8 +691,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 29
-        versionName = "1.16.0"
+        versionCode = 30
+        versionName = "1.17.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -264,4 +264,96 @@ class RingFinderTest {
             )
         )
     }
+
+    // ------------------------------------------------------------------
+    //  Face identification
+    // ------------------------------------------------------------------
+
+    private fun fitOfPitch(pitchPx: Double) = com.rfsat.sts.detect.RingFit(
+        centreXPx = 0.0, centreYPx = 0.0, pitchPx = pitchPx,
+        ringsPx = listOf(pitchPx, 2 * pitchPx), residualPx = 0.0, confidence = 1.0
+    )
+
+    /**
+     * Black radius over ring pitch cannot separate the catalogue at ANY
+     * precision, and that is a property of the faces rather than of the
+     * measurement: 4.00 for ISSF 25/50 m Precision Pistol, 4.00 for the
+     * German 100 m face, 4.01 for the NRA A-23/5. Pinned so the limitation
+     * stays visible.
+     */
+    @Test
+    fun `several faces share a black-to-pitch ratio`() {
+        val ratios = listOf(
+            TargetCatalog.ISSF_P25_PRECISION, TargetCatalog.DE_100M, TargetCatalog.NRA_A23_50YD
+        ).map { it.blackDiameterMm / 2.0 / it.ringPitchMm!! }
+        assertTrue(
+            "these three should be within 1% of each other: $ratios",
+            ratios.max() - ratios.min() < 0.05
+        )
+    }
+
+    /** ...and that distance separates all of them. */
+    @Test
+    fun `distance separates the faces the ratio cannot`() {
+        val d = listOf(
+            TargetCatalog.ISSF_P25_PRECISION, TargetCatalog.DE_100M, TargetCatalog.NRA_A23_50YD
+        ).map { it.nominalDistanceM }.sorted()
+        for (i in 1 until d.size) {
+            assertTrue("distances $d should be far apart", d[i] / d[i - 1] > 1.7)
+        }
+    }
+
+    @Test
+    fun `the distance filter rules out a face drawn for another range`() {
+        val all = listOf(TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_R300)
+        // 6.10 against 6.00 — the ratio can barely tell these apart, but one
+        // is a 10 m face and the other a 300 m one.
+        val fit = fitOfPitch(30.0)
+        val markPx = 30.0 * (TargetCatalog.ISSF_AR10.blackDiameterMm / 2.0 /
+            TargetCatalog.ISSF_AR10.ringPitchMm!!)
+        val at10 = RingFinder.identify(fit, markPx, all, sessionDistanceM = 10.0)
+        assertEquals(TargetCatalog.ISSF_AR10.id, at10.first().face.id)
+        val at300 = RingFinder.identify(fit, markPx, all, sessionDistanceM = 300.0)
+        assertEquals(TargetCatalog.ISSF_R300.id, at300.first().face.id)
+    }
+
+    @Test
+    fun `an impossible distance falls back to the whole catalogue`() {
+        val all = listOf(TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_AP10)
+        val fit = fitOfPitch(30.0)
+        val markPx = 30.0 * 6.10
+        // 900 m matches nothing; the shooter should still get an answer
+        val r = RingFinder.identify(fit, markPx, all, sessionDistanceM = 900.0)
+        assertTrue("a face should still be offered", r.isNotEmpty())
+    }
+
+    /**
+     * Hysteresis. The measured ratio rests on the fitted pitch, which drifts
+     * as a card tilts, so a face in use must not be displaced by one that is
+     * merely a shade closer this frame — measured before this was added, the
+     * identified face changed four times across six angles of one card.
+     */
+    @Test
+    fun `a face in use is kept against a marginally better rival`() {
+        val all = listOf(TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_AP10)
+        // a mark radius a little off the Air Rifle ratio, still nearest to it
+        val fit = fitOfPitch(30.0)
+        val markPx = 30.0 * 6.10 * 1.01
+        val fresh = RingFinder.identify(fit, markPx, all, 10.0, stickyFaceId = null)
+        val kept = RingFinder.identify(fit, markPx, all, 10.0,
+            stickyFaceId = fresh.first().face.id)
+        assertEquals(fresh.first().face.id, kept.first().face.id)
+    }
+
+    @Test
+    fun `a clearly better face still displaces the one in use`() {
+        val all = listOf(TargetCatalog.ISSF_AR10, TargetCatalog.ISSF_AP10)
+        val fit = fitOfPitch(30.0)
+        // squarely on the Air PISTOL ratio while Air Rifle is held sticky
+        val markPx = 30.0 * (TargetCatalog.ISSF_AP10.blackDiameterMm / 2.0 /
+            TargetCatalog.ISSF_AP10.ringPitchMm!!)
+        val r = RingFinder.identify(fit, markPx, all, 10.0,
+            stickyFaceId = TargetCatalog.ISSF_AR10.id)
+        assertEquals(TargetCatalog.ISSF_AP10.id, r.first().face.id)
+    }
 }

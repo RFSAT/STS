@@ -665,7 +665,10 @@ class SessionActivity : BaseActivity() {
         }
 
         val matches = if (mark != null)
-            RingFinder.identify(fit, mark.radiusPx, TargetRepository(this).allFaces())
+            RingFinder.identify(
+                fit, mark.radiusPx, TargetRepository(this).allFaces(),
+                currentRules().distanceM, currentFace().id
+            )
         else emptyList()
         val best = matches.firstOrNull()
 

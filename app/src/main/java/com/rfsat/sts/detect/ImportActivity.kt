@@ -440,7 +440,7 @@ class ImportActivity : BaseActivity() {
                 }
 
             if (lastMarkRadiusPx > 0.0) {
-                val ranked = RingFinder.identify(f, lastMarkRadiusPx, all)
+                val ranked = RingFinder.identify(f, lastMarkRadiusPx, all, distanceFromField(), face.id)
                 val best = ranked.firstOrNull()
                 val mine = ranked.firstOrNull { it.face.id == face.id }
                 if (best != null && best.face.id != face.id &&
@@ -664,7 +664,10 @@ class ImportActivity : BaseActivity() {
         lastFit = fit
         lastMarkRadiusPx = mark?.radiusPx ?: 0.0
         val matches = if (mark != null)
-            RingFinder.identify(fit, mark.radiusPx, TargetRepository(this).allFaces())
+            RingFinder.identify(
+                fit, mark.radiusPx, TargetRepository(this).allFaces(),
+                distanceFromField(), currentFace().id
+            )
         else emptyList()
         val best = matches.firstOrNull()
 

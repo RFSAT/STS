@@ -130,6 +130,27 @@ object RingFinder {
     /** Radii closer than this, found at different percentiles, are the same
      *  printed ring. Deliberately far below any real ring spacing. */
     private const val DUPLICATE_LIMIT = 3.0
+
+    /**
+     * Run the whole fit a SECOND time without the shape correction, purely so
+     * the log can compare them.
+     *
+     * Off by default. It was worth its cost while the correction was new and
+     * unproven; it doubles the work of every registration, which is a poor
+     * trade now that the correction is measured. Turn it on when a field log
+     * needs to explain a bad fit.
+     */
+    var compareWithUncorrected = false
+
+    /** How far a face's nominal distance may sit from the session's before it
+     *  is ruled out. Wide enough for 50 ft against 15 m, and for a face used
+     *  a little off its drawn distance. */
+    private const val DISTANCE_WINDOW_LO = 0.6
+    private const val DISTANCE_WINDOW_HI = 1.7
+
+    /** A face already in use is kept unless a rival beats it by more than
+     *  this. Set at the scale the fitted pitch itself wanders by. */
+    private const val STICKY_MARGIN = 0.03
     private const val MIN_RINGS = 4
     /**
      * How far off its rung a candidate may sit and still count, as a fraction
@@ -239,7 +260,7 @@ object RingFinder {
         // when they do not, the shared field log is the only place that is
         // visible. Cheap, and it costs one extra fit per registration rather
         // than per frame.
-        if (corrected != null) {
+        if (corrected != null && compareWithUncorrected) {
             val plain = fitOn(frame, seedX, seedY, markRadiusPx)
             Logger.i(
                 "RingFinder",
@@ -332,15 +353,68 @@ object RingFinder {
      * tested, the correct face scored within 1.3% while the runner-up was 8%
      * or worse — a margin wide enough to act on rather than merely report.
      */
-    fun identify(fit: RingFit, blackRadiusPx: Double, candidates: List<TargetFace>): List<FaceMatch> {
+    fun identify(
+        fit: RingFit,
+        blackRadiusPx: Double,
+        candidates: List<TargetFace>,
+        sessionDistanceM: Double = 0.0,
+        stickyFaceId: String? = null
+    ): List<FaceMatch> {
         if (blackRadiusPx <= 0.0) return emptyList()
-        return candidates.mapNotNull { face ->
+
+        // THE RATIO ALONE CANNOT SEPARATE THE CATALOGUE, at any precision.
+        // Black radius over ring pitch is 4.00 for ISSF 25/50 m Precision
+        // Pistol, 4.00 for the German 100 m face and 4.01 for the NRA A-23/5;
+        // 6.10 for 10 m Air Rifle against 6.00 for 300 m Rifle. Those are not
+        // measurement problems, they are the same shape at different sizes.
+        //
+        // Distance separates every one of those collisions — 25 m against
+        // 100 m against 50 yd; 10 m against 300 m — and the session already
+        // knows its distance from the rule set. Filtering by it first turns
+        // an impossible discrimination into an easy one. Measured before
+        // this, the identified face changed up to four times across six tilt
+        // angles of the SAME card.
+        //
+        // The window is generous, and falls back to the whole catalogue when
+        // nothing survives, because a shooter using a face at a distance it
+        // was not drawn for should get a worse answer, not no answer.
+        val byDistance = if (sessionDistanceM > 0.0) {
+            candidates.filter {
+                val d = it.nominalDistanceM
+                d <= 0.0 || (d >= sessionDistanceM * DISTANCE_WINDOW_LO &&
+                             d <= sessionDistanceM * DISTANCE_WINDOW_HI)
+            }
+        } else candidates
+        val pool = if (byDistance.isNotEmpty()) byDistance else candidates
+
+        val ranked = pool.mapNotNull { face ->
             val pitchMm = face.ringPitchMm ?: return@mapNotNull null
             if (pitchMm <= 0.0 || face.blackDiameterMm <= 0.0) return@mapNotNull null
             val mmPerPx = pitchMm / fit.pitchPx
             val predictedBlackPx = (face.blackDiameterMm / 2.0) / mmPerPx
             FaceMatch(face, abs(predictedBlackPx - blackRadiusPx) / blackRadiusPx, mmPerPx)
         }.sortedBy { it.relativeError }
+
+        // HYSTERESIS. The measured ratio rests on the fitted pitch, which
+        // drifts as a card tilts, so a face already in use should not be
+        // displaced by a rival that is merely a shade closer this frame —
+        // that is what made the answer flap between frames of one target.
+        // A challenger has to be clearly better, not marginally.
+        val best = ranked.firstOrNull() ?: return ranked
+        val sticky = ranked.firstOrNull { it.face.id == stickyFaceId }
+        if (sticky != null && sticky !== best &&
+            sticky.relativeError <= best.relativeError + STICKY_MARGIN
+        ) {
+            Logger.i(
+                "RingFinder",
+                ("keeping %s (%.1f%% off) rather than switching to %s (%.1f%%): the difference " +
+                    "is inside the margin the fitted pitch itself moves by")
+                    .format(sticky.face.name, sticky.relativeError * 100,
+                            best.face.name, best.relativeError * 100)
+            )
+            return listOf(sticky) + ranked.filter { it !== sticky }
+        }
+        return ranked
     }
 
     // ------------------------------------------------------------------
@@ -559,17 +633,20 @@ object RingFinder {
                     // outcome, because a confident wrong pitch mis-scores
                     // every shot on the card.
                     if (markRadius > 0.0) {
-                        val fit0 = leastSquares(slots)
-                        if (fit0 == null || fit0.first <= 0.0) continue
-                        // Hard: the mark must be a plausible number of rings
-                        // across. This is what rejects a half- or double-pitch
-                        // ladder, and it holds for every catalogue face.
-                        val ratio = markRadius / fit0.first
+                        // The anchor already defines the line: this ladder
+                        // passes through radii[i] with spacing p, so r0 is
+                        // radii[i] and no fit is needed to test it.
+                        //
+                        // This used to call leastSquares here, inside the
+                        // innermost loop of an O(n^3) search, each call
+                        // sorting a map and allocating. With candidates pooled
+                        // from three percentiles that dominated registration —
+                        // it was the main reason a frame took some 20 seconds
+                        // in the measurement harness. The least-squares fit
+                        // now runs once, on the winner.
+                        val ratio = markRadius / p
                         if (ratio < MIN_MARK_RATIO || ratio > MAX_MARK_RATIO) continue
-                        // Soft: prefer ladders that also put the mark on a
-                        // rung. Cannot be hard — two catalogue faces are
-                        // legitimately off-rung.
-                        val k = (markRadius - fit0.second) / fit0.first
+                        val k = (markRadius - radii[i]) / p
                         score += MARK_RUNG_WEIGHT * (0.5 - abs(k - k.roundToInt())) * 2.0
                     }
                     if (score > bestScore) { bestScore = score; best = slots }
