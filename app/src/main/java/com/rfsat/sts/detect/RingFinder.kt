@@ -244,12 +244,21 @@ object RingFinder {
      * correction algebra to be right in a place where being wrong is silent.
      */
     fun find(frame: LumaFrame, seedX: Double = -1.0, seedY: Double = -1.0): RingFit? {
+        // Per-stage timings. Cheap, and they turn "registration feels slow"
+        // into a number naming the stage — which is how the aiming-mark
+        // outline was found to be the largest cost, and how a cubic ladder
+        // search was found to be running for minutes on a 753 px frame.
+        val tStart = System.currentTimeMillis()
         val vote0 = HoughCentre.find(frame)
+        val tHough = System.currentTimeMillis()
         val markX = vote0?.xPx ?: (if (seedX >= 0) seedX else frame.width / 2.0)
         val markY = vote0?.yPx ?: (if (seedY >= 0) seedY else frame.height / 2.0)
         val outline = MarkOutline.extract(frame, markX, markY)
+        val tOutline = System.currentTimeMillis()
         val choice = outline?.let { RingShapeSelector.choose(it) }
+        val tShape = System.currentTimeMillis()
         val corrected = choice?.correction?.apply(frame)
+        val tCorrect = System.currentTimeMillis()
         if (choice != null && choice.usedEllipse && corrected == null) {
             Logger.w("RingFinder", "shape correction was selected but could not be applied; using the source frame")
         }
@@ -286,6 +295,16 @@ object RingFinder {
             markRadiusPx,
             axisRad
         ) ?: return null
+        val tFit = System.currentTimeMillis()
+        Logger.i(
+            "RingFinder",
+            ("timings ms: hough %d, mark outline %d, shape %d, correction %d, ladder %d, " +
+                "total %d, on a %dx%d frame").format(
+                tHough - tStart, tOutline - tHough, tShape - tOutline,
+                tCorrect - tShape, tFit - tCorrect, tFit - tStart,
+                frame.width, frame.height
+            )
+        )
         return raw.copy(
             shape = choice,
             correction = if (corrected != null) choice?.correction else null,

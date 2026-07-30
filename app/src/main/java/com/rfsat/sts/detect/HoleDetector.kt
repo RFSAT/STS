@@ -28,7 +28,11 @@ data class DetectedHole(
     val confidence: Double,
     /** Longer extent / shorter extent of the region. Near 1 for a hole; large
      *  for a stretch of printed ring line that survived the other tests. */
-    val elongation: Double
+    val elongation: Double,
+    /** True when this shot was recovered by splitting a region that held more
+     *  than one. Worth surfacing: a split is an inference about where two
+     *  shots were, and it should be checked against the photograph. */
+    val merged: Boolean = false
 ) {
     val distanceFromCentreMm: Double get() = hypot(xMm, yMm)
 }
@@ -73,6 +77,10 @@ object HoleDetector {
     /** Absolute floor, luma levels. Under about 8 levels of contrast the
      *  detection is inside the sensor's own noise on a phone at ISO 400. */
     private const val MIN_CONTRAST = 8.0
+
+    /** Confidence given to a shot recovered from a merged group. Deliberately
+     *  modest: it is an inference about two shots, not a measurement of one. */
+    private const val MERGED_CONFIDENCE = 0.40
 
     /** A hole may measure between these fractions of the gauge and still be
      *  accepted. The generous upper bound covers overlapping shots and torn
@@ -159,7 +167,7 @@ object HoleDetector {
         val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
 
         return components(mask, w, h, maxComponents = maxHoles * 4)
-            .mapNotNull { comp -> holeFromComponent(comp, diff, w, reg, gaugePx, expectedArea) }
+            .flatMap { comp -> holesFromComponent(comp, diff, w, reg, gaugePx, expectedArea) }
             .sortedByDescending { it.confidence }
             .take(maxHoles)
     }
@@ -287,8 +295,8 @@ object HoleDetector {
         val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
 
         val blobs = components(mask, w, h, maxComponents = maxHoles * 4)
-        val candidates = blobs.mapNotNull { comp ->
-            holeFromComponent(comp, response, w, reg, gaugePx, expectedArea)
+        val candidates = blobs.flatMap { comp ->
+            holesFromComponent(comp, response, w, reg, gaugePx, expectedArea)
         }
         val twinned = candidates.filter { hasRotationalTwins(it, response, w, h, reg, gaugePx) }
         val kept = (candidates - twinned.toSet()).sortedByDescending { it.confidence }.take(maxHoles)
@@ -554,6 +562,54 @@ object HoleDetector {
      * couple of tenths of a millimetre, comfortably finer than the ring
      * boundaries it is compared against.
      */
+    /**
+     * A component becomes one hole, or several when two shots have merged.
+     *
+     * The size and elongation gates below REJECT a merged pair outright,
+     * which loses both shots rather than one. [MergedHoles] gets first
+     * refusal: where it finds a clean split each part is measured on its own,
+     * and where it does not the region falls through unchanged.
+     */
+    private fun holesFromComponent(
+        comp: Component,
+        response: IntArray,
+        w: Int,
+        reg: TargetRegistration,
+        gaugePx: Double,
+        expectedArea: Double
+    ): List<DetectedHole> {
+        val parts = MergedHoles.split(
+            comp.pixels.toIntArray(), comp.count, response, w, gaugePx, expectedArea
+        )
+        if (parts.size <= 1) {
+            return listOfNotNull(holeFromComponent(comp, response, w, reg, gaugePx, expectedArea))
+        }
+        Logger.i(
+            "HoleDetector",
+            ("a region of %d px, %.1f gauges' worth, split into %d shots — a merged group, " +
+                "which the size and roundness gates would otherwise have thrown away whole")
+                .format(comp.count, comp.count / expectedArea, parts.size)
+        )
+        return parts.mapNotNull { part ->
+            val (u0, v0) = reg.rectToMm(part.x.toInt(), part.y.toInt())
+            val uMm = u0 + (part.x - part.x.toInt()) * reg.mmPerPx
+            val vMm = v0 - (part.y - part.y.toInt()) * reg.mmPerPx
+            val diameterPx = 2.0 * sqrt(part.pixels / Math.PI)
+            DetectedHole(
+                xMm = uMm,
+                yMm = vMm,
+                diameterMm = diameterPx * reg.mmPerPx,
+                contrast = 0.0,
+                // Held below a clean single detection on purpose: a split is
+                // an inference about where two shots were, not a measurement
+                // of one, and it should be checked on the plot.
+                confidence = MERGED_CONFIDENCE,
+                elongation = 1.0,
+                merged = true
+            )
+        }
+    }
+
     private fun holeFromComponent(
         comp: Component,
         response: IntArray,

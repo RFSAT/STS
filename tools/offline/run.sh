@@ -42,7 +42,7 @@ mkdir -p "$WORK/src"
 M="$ROOT/app/src/main/java/com/rfsat/sts"
 for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/HoleDetector \
          detect/Homography detect/HoughCentre detect/LumaFrame detect/MarkOutline \
-         detect/RingFinder detect/RingShapeSelector detect/ShapeCorrection \
+         detect/RingFinder detect/RingShapeSelector detect/ShapeCorrection detect/MergedHoles \
          detect/TargetGeometryCheck detect/TargetRegistration \
          profiles/BulletProfile profiles/RifleProfile profiles/ScopeProfile \
          profiles/AmmoCatalog profiles/RifleCatalog profiles/ScopeCatalog \
@@ -50,7 +50,7 @@ for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/H
          scoring/CorrectionCalculator scoring/GroupStatistics scoring/ScoringEngine \
          scoring/Shot scoring/ShotDistribution \
          targets/PracticalGeometry targets/TargetCatalog targets/TargetFace \
-         scoring/ScoredPhoto ui/NameWrap detect/ScaleSettings; do
+         scoring/ScoredPhoto ui/NameWrap detect/ScaleSettings scoring/ShotCountCheck; do
   cp "$M/$f.kt" "$WORK/src/$(basename $f).kt"
 done
 

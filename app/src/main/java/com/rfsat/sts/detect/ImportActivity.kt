@@ -546,6 +546,11 @@ class ImportActivity : BaseActivity() {
             ScoringSession.setDistance(distanceFromField())
         }
 
+        runCatching {
+            val c = com.rfsat.sts.scoring.ShotCountCheck.check(rules, holes.size)
+            c.message?.let { Logger.w("ImportActivity", it); notifyUser(it) }
+        }
+
         if (holes.isEmpty()) {
             binding.hdrDistribution.visibility = View.GONE
             binding.histogram.distribution = com.rfsat.sts.scoring.ShotDistribution.EMPTY

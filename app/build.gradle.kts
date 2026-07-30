@@ -32,6 +32,58 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.21.0 — feature: merged shots, the shot-count check, hole-centre
+        //          precision as its own metric, and stage timings.
+        //
+        //   TWO SHOTS THROUGH ONE PLACE (H1). A connected-component detector
+        //   sees them as one region, and the size and roundness gates then
+        //   REJECTED that region — losing BOTH shots rather than one. At 10 m
+        //   a good shooter puts most of a card through the same few
+        //   millimetres, so this is the app's own use case failing.
+        //
+        //   MergedHoles splits such a region along its own long axis, at the
+        //   peaks of the detector response inside it. Measured on synthetic
+        //   pairs at known separations:
+        //       separation   parts   centre error
+        //         0.3 gauge    1     (refused, correctly)
+        //         0.5 gauge    1     (refused, correctly)
+        //         0.7 gauge    2      0.31 px
+        //         0.9 gauge    2      0.05 px
+        //         1.2 gauge    2      0.01 px
+        //   Below about two thirds of a pellet the holes genuinely overlap
+        //   and it declines to guess: a shot invented on paper is a score the
+        //   shooter did not fire, which is worse than one missed. A split
+        //   shot carries a lower confidence and a `merged` flag for the same
+        //   reason — it is an inference, not a measurement.
+        //
+        //   SHOT COUNT (C1). The rule set has always known the string length
+        //   and nothing looked at it. Nine holes where ten were fired is a
+        //   missed detection and eleven is a false one. ADVISORY only: the
+        //   obvious next step of lowering the threshold until the expected
+        //   number appears would manufacture shots on demand and turn the
+        //   detector into a machine that always agrees with the course of
+        //   fire.
+        //
+        //   HOLE-CENTRE PRECISION (H2), measured separately from detection
+        //   rate for the first time. They fail differently and only one is
+        //   visible: a missed hole shows on the plot, a hole half a
+        //   millimetre out looks normal and flips any shot near a boundary.
+        //   Worst centre error across fifteen sub-pixel positions is 0.35 px,
+        //   which at the rectified resolution is about 0.2 mm — under a tenth
+        //   of a 10 m air rifle ring.
+        //
+        //   STAGE TIMINGS in the log: Hough, mark outline, shape, correction
+        //   and ladder, separately, with the frame size. Registration
+        //   performance has twice been diagnosed by guessing at which stage
+        //   was slow; now the field log says.
+        //
+        //   NOT DONE: the full ring-family homography. It is written and
+        //   validated offline — it recovered 39.82 degrees against a true 40
+        //   — but it is worth only about a further quarter of the residual
+        //   after the ellipse correction, and it depends on the face being
+        //   right, which turns a wrong identification into a confident wrong
+        //   score. It needs the range photographs before it earns a place.
+        //
         // 1.20.0 — feature: resolution discipline, a bound on the ladder
         //          search, and the tilt-axis wedge behind a switch.
         //
@@ -920,8 +972,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 36
-        versionName = "1.20.0"
+        versionCode = 37
+        versionName = "1.21.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
