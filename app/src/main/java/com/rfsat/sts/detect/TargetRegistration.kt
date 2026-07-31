@@ -358,11 +358,24 @@ class TargetRegistration private constructor(
          * a published constant rather than an assumption about the picture,
          * and [RingFinder.identify] can pick the face from the fit itself.
          */
+        /** How far the worst ring may sit from where the face says it should
+         *  before the circle fit is disbelieved and the ladder's scale kept.
+         *  A quarter of a millimetre: the good fit on the user's card was 0.06
+         *  mm over six rings, so this is four times the observed error and
+         *  still a twentieth of a ring at 10 m. */
+        private const val FAMILY_MAX_RESIDUAL_MM = 0.25
+
+        /**
+         * [frame] is needed only by the optional ring-circle refinement, which
+         * has to re-read the printed lines; without it that stage is skipped
+         * and the ladder's scale is used, exactly as before.
+         */
         fun fromRingFit(
             face: TargetFace,
             fit: RingFit,
             gaugeDiameterMm: Double,
-            transform: BoxTransform = BoxTransform.NONE
+            transform: BoxTransform = BoxTransform.NONE,
+            frame: LumaFrame? = null
         ): TargetRegistration? {
             val pitchMm = face.ringPitchMm ?: run {
                 Logger.w(
@@ -374,11 +387,54 @@ class TargetRegistration private constructor(
             if (fit.pitchPx <= 0.0 || pitchMm <= 0.0) return null
 
             val scale = chooseScale(face, fit, pitchMm)
-            val mmPerSourcePx = scale.mmPerPx
+
+            // Optionally refine the centre and scale on the printed lines.
+            //
+            // Measured on a flat scan this moves the reported radii by less
+            // than a tenth of a millimetre, so it is off by default and is
+            // NOT the accuracy fix it was first thought to be — see
+            // [RingFamilyFit] for the retracted claim and why it was wrong.
+            // What it does give is a residual per ring, which says whether
+            // the card is flat.
+            var centreX = fit.centreXPx
+            var centreY = fit.centreYPx
+            var mmPerSourcePx = scale.mmPerPx
+            var familyNote: String? = null
+            if (ScaleSettings.ringFamilyFit()) {
+                // THE FRAME MUST MATCH THE COORDINATES.
+                //
+                // Every pixel figure in a RingFit has been in CORRECTED
+                // coordinates since 1.10.0 when a shape correction was
+                // applied, and the box below is built in that space for
+                // exactly that reason. Handing the refiner the SOURCE frame
+                // while giving it corrected centres and radii makes it hunt
+                // for ring lines that are not where it is looking: on the
+                // user's card that moved the 6 from 38.5 mm to 36.4 and would
+                // have scored it a 5. The corrected image is the one these
+                // numbers describe, so it is the one that is read.
+                val fitFrame = fit.correctedFrame?.frame ?: frame
+                val black = fit.shape?.model?.semiMajorPx ?: 0.0
+                val refined = if (black > 0.0 && fitFrame != null) RingFamilyFit.refine(
+                    fitFrame, fit.centreXPx, fit.centreYPx, fit.ringsPx, face, black
+                ) else null
+                if (refined != null && refined.maxResidualMm <= FAMILY_MAX_RESIDUAL_MM) {
+                    centreX = refined.centreXPx
+                    centreY = refined.centreYPx
+                    mmPerSourcePx = refined.mmPerPx
+                    familyNote = ("Scale from %d fitted ring circles: pitch %.3f mm, " +
+                        "worst ring %.2f mm out. The ladder made it %.3f mm.").format(
+                        refined.rings.size, refined.pitchMm, refined.maxResidualMm,
+                        fit.pitchPx * scale.mmPerPx)
+                } else if (refined != null) {
+                    familyNote = ("Ring-circle fit rejected: worst ring %.2f mm from where " +
+                        "%s puts it, so the ladder's scale was kept.").format(
+                        refined.maxResidualMm, face.name)
+                }
+            }
             val outerPx = face.outerRadiusMm / mmPerSourcePx
             val box = floatArrayOf(
-                (fit.centreXPx - outerPx).toFloat(), (fit.centreYPx - outerPx).toFloat(),
-                (fit.centreXPx + outerPx).toFloat(), (fit.centreYPx + outerPx).toFloat()
+                (centreX - outerPx).toFloat(), (centreY - outerPx).toFloat(),
+                (centreX + outerPx).toFloat(), (centreY + outerPx).toFloat()
             )
             val reg = fromBoundingBox(
                 face, box, BoxMeaning.OUTER_SCORING_RING, gaugeDiameterMm,
@@ -423,6 +479,7 @@ class TargetRegistration private constructor(
             val warnings = placed.warnings.filterNot { it.contains("position and scale only") }.toMutableList()
             warnings += scale.explanation
             if (scale.disagreement != null) warnings += scale.disagreement
+            familyNote?.let { warnings += it }
             fit.shape?.let { sh ->
                 warnings += if (sh.usedEllipse) {
                     ("Foreshortening corrected: %s. Ring pitch was then measured on the " +

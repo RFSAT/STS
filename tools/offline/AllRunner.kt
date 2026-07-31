@@ -2,6 +2,7 @@ fun main() {
     val classes = listOf(
         "com.rfsat.sts.DetectorRegressionTest", "com.rfsat.sts.EllipseFitTest",
         "com.rfsat.sts.RegistrationBoxTest", "com.rfsat.sts.RingFinderTest",
+        "com.rfsat.sts.PunctureCheckTest",
         "com.rfsat.sts.ScoringGeometryTest", "com.rfsat.sts.ScoringRulesTest",
         "com.rfsat.sts.ShotDistributionTest", "com.rfsat.sts.NameWrapTest", "com.rfsat.sts.ScaleChoiceTest", "com.rfsat.sts.NineMillimetreCatalogueTest", "com.rfsat.sts.HoleAccuracyTest"
     )

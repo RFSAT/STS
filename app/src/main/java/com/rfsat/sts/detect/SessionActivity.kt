@@ -1144,7 +1144,9 @@ class SessionActivity : BaseActivity() {
 
         val face = currentFace()
         val rules = currentRules()
-        val reg = TargetRegistration.fromRingFit(face, fit, rules.gaugeDiameterMm, transform)
+        val reg = TargetRegistration.fromRingFit(
+            face, fit, rules.gaugeDiameterMm, transform, frame
+        )
         if (reg == null) {
             notifyUser("${face.name} has unevenly pitched rings, so a fitted pitch cannot set its scale.")
             return

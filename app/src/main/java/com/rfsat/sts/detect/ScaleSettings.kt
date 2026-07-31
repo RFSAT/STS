@@ -56,11 +56,17 @@ object ScaleSettings {
     private const val PREFS = "sts_algorithms"
     private const val KEY_MODE = "scale_mode"
     private const val KEY_WEDGE = "axis_wedge"
+    private const val KEY_FAMILY = "ring_family_fit"
+    private const val KEY_PUNCTURE = "puncture_check"
+    private const val KEY_OUTSIDE = "score_outside_area"
     private const val KEY_GUIDE = "aim_guide"
     private const val KEY_GUIDE_SIZE = "aim_guide_size"
 
     private var mode: ScaleMode = ScaleMode.CROSS_CHECK
     private var wedge: Boolean = false
+    private var family: Boolean = false
+    private var puncture: Boolean = false
+    private var outside: Boolean = false
     private var guide: com.rfsat.sts.ui.AimGuide = com.rfsat.sts.ui.AimGuide.CROSS
     private var guideSize: Float = 0.80f
 
@@ -70,6 +76,9 @@ object ScaleSettings {
         mode = ScaleMode.values().firstOrNull { it.name == saved } ?: ScaleMode.CROSS_CHECK
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         wedge = p.getBoolean(KEY_WEDGE, false)
+        family = p.getBoolean(KEY_FAMILY, false)
+        puncture = p.getBoolean(KEY_PUNCTURE, false)
+        outside = p.getBoolean(KEY_OUTSIDE, false)
         guide = com.rfsat.sts.ui.AimGuide.values()
             .firstOrNull { it.name == p.getString(KEY_GUIDE, null) }
             ?: com.rfsat.sts.ui.AimGuide.CROSS
@@ -116,6 +125,73 @@ object ScaleSettings {
 
     /** Test hook: no Context, no storage. */
     fun forceWedge(value: Boolean) { wedge = value }
+
+    /**
+     * Take the scale from circles fitted to the printed ring lines rather
+     * than from the radial-profile ladder.
+     *
+     * On a flat scan this makes almost no difference: measured on the user's
+     * card it moved the reported radii by under a tenth of a millimetre, and
+     * both methods recover the 8 mm pitch to within 0.001 mm. An earlier
+     * version of this note claimed a 2.1 per cent gain; that was two
+     * measurements taken in different coordinate frames and is retracted —
+     * see [RingFamilyFit].
+     *
+     * It is kept, off, because it reports a residual PER RING rather than one
+     * averaged figure, which is a direct measure of whether a card is flat.
+     * On angled photographs, where the ladder has always been weakest, that
+     * may matter. Off by default until the range corpus says whether it does.
+     */
+    fun ringFamilyFit(): Boolean = family
+
+    fun setRingFamilyFit(context: Context, value: Boolean) {
+        family = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_FAMILY, value).apply()
+    }
+
+    fun forceRingFamilyFit(value: Boolean) { family = value }
+
+    /**
+     * Require a candidate to have the radial profile of a PUNCTURE before it
+     * is accepted as a shot.
+     *
+     * A hole removes the most material at its centre, so its brightness
+     * changes monotonically outwards; a printed roundel or a letter does not.
+     * On the user's card this admitted all seven real holes and refused the
+     * ISSF roundel, the club crest and the footer text — one of which the
+     * shipped detector was reporting as a shot.
+     */
+    fun punctureCheck(): Boolean = puncture
+
+    fun setPunctureCheck(context: Context, value: Boolean) {
+        puncture = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_PUNCTURE, value).apply()
+    }
+
+    fun forcePunctureCheck(value: Boolean) { puncture = value }
+
+    /**
+     * Look for shots OUTSIDE the outermost scoring ring as well.
+     *
+     * They score nothing, so this cannot change a total. It exists because a
+     * shooter who has thrown one wants to see where it went, and a plot that
+     * silently omits the worst shots of a string misrepresents the group.
+     * On the user's card two of the seven shots were outside the rings.
+     *
+     * Requires the puncture test, because everything out there is print, and
+     * applies it at a stricter setting for the same reason.
+     */
+    fun scoreOutsideArea(): Boolean = outside
+
+    fun setScoreOutsideArea(context: Context, value: Boolean) {
+        outside = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_OUTSIDE, value).apply()
+    }
+
+    fun forceScoreOutsideArea(value: Boolean) { outside = value }
 
     /**
      * Half-width of the wedge, as cos(2*angle). 0.17 is +-35 degrees either

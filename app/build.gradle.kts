@@ -32,6 +32,54 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.26.0 — feature: the detector can be asked whether a candidate has
+        //          the PROFILE of a puncture, and to look for the shots that
+        //          missed the rings.
+        //
+        //   Both come from scoring the user's card by hand, independently of
+        //   the app, and then running the shipped pipeline on the same image
+        //   to see where the two differ. By hand: 9, 6, 2, 1, 1 and two
+        //   misses, 19 points from 7 shots. Shipped: 4 real hits, ONE FALSE
+        //   POSITIVE (a piece of the maker's footer, at 82.77 mm), and the 9
+        //   in the black missed entirely.
+        //
+        //   PUNCTURE TEST. A hole takes the most material out of its centre,
+        //   so it gets steadily lighter outwards until it reaches the paper;
+        //   a printed roundel or a letter does not. Measured out to 1.25
+        //   gauges: all seven real holes 1.00 monotonic with 57 to 145 levels
+        //   of contrast, the ISSF roundel 0.71 and 15, the club crest 0.43
+        //   and -29, the footer text 0.57 and 1. Switched on, it removed the
+        //   false positive and kept every real hole.
+        //
+        //   MISSES. Absolute detection has always been confined to the
+        //   scoring area, deliberately, because outside it is all card
+        //   furniture. But two of these seven shots were out there, and a
+        //   plot that silently drops the worst shots of a string
+        //   misrepresents the group. Optional, cannot change a total, and it
+        //   turns the puncture test on with itself because that region is
+        //   entirely print.
+        //
+        //   A CLAIM MADE AND RETRACTED, recorded because the shape of the
+        //   mistake matters. RingFinder reported a ring pitch of 75.54 px
+        //   where fitting circles to the same rings gave 73.95, and that 2.1
+        //   per cent was taken for a scale error read straight off every
+        //   score. It was not: RingFit coordinates are in the CORRECTED
+        //   frame, which for this card is 1575 px wide against a 1536 px
+        //   source — 2.5 per cent. Two numbers measured in different frames,
+        //   differing by exactly the amount the frames differ by, and the
+        //   conclusion drawn was that one of them was wrong. Measured
+        //   properly both recover the 8 mm pitch to a thousandth of a
+        //   millimetre. RingFamilyFit ships anyway, OFF, because its per-ring
+        //   residuals say whether a card is flat where the ladder gives one
+        //   averaged figure — which may earn its place on angled cards.
+        //
+        //   STILL WRONG, and not fixed here: the 9 in the black is still
+        //   missed, and reported radii still sit about 1.2 mm inside the
+        //   measured truth on some shots. The rectified plane runs at eight
+        //   pixels per gauge whatever the source resolution, so a hole
+        //   photographed 42 px across is judged as an 8 px blob. That is the
+        //   next thing to look at, and it wants the range corpus.
+        //
         // 1.25.0 — feature: the camera ADOPTS the face it identifies, and
         //          the plot no longer loses your zoom when you nudge a shot.
         //
@@ -1156,8 +1204,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 43
-        versionName = "1.25.0"
+        versionCode = 44
+        versionName = "1.26.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

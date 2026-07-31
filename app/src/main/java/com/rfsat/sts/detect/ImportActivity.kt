@@ -730,7 +730,9 @@ class ImportActivity : BaseActivity() {
 
         val face = currentFace()
         val rules = currentRules()
-        val reg = TargetRegistration.fromRingFit(face, fit, rules.gaugeDiameterMm, transform)
+        val reg = TargetRegistration.fromRingFit(
+            face, fit, rules.gaugeDiameterMm, transform, frame
+        )
         if (reg == null) {
             // Not a failure of the fit — some faces simply have no single
             // ring pitch to scale from. The practical and service faces put

@@ -102,6 +102,11 @@ object HoleDetector {
      *  a real shot. */
     private const val TWINS_TO_REJECT = 2
 
+    /** Scoring-area multiple searched when misses are wanted too. 1.35 covers
+     *  the furthest shot on the user's card, which sat at 1.25x, without
+     *  reaching the foot of the sheet where the maker's line is printed. */
+    private const val OUTSIDE_LIMIT = 1.35
+
     // =====================================================================
     //  Differential detection
     // =====================================================================
@@ -236,7 +241,14 @@ object HoleDetector {
         // 1.10 rather than 1.02: a shot just outside the last ring is a
         // genuine miss and is worth reporting, while card furniture sits much
         // further out — the club logo that triggered this was at 1.21x.
-        val outerLimit = reg.face.outerRadiusMm * 1.10
+        // With [ScaleSettings.scoreOutsideArea] the limit moves out far
+        // enough to catch a shot that missed the rings altogether. Those score
+        // nothing, so no total can change; the point is that a plot which
+        // silently drops the worst shots of a string misrepresents the group,
+        // and a shooter who has thrown one wants to see where it went. On the
+        // user's card two of seven shots were out there, at 1.20x and 1.25x.
+        val outerLimit = reg.face.outerRadiusMm *
+            (if (ScaleSettings.scoreOutsideArea()) OUTSIDE_LIMIT else 1.10)
         val valid = BooleanArray(n)
         for (idx in 0 until n) {
             if ((frame.data[idx].toInt() and 0xFF) == OUT) continue
@@ -299,7 +311,32 @@ object HoleDetector {
             holesFromComponent(comp, response, w, reg, gaugePx, expectedArea)
         }
         val twinned = candidates.filter { hasRotationalTwins(it, response, w, h, reg, gaugePx) }
-        val kept = (candidates - twinned.toSet()).sortedByDescending { it.confidence }.take(maxHoles)
+        var surviving = candidates - twinned.toSet()
+
+        // ---- does it have the profile of a puncture? ----
+        //
+        // The twin test rejects printing that REPEATS about the centre, which
+        // is most of what a target face carries. It cannot touch the things
+        // printed once: the ISSF roundel in the corner, the club crest, the
+        // maker's line along the foot. Those are dark, compact, round and
+        // about a pellet across, and on the user's card one of them was
+        // reported as a shot. See [PunctureCheck] for what separates them.
+        var byProfile = 0
+        if (ScaleSettings.punctureCheck()) {
+            val blackR = reg.face.blackDiameterMm / 2.0
+            val before = surviving.size
+            surviving = surviving.filter { cand ->
+                val (px, py) = reg.mmToRect(cand.xMm, cand.yMm)
+                val r = hypot(cand.xMm, cand.yMm)
+                PunctureCheck.isPuncture(
+                    frame, px, py, gaugePx,
+                    inBlack = r <= blackR,
+                    outsideScoringArea = r > reg.face.outerRadiusMm
+                )
+            }
+            byProfile = before - surviving.size
+        }
+        val kept = surviving.sortedByDescending { it.confidence }.take(maxHoles)
 
         // Enough detail that a bad result can be diagnosed from the log alone,
         // without the photograph. Every number here has been needed at least
@@ -314,7 +351,8 @@ object HoleDetector {
                 ) +
                 "sigma %.2f threshold %.1f | %d blobs -> %d candidates -> %d after twin rejection".format(
                     sigma, threshold, blobs.size, candidates.size, kept.size
-                )
+                ) +
+                (if (byProfile > 0) ", $byProfile more refused as print by radial profile" else "")
         )
         kept.forEachIndexed { i, hHole ->
             Logger.i(

@@ -70,6 +70,49 @@ class ProfileActivity : BaseActivity() {
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
+        binding.cbPuncture.isChecked = ScaleSettings.punctureCheck()
+        binding.cbPuncture.setOnClickListener {
+            ScaleSettings.setPunctureCheck(this, binding.cbPuncture.isChecked)
+            notifyUser(
+                if (binding.cbPuncture.isChecked)
+                    "A candidate must now get lighter outwards from its centre to count as a " +
+                        "shot. Re-detect to see the difference."
+                else "Shots will be accepted on size, roundness and contrast alone again."
+            )
+        }
+        binding.cbOutside.isChecked = ScaleSettings.scoreOutsideArea()
+        binding.cbOutside.setOnClickListener {
+            val on = binding.cbOutside.isChecked
+            ScaleSettings.setScoreOutsideArea(this, on)
+            if (on && !ScaleSettings.punctureCheck()) {
+                // Not a preference to be quietly overridden, but this one
+                // combination is genuinely unsafe: the region outside the
+                // rings is entirely print, and without the profile test it is
+                // exactly where false shots come from.
+                ScaleSettings.setPunctureCheck(this, true)
+                binding.cbPuncture.isChecked = true
+                notifyUser(
+                    "Misses will be reported. The puncture test has been switched on with it: " +
+                        "everything outside the rings is print, and without that test it is " +
+                        "where false shots come from."
+                )
+            } else {
+                notifyUser(
+                    if (on) "Shots outside the outermost ring will be reported as misses."
+                    else "Only shots inside the scoring area will be reported."
+                )
+            }
+        }
+        binding.cbFamily.isChecked = ScaleSettings.ringFamilyFit()
+        binding.cbFamily.setOnClickListener {
+            ScaleSettings.setRingFamilyFit(this, binding.cbFamily.isChecked)
+            notifyUser(
+                if (binding.cbFamily.isChecked)
+                    "Scale will come from a circle fitted to each ring. Re-register any target " +
+                        "already open."
+                else "Scale will come from the averaged ring ladder again."
+            )
+        }
         binding.cbWedge.isChecked = ScaleSettings.wedgeEnabled()
         binding.cbWedge.setOnClickListener {
             ScaleSettings.setWedge(this, binding.cbWedge.isChecked)
