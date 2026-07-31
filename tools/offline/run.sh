@@ -85,7 +85,7 @@ echo "compiling $(ls "$WORK/src" | wc -l) files..."
 # ignored the jar silently gets no Main-Class and the run fails with
 # "no main manifest attribute" long after the compile appeared to succeed.
 kotlinc -nowarn "$WORK"/src/*.kt -include-runtime -d "$WORK/all.jar"
-java -cp "$WORK/all.jar" AllRunnerKt
+java -cp "$WORK/all.jar:$ROOT/app/src/test/resources" AllRunnerKt
 
 echo
 echo "The UI is type-checked separately: tools/offline/typecheck_ui.sh"

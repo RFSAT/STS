@@ -254,6 +254,46 @@ for f in files:
         problems.append(
             f"{os.path.basename(f)}:{ln}  {name}() is private to {where} and cannot be called here")
 
-print(f"{len(files)} Kotlin files checked by the semantic, view-binding, import and visibility gates")
+
+# ---------------------------------------------------------------------------
+#  Gate 7: no break or continue inside an inline lambda.
+#
+#  This compiles on a modern kotlinc and FAILS IN CI, which is the worst
+#  combination there is. "break continue in inline lambdas" arrived in Kotlin
+#  language version 2.2; this project builds on 2.1, so
+#
+#      val x = f() ?: run { count++; continue }
+#
+#  passed every local check and stopped the release build. The offline
+#  type-checker cannot catch it either, because it uses whatever compiler is
+#  installed rather than the one Gradle pins.
+# ---------------------------------------------------------------------------
+INLINE_LAMBDAS = ("run", "let", "also", "apply", "forEach", "takeIf", "takeUnless",
+                  "repeat", "with", "use", "onFailure", "onSuccess", "runCatching")
+
+for f in files:
+    code = strip(open(f).read())
+    for m in re.finditer(r'\b(' + "|".join(INLINE_LAMBDAS) + r')\s*(?:\([^()]*\))?\s*\{', code):
+        depth = 0
+        i = code.index('{', m.start())
+        j = i
+        while j < len(code):
+            if code[j] == '{': depth += 1
+            elif code[j] == '}':
+                depth -= 1
+                if depth == 0: break
+            j += 1
+        body = code[i:j]
+        # a nested loop inside the lambda makes its own break/continue legal
+        if re.search(r'\b(for|while)\s*[({]', body):
+            continue
+        bc = re.search(r'(?<![.\w])(break|continue)\b', body)
+        if bc:
+            ln = code.count('\n', 0, i + bc.start()) + 1
+            problems.append(
+                f"{os.path.basename(f)}:{ln}  {bc.group(1)} inside an inline "
+                f"{m.group(1)} lambda needs Kotlin 2.2; this project builds on 2.1")
+
+print(f"{len(files)} Kotlin files checked by the semantic, view-binding, import, visibility and language-level gates")
 print(("PROBLEMS:\n  "+"\n  ".join(problems)) if problems else "No problems found.")
 sys.exit(1 if problems else 0)

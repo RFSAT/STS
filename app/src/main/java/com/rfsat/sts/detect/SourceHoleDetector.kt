@@ -247,26 +247,26 @@ object SourceHoleDetector {
             if (dia < minD * gaugePx || dia > MAX_DIA * gaugePx) { rejSize++; continue }
 
             val black = inBlack[(cy.toInt().coerceIn(0, h - 1)) * w + cx.toInt().coerceIn(0, w - 1)]
+            // NOT `?: run { rejShape++; continue }`: continue inside an inline
+            // lambda needs Kotlin 2.2 and this project builds on 2.1, where it
+            // compiles locally against a newer compiler and fails in CI.
             val refined = refineCore(work, cx, cy, gaugePx, if (black) blackLevel else paperLevel, black)
-                ?: run { rejShape++; continue }
-            val (rx, ry) = refined
+            if (refined == null) { rejShape++; continue }
+            val rx = refined.first
+            val ry = refined.second
 
-            if (!PunctureCheck.isPuncture(
-                    work, rx, ry, gaugePx, black,
-                    outsideScoringArea = run {
-                        val (u, v) = reg.homography.pxToMm(rx, ry)
-                        hypot(u, v) > outer
-                    }
-                )
-            ) { rejProfile++; continue }
+            val (mu, mv) = reg.homography.pxToMm(rx, ry)
+            if (mu.isNaN() || mv.isNaN()) continue
+            val outside = hypot(mu, mv) > outer
+            if (!PunctureCheck.isPuncture(work, rx, ry, gaugePx, black, outside)) {
+                rejProfile++; continue
+            }
 
-            val (u, v) = reg.homography.pxToMm(rx, ry)
-            if (u.isNaN() || v.isNaN()) continue
             val p = PunctureCheck.profile(work, rx, ry, gaugePx, black)
             val contrast = p?.contrastLevels ?: 0.0
             out.add(
                 DetectedHole(
-                    xMm = u, yMm = v,
+                    xMm = mu, yMm = mv,
                     diameterMm = dia * gaugeDiameterMm / gaugePx,
                     contrast = contrast,
                     confidence = confidenceOf(dia, gaugePx, elong, contrast),

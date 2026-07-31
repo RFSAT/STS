@@ -32,6 +32,46 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.28.0 — feature: the test card is now PART OF THE APP, and every
+        //          build is scored against it.
+        //
+        //   The one real photograph with an answer known independently of this
+        //   code: an ISSF 10 m Air Pistol card scored by hand — centre from
+        //   circles fitted to the printed rings, scale from a least-squares
+        //   fit of those against the catalogue (pitch recovered as 7.999 mm
+        //   where the truth is 8.000) — giving 9, 6, 2, 1, 1 and two shots off
+        //   the rings, 19 points from 7 shots.
+        //
+        //   Six tests hold it. Two of them exist because they are the two
+        //   shots that have already caught real bugs:
+        //
+        //     THE 9 sits inside the black, where the colour detection channel
+        //     is saturated and carries nothing. Every build up to 1.26.0
+        //     missed it and scored the card 10 instead of 19 — quietly,
+        //     because every stage did exactly what it was told.
+        //
+        //     THE 6 has its centre at 38.55 mm, OUTSIDE the 6-ring at 37.75.
+        //     By centre alone it is a 5; the hole's edge reaches 36.3 and
+        //     breaks the line, and ISSF scores what the hole touches. The test
+        //     asserts both readings explicitly, so anything that starts
+        //     scoring from centres will fail rather than quietly drop a point.
+        //
+        //   Stored as the two 760 px planes the detector consumes, not as a
+        //   JPEG: unit tests have no Android image decoder. 760 px because the
+        //   full 1536 px original gives an identical score, so the smaller one
+        //   is the honest choice for something that runs on every build. About
+        //   500 kB, gzipped, and it runs in roughly 130 ms.
+        //
+        // 1.28.0 — correction: `continue` inside an inline lambda, which needs
+        //          Kotlin 2.2 while this project builds on 2.1.
+        //
+        //   The worst kind of error: it compiles locally and fails in CI. The
+        //   offline type-checker cannot catch it either, because it uses
+        //   whatever kotlinc is installed rather than the one Gradle pins. So
+        //   a seventh gate now looks for break and continue inside run, let,
+        //   also, apply, forEach and the rest, and it was verified by putting
+        //   the error back and watching it complain.
+        //
         // 1.27.0 — feature: shots are found in the PHOTOGRAPH, and the shot
         //          inside the aiming mark is found at last. 10 -> 19 on the
         //          user's card, which is the hand-scored truth exactly.
@@ -1252,8 +1292,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 45
-        versionName = "1.27.0"
+        versionCode = 46
+        versionName = "1.28.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
