@@ -725,7 +725,17 @@ class SessionActivity : BaseActivity() {
                 "No clean reference was captured, so the target is being read from a single frame. " +
                     "That is the less reliable mode — check every hole on the Results plot."
             )
-            HoleDetector.detectAbsolute(reg, reg.rectify(frame), rules.gaugeDiameterMm)
+            // No luminance frame here: the analysis stream hands over the
+            // detection channel already built, and re-deriving luminance from
+            // it is not possible. So a shot inside the aiming mark is still
+            // at risk on this path, and the single-frame warning above is the
+            // honest one to give.
+            if (ScaleSettings.sourceDetector())
+                SourceHoleDetector.detect(
+                    reg, frame, rules.gaugeDiameterMm,
+                    includeMisses = ScaleSettings.scoreOutsideArea()
+                )
+            else HoleDetector.detectAbsolute(reg, reg.rectify(frame), rules.gaugeDiameterMm)
         }
 
         if (holes.isEmpty()) {

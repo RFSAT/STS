@@ -526,6 +526,16 @@ class ImportActivity : BaseActivity() {
                 reg, reg.rectify(LumaFrame.fromBitmapForDetection(clean)), reg.rectify(shotFrame),
                 rules.gaugeDiameterMm
             )
+        } else if (ScaleSettings.sourceDetector()) {
+            // Detects in the SOURCE photograph at whatever resolution it
+            // arrived in, and reads luminance inside the aiming mark where
+            // the colour channel carries nothing. On the user's card this is
+            // the difference between 10 points and the correct 19.
+            SourceHoleDetector.detect(
+                reg, shotFrame, rules.gaugeDiameterMm,
+                luma = LumaFrame.fromBitmap(shot),
+                includeMisses = ScaleSettings.scoreOutsideArea()
+            )
         } else {
             HoleDetector.detectAbsolute(reg, reg.rectify(shotFrame), rules.gaugeDiameterMm)
         }

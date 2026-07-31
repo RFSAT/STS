@@ -182,6 +182,9 @@ class TargetRegistration private constructor(
          *  smallest feature that must be resolved is the hole itself, and
          *  eight pixels across it is comfortably enough for a sub-pixel
          *  centroid while keeping the rectified image small. */
+        /** Rectified pixels across one scoring gauge. Overridable ONLY so the
+         *  offline rig can measure what it costs; the app never sets it. */
+        var pxPerGauge: Double = 8.0
         private const val PX_PER_GAUGE = 8.0
 
         /** Beyond this the view is too oblique for the far edge to carry
@@ -256,7 +259,7 @@ class TargetRegistration private constructor(
             // pipeline running. The cap coarsens the grid rather than
             // allocating it, and warns, because a slightly coarse score beats
             // an OutOfMemoryError.
-            var mmPerPx = (gaugeDiameterMm / PX_PER_GAUGE).coerceAtLeast(MIN_MM_PER_PX)
+            var mmPerPx = (gaugeDiameterMm / pxPerGauge).coerceAtLeast(MIN_MM_PER_PX)
             val spanU = face.faceWidthMm + 2 * marginMm
             val spanV = face.faceHeightMm + 2 * marginMm
             val pixels = (spanU / mmPerPx) * (spanV / mmPerPx)
@@ -335,7 +338,7 @@ class TargetRegistration private constructor(
             return TargetRegistration(
                 face = face,
                 homography = h,
-                mmPerPx = (gaugeDiameterMm / PX_PER_GAUGE).coerceAtLeast(MIN_MM_PER_PX),
+                mmPerPx = (gaugeDiameterMm / pxPerGauge).coerceAtLeast(MIN_MM_PER_PX),
                 uMinMm = cx - hw, uMaxMm = cx + hw,
                 vMinMm = cy - hh, vMaxMm = cy + hh,
                 warnings = warnings
@@ -682,7 +685,7 @@ class TargetRegistration private constructor(
                     .format(gaugeDiameterMm, holePx)
             }
 
-            var mmPerPx = (gaugeDiameterMm / PX_PER_GAUGE).coerceAtLeast(MIN_MM_PER_PX)
+            var mmPerPx = (gaugeDiameterMm / pxPerGauge).coerceAtLeast(MIN_MM_PER_PX)
             val hw = face.faceWidthMm / 2.0
             val hh = face.faceHeightMm / 2.0
             val cx = face.cardCentreOffsetXMm

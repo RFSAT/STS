@@ -65,6 +65,21 @@ object PunctureCheck {
      *  ALL print — logos, score boxes, the maker's name, the shooter's own
      *  handwriting — and a false shot there is pure noise in the plot. A
      *  candidate found out there has to look considerably more like a hole. */
+    /** Outside the rings, where every candidate competes with print rather
+     *  than with paper.
+     *
+     *  Two ways of tightening this were tried and NEITHER worked, which is
+     *  worth recording so they are not tried again. Contrast does not
+     *  separate them: on the user's card the false marks ran 94, 110 and 139
+     *  levels while two genuine shots ran 113 and 169. Nor does demanding a
+     *  perfect profile: the false marks out there are perfectly monotonic
+     *  too, so raising this to 1.0 changed nothing at all.
+     *
+     *  What survives is therefore a KNOWN limitation, not a solved problem:
+     *  spurious marks can still appear beyond the outermost ring. They score
+     *  zero and cannot move a total — on every configuration measured the
+     *  score came out exactly right — but they put marks on the plot where
+     *  no shot was fired. */
     private const val MIN_MONOTONIC_STRICT = 0.95
 
     data class Profile(

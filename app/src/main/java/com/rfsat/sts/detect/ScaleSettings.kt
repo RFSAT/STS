@@ -59,6 +59,7 @@ object ScaleSettings {
     private const val KEY_FAMILY = "ring_family_fit"
     private const val KEY_PUNCTURE = "puncture_check"
     private const val KEY_OUTSIDE = "score_outside_area"
+    private const val KEY_SOURCE_DET = "source_detector"
     private const val KEY_GUIDE = "aim_guide"
     private const val KEY_GUIDE_SIZE = "aim_guide_size"
 
@@ -67,6 +68,7 @@ object ScaleSettings {
     private var family: Boolean = false
     private var puncture: Boolean = false
     private var outside: Boolean = false
+    private var sourceDet: Boolean = true
     private var guide: com.rfsat.sts.ui.AimGuide = com.rfsat.sts.ui.AimGuide.CROSS
     private var guideSize: Float = 0.80f
 
@@ -79,6 +81,7 @@ object ScaleSettings {
         family = p.getBoolean(KEY_FAMILY, false)
         puncture = p.getBoolean(KEY_PUNCTURE, false)
         outside = p.getBoolean(KEY_OUTSIDE, false)
+        sourceDet = p.getBoolean(KEY_SOURCE_DET, true)
         guide = com.rfsat.sts.ui.AimGuide.values()
             .firstOrNull { it.name == p.getString(KEY_GUIDE, null) }
             ?: com.rfsat.sts.ui.AimGuide.CROSS
@@ -192,6 +195,30 @@ object ScaleSettings {
     }
 
     fun forceScoreOutsideArea(value: Boolean) { outside = value }
+
+    /**
+     * Find shots in the SOURCE photograph rather than in the rectified plane.
+     *
+     * ON by default, which none of the other experimental switches are, and
+     * on measurement rather than preference. Scored by hand the user's card
+     * reads 9, 6, 2, 1, 1 and two misses — 19 points. The rectified detector
+     * returns 10, because it never finds the 9: inside the aiming mark the
+     * colour channel it reads is saturated, and that shot is nearly half the
+     * card. Detecting in the source frame and reading LUMINANCE inside the
+     * black returns 19 exactly, at both 1536 px and 760 px.
+     *
+     * Turn it off to fall back to the rectified detector, which remains the
+     * only path for the two-photograph difference method.
+     */
+    fun sourceDetector(): Boolean = sourceDet
+
+    fun setSourceDetector(context: Context, value: Boolean) {
+        sourceDet = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SOURCE_DET, value).apply()
+    }
+
+    fun forceSourceDetector(value: Boolean) { sourceDet = value }
 
     /**
      * Half-width of the wedge, as cos(2*angle). 0.17 is +-35 degrees either

@@ -43,7 +43,7 @@ M="$ROOT/app/src/main/java/com/rfsat/sts"
 for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/HoleDetector \
          detect/Homography detect/HoughCentre detect/LumaFrame detect/MarkOutline \
          detect/RingFinder detect/RingShapeSelector detect/ShapeCorrection detect/MergedHoles \
-         detect/TargetGeometryCheck detect/TargetRegistration detect/RingFamilyFit detect/PunctureCheck \
+         detect/TargetGeometryCheck detect/TargetRegistration detect/RingFamilyFit detect/PunctureCheck detect/SourceHoleDetector \
          profiles/BulletProfile profiles/RifleProfile profiles/ScopeProfile \
          profiles/AmmoCatalog profiles/RifleCatalog profiles/ScopeCatalog \
          rules/RuleCatalog rules/RuleSet \

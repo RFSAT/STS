@@ -32,6 +32,54 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.27.0 — feature: shots are found in the PHOTOGRAPH, and the shot
+        //          inside the aiming mark is found at last. 10 -> 19 on the
+        //          user's card, which is the hand-scored truth exactly.
+        //
+        //   THE CAUSE, after three wrong guesses. The rectified detector was
+        //   losing the 9 — nearly half the card. It was not resolution:
+        //   measured at 8, 12, 16, 24 and 32 rectified pixels per gauge the
+        //   answer is identical. It was not the ring-pitch scale: that claim
+        //   was made and retracted in 1.26.0. It was the COLOUR CHANNEL. That
+        //   channel measures how far each pixel sits from the paper's own
+        //   colour, which is what makes a hole stand out on a tinted card —
+        //   but inside a black aiming mark it measures nothing, because ink
+        //   and the grey torn fibres of a hole through it are equally unlike
+        //   paper, and both saturate at zero. In that channel the 9 occupies
+        //   8 per cent of its own window, widest solid run six pixels, against
+        //   a gauge of forty-one. In plain luminance the same hole is a 38.2
+        //   px core. So each zone is now read with the signal that carries
+        //   information there: luminance inside the mark, colour outside.
+        //
+        //   AND AN OPENING, NOT A BLUR. The first port smoothed the deviation
+        //   over half a gauge, reasoning that a ring line is three pixels wide
+        //   and a hole forty. That reasoning was taken from luminance, where a
+        //   line stands 90 levels off the paper; in the colour channel it
+        //   stands 220, and three parts in twenty-one of 220 clears the
+        //   threshold. The lines survived, fused with every hole they touched,
+        //   and the fused blobs were then rejected as oversized — 41 of 56, no
+        //   shot inside the rings reported at all. A grey-scale opening cannot
+        //   fail that way: it deletes anything narrower than its window
+        //   whatever the contrast, so width and contrast stop trading off.
+        //
+        //   MEASURED, against 9, 6, 2, 1, 1 and two misses = 19:
+        //     rectified detector       10   (4 of 5 hits, 1 false positive)
+        //     this, at 1536 px         19   (5 of 5)
+        //     this, at  760 px         19   (5 of 5, and no false marks)
+        //   On by default, and the only experimental switch that is, because
+        //   it is the only one measured to change a score.
+        //
+        //   KNOWN LIMITATION, not solved: spurious marks can still appear
+        //   BEYOND the outermost ring, where everything printed lives. They
+        //   score zero and cannot move a total. Two ways of removing them were
+        //   tried and both failed — contrast does not separate them (false 94,
+        //   110, 139 against genuine 113 and 169) and neither does demanding a
+        //   perfect radial profile, because they have one.
+        //
+        //   Radii still read about a millimetre short at the outer rings
+        //   (66.4 against 67.6 measured by hand). Not enough to change a ring
+        //   on this card. Unexplained, and next.
+        //
         // 1.26.0 — feature: the detector can be asked whether a candidate has
         //          the PROFILE of a puncture, and to look for the shots that
         //          missed the rings.
@@ -1204,8 +1252,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 44
-        versionName = "1.26.0"
+        versionCode = 45
+        versionName = "1.27.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

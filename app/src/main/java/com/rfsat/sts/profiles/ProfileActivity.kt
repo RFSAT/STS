@@ -70,6 +70,16 @@ class ProfileActivity : BaseActivity() {
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
+        binding.cbSourceDetect.isChecked = ScaleSettings.sourceDetector()
+        binding.cbSourceDetect.setOnClickListener {
+            ScaleSettings.setSourceDetector(this, binding.cbSourceDetect.isChecked)
+            notifyUser(
+                if (binding.cbSourceDetect.isChecked)
+                    "Shots will be found in the photograph itself, including inside the black."
+                else "Shots will be found in the flattened copy again — shots inside the black " +
+                    "aiming mark are likely to be missed."
+            )
+        }
         binding.cbPuncture.isChecked = ScaleSettings.punctureCheck()
         binding.cbPuncture.setOnClickListener {
             ScaleSettings.setPunctureCheck(this, binding.cbPuncture.isChecked)
