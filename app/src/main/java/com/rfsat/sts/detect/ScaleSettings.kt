@@ -56,16 +56,42 @@ object ScaleSettings {
     private const val PREFS = "sts_algorithms"
     private const val KEY_MODE = "scale_mode"
     private const val KEY_WEDGE = "axis_wedge"
+    private const val KEY_GUIDE = "aim_guide"
+    private const val KEY_GUIDE_SIZE = "aim_guide_size"
 
     private var mode: ScaleMode = ScaleMode.CROSS_CHECK
     private var wedge: Boolean = false
+    private var guide: com.rfsat.sts.ui.AimGuide = com.rfsat.sts.ui.AimGuide.CROSS
+    private var guideSize: Float = 0.80f
 
     fun init(context: Context) {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_MODE, null)
         mode = ScaleMode.values().firstOrNull { it.name == saved } ?: ScaleMode.CROSS_CHECK
-        wedge = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_WEDGE, false)
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        wedge = p.getBoolean(KEY_WEDGE, false)
+        guide = com.rfsat.sts.ui.AimGuide.values()
+            .firstOrNull { it.name == p.getString(KEY_GUIDE, null) }
+            ?: com.rfsat.sts.ui.AimGuide.CROSS
+        guideSize = p.getFloat(KEY_GUIDE_SIZE, 0.80f)
+    }
+
+    /** What is drawn over the viewfinder to line the phone up with the card. */
+    fun aimGuide(): com.rfsat.sts.ui.AimGuide = guide
+
+    fun setAimGuide(context: Context, value: com.rfsat.sts.ui.AimGuide) {
+        guide = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_GUIDE, value.name).apply()
+    }
+
+    /** Guide size as a fraction of the shorter screen dimension. */
+    fun aimGuideSize(): Float = guideSize
+
+    fun setAimGuideSize(context: Context, value: Float) {
+        guideSize = value.coerceIn(0.15f, 1.0f)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putFloat(KEY_GUIDE_SIZE, guideSize).apply()
     }
 
     /**

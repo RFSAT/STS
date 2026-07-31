@@ -457,8 +457,7 @@ class ImportActivity : BaseActivity() {
                     (mine == null || mine.relativeError > best.relativeError * 3)
                 ) {
                     val problem = ("The printed rings match %s to %.0f%%, but %s is selected%s. " +
-                        "Registering against the wrong face gives a wrong scale, and a wrong " +
-                        "scale usually means no hits are found at all — or far too many.")
+                        TargetGeometryCheck.WRONG_FACE_COST)
                         .format(
                             best.face.name, 100 * (1 - best.relativeError), face.name,
                             mine?.let { " and only fits to %.0f%%".format(100 * (1 - it.relativeError)) }

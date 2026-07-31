@@ -32,6 +32,100 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.24.0 — feature: the guide says continuously whether the card
+        //          matches the selected face.
+        //
+        //   A word in the corner — "Match OK", "Wrong target face",
+        //   "Checking", "Aim at the target" — and the rings change with it.
+        //   A message that fires once is the wrong shape for this: a shooter
+        //   lining a phone up is watching the preview, not a notification
+        //   that appeared while they were still walking to the point.
+        //
+        //   ENCODED THREE WAYS AT ONCE, and deliberately not by colour alone.
+        //   Green would be the obvious choice and it breaks the night-red
+        //   theme, whose entire purpose is preserving dark adaptation — a
+        //   green line would be the one bright non-red thing on that screen.
+        //   So under night-red the hue is left alone and the state is carried
+        //   by the line style and the word; under the other themes the colour
+        //   changes as well. Solid means matched, dashed means doubtful,
+        //   finely dashed means wrong. That is also what a colour-blind
+        //   shooter needs, on a small screen, in daylight.
+        //
+        //   The check runs from the frame stream, at most every 2.5 s, and
+        //   NOT AT ALL while live detection is armed: those frames belong to
+        //   the detector, and a second full ring fit on the same thread would
+        //   drop frames — a dropped frame is a shot the persistence rule
+        //   never sees.
+        //
+        //   The full explanation is still spoken, but ONCE per change of
+        //   verdict rather than on every check, so a minute spent lining up
+        //   does not produce the same warning thirty times.
+        //
+        // 1.23.1 — correction: the app now WARNS when the card in front of
+        //          the camera is not the face that is selected.
+        //
+        //   The ring guide makes a mismatch visible, but only to someone who
+        //   knows to look — and the natural response to circles that will not
+        //   line up is to walk until they do. That cannot work, because the
+        //   rings are drawn at the face's own proportions and changing
+        //   distance resizes them all together. At best it wastes the
+        //   shooter's time; at worst they decide it is close enough, fire a
+        //   card, and get a score wrong by however much the two faces differ.
+        //
+        //   So the app looks as well. When the guide is switched on, and
+        //   whenever the face changes, it fits the rings on the live preview
+        //   and compares them with the selected face — the same two checks
+        //   used at registration, the scale-free ratio and the ranking by
+        //   fitted pitch. Run on the analysis thread, advisory only: a
+        //   preview is not a registration and a card half out of frame should
+        //   not produce an accusation.
+        //
+        //   The cost of a wrong face is now stated in ONE place and quoted
+        //   everywhere the app doubts it, rather than three vaguer variants:
+        //   the face sets millimetres per pixel, so its error goes straight
+        //   into every radius and therefore every score, and because the
+        //   detector sizes what it looks for from the same number, a face
+        //   wrong by enough finds no hits at all rather than wrong ones. The
+        //   message says plainly not to force the guide by moving closer, and
+        //   why that cannot work.
+        //
+        // 1.23.0 — feature: the selected face's rings as an alignment guide.
+        //
+        //   Four guides now: nothing, the simple crosshair, the RINGS of the
+        //   selected face, or both. Size adjustable, because the distance to
+        //   the card is set by the range and not by the app.
+        //
+        //   THE RINGS VERIFY THE FACE, and that is the strongest argument for
+        //   them rather than the obvious one. They are drawn at the face's own
+        //   RATIOS, so a card whose rings sit at different proportions will
+        //   not line up however far the shooter moves: scaling changes every
+        //   circle together and cannot change the spacing between them. A
+        //   mismatch is therefore visible through the viewfinder before a
+        //   shot is fired, rather than afterwards as a score that is quietly
+        //   wrong. Selecting the wrong face remains the single largest cause
+        //   of nothing being detected at all, and until now nothing in the
+        //   app could catch it before the fact.
+        //
+        //   That property also guards against the obvious misuse. A guide the
+        //   shooter can resize freely would otherwise invite forcing a match
+        //   with the wrong face by walking closer; fixing the ratios makes
+        //   that impossible.
+        //
+        //   Lining the rings up squares the camera to the card as well, which
+        //   matters because perspective is the one error the scorer cannot
+        //   fully undo: de-foreshortening recovers about half of what a
+        //   square-on view would have given at 30 to 40 degrees, and the rest
+        //   is a projective term a single affine correction cannot represent.
+        //   Not taking the error beats correcting it.
+        //
+        //   The guide is a guide, not a requirement. Modest tilt is corrected
+        //   perfectly well and a shooter should not be made to fuss.
+        //
+        //   AimGuide lives in its own file rather than inside CrosshairView:
+        //   ScaleSettings stores the choice and is pure logic that the
+        //   offline harness compiles without a framework, and an enum tucked
+        //   inside a View drags the whole of android.view in behind it.
+        //
         // 1.22.1 — correction: the WEAKER registration was the automatic one.
         //
         //   On loading a photograph the app ran the aiming-mark path, which
@@ -1027,8 +1121,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 39
-        versionName = "1.22.1"
+        versionCode = 42
+        versionName = "1.24.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

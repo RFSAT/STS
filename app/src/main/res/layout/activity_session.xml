@@ -194,6 +194,23 @@
 
             <!-- Camera, above the capture controls because both of these have
                  to be right BEFORE anything is captured. -->
+            <TextView style="@style/Sts.FieldLabel" android:text="Alignment guide" />
+            <Spinner android:id="@+id/spGuide"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView android:id="@+id/lblGuideSize" style="@style/Sts.FieldLabel"
+                android:text="Guide size" />
+            <SeekBar android:id="@+id/sbGuideSize"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:max="100" android:progress="80" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Drawing the selected face's own rings over the preview does more than centre the shot. The circles are at that face's true proportions, so a card whose rings are spaced differently will not line up however far you move — which is the quickest way to catch the wrong target face, and a wrong face is the commonest reason nothing is detected. Lining the rings up also squares the camera to the card, and perspective is the one error the scorer cannot fully undo." />
+
             <TextView style="@style/Sts.FieldLabel" android:text="Analysis resolution" />
             <Spinner android:id="@+id/spResolution"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />

@@ -4,44 +4,85 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.util.TypedValue
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.View
+import com.rfsat.sts.targets.TargetFace
 import kotlin.math.min
 
 /**
- * A centred crosshair over the viewfinder.
+ * ============================================================================
+ *  LINING THE PHONE UP WITH THE CARD
+ * ============================================================================
  *
- * Aligning a phone with a target card is done by eye, and the centre of a
- * phone screen is surprisingly hard to judge — especially with the target's
- * own concentric rings pulling the eye toward whatever is nearest the middle.
- * A fixed reference costs nothing and makes squaring up markedly easier,
- * which matters here beyond tidiness: the flatter the card sits in frame, the
- * less the ring fit has to correct, and the residual perspective error is the
- * one thing the scorer cannot fully undo.
+ * A crosshair says where the middle of the frame is. The RINGS of the selected
+ * face say something far more useful, and it is worth being precise about
+ * what:
  *
- * Purely decorative — it takes no touches and reads no state, so it can sit
- * over the preview without interfering with the registration overlay beneath
- * it.
+ *  - THEY VERIFY THE FACE, which is the thing the app most needs and cannot
+ *    do for itself. The guide is drawn at the face's own RATIOS, so a card
+ *    whose rings sit at different proportions will not line up however far
+ *    the shooter moves. Scaling changes the size of every circle together;
+ *    it cannot change the spacing between them. A mismatch is therefore
+ *    visible through the viewfinder, before a shot is fired, rather than
+ *    afterwards as a score that is quietly wrong. Selecting the wrong face is
+ *    the single largest cause of nothing being detected at all.
+ *
+ *  - THEY REDUCE PERSPECTIVE at capture, which is the one error the scorer
+ *    cannot fully undo. De-foreshortening recovers about half of what a
+ *    square-on view would have given at 30 to 40 degrees; the rest is a
+ *    projective term that a single affine correction has no way to represent.
+ *    Not taking the error in the first place beats correcting it.
+ *
+ *  - THEY FIX THE FRAMING, so the card occupies a known fraction of the
+ *    picture and a pellet hole lands on a predictable number of pixels.
+ *
+ * Aligning concentric circles is a NULLING task, which people are good at and
+ * cameras are not. It is a guide and not a requirement: the app corrects
+ * modest tilt perfectly well, and a shooter should not be made to fuss.
  */
 class CrosshairView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyle: Int = 0
 ) : View(context, attrs, defStyle) {
 
-    /** Fraction of the smaller screen dimension spanned by each arm. */
-    private val armFraction = 0.11f
+    var guide: AimGuide = AimGuide.CROSS
+        set(value) { field = value; invalidate() }
 
-    /** Gap left open at the centre so the crosshair never hides the very
-     *  thing being aimed at — a ten ring is a small dot on some faces. */
-    private val gapFraction = 0.018f
+    /** The face whose rings are drawn. Null falls back to a plain crosshair. */
+    var face: TargetFace? = null
+        set(value) { field = value; invalidate() }
 
     /**
-     * The crosshair takes the theme's accent, so it is gold on the dark
-     * theme, dark green on the day one, and RED under night-red — which is
-     * the point of that theme: a white crosshair on a red-preserving screen
-     * is the one bright thing on it, and undoes the dark adaptation the theme
-     * exists to protect.
+     * Whether the card in view matches [face], shown continuously.
+     *
+     * Encoded THREE ways at once — colour, line style and a word — and not by
+     * colour alone. Under the night-red theme a green line would be the one
+     * bright non-red thing on a screen whose whole purpose is preserving dark
+     * adaptation, so under that theme the hue is left alone and the state is
+     * carried by the solid-or-dashed line and the label. That also happens to
+     * be what a colour-blind shooter needs, in daylight, on a small screen.
      */
+    var match: GuideMatch = GuideMatch.UNKNOWN
+        set(value) { field = value; invalidate() }
+
+    /** True when the active theme must not gain a colour of its own. */
+    var preserveNightVision: Boolean = false
+        set(value) { field = value; invalidate() }
+
+    /**
+     * Size of the guide as a fraction of the smaller screen dimension.
+     *
+     * Adjustable because the distance to the card is fixed by the range, not
+     * by the app: at 10 m a target fills the frame and at 50 m it does not.
+     * The shooter sizes the guide to the card rather than walking to suit the
+     * guide.
+     */
+    var sizeFraction: Float = 0.80f
+        set(value) { field = value.coerceIn(0.15f, 1.0f); invalidate() }
+
+    private val armFraction = 0.11f
+    private val gapFraction = 0.018f
+
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 3.5f
@@ -49,16 +90,11 @@ class CrosshairView @JvmOverloads constructor(
     }
 
     /**
-     * A bright core inside the accent line.
-     *
-     * On a phone held up in sunlight the screen is competing with the sun,
-     * and a single 2 px line at 82 per cent alpha simply disappears against a
-     * white card. Full alpha, a wider line, a heavier dark halo for contrast
-     * either way, and a thin bright core down the middle.
-     *
-     * The core is a LIGHTENED accent rather than white, so the night-red
-     * theme stays red — a white core would put back the one bright thing that
-     * theme exists to remove.
+     * A bright core inside the accent line. On a phone held up in sunlight the
+     * screen competes with the sun and a thin line simply disappears against
+     * a white card. The core is a LIGHTENED accent rather than white, so the
+     * night-red theme stays red — a white core would put back the one bright
+     * thing that theme exists to remove.
      */
     private val core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -66,12 +102,47 @@ class CrosshairView @JvmOverloads constructor(
         color = lighten(themeAccent(context), 0.55f)
     }
 
-    /** Drawn under the white line, one pixel wider, so the crosshair stays
-     *  visible on a white card as well as on a black aiming mark. */
+    /** Under the bright line, so the guide reads on white paper and on a
+     *  black aiming mark alike. */
     private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 6.5f
         color = Color.argb(170, 0, 0, 0)
+    }
+
+    private val ringHalo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 4.5f
+        color = Color.argb(150, 0, 0, 0)
+    }
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.2f
+        color = withAlpha(themeAccent(context), 255)
+    }
+    /** The aiming mark's edge, drawn heavier: it is the easiest circle to
+     *  match by eye and the one the scorer leans on hardest. */
+    private val markRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3.5f
+        color = lighten(themeAccent(context), 0.35f)
+    }
+
+    private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = withAlpha(themeAccent(context), 255)
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+        textSize = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_SP, 12f, context.resources.displayMetrics
+        )
+    }
+    private val labelHalo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(190, 0, 0, 0)
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+        textSize = label.textSize
     }
 
     init {
@@ -79,9 +150,113 @@ class CrosshairView @JvmOverloads constructor(
         isFocusable = false
     }
 
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        if (width < 8 || height < 8 || guide == AimGuide.NONE) return
+        val cx = width / 2f
+        val cy = height / 2f
+        val d = min(width, height).toFloat()
+
+        val f = face
+        val wantRings = guide == AimGuide.RINGS || guide == AimGuide.RINGS_AND_CROSS
+        if (wantRings && f != null && f.outerRadiusMm > 0.0) drawRings(canvas, f, cx, cy, d)
+        if (guide == AimGuide.CROSS || guide == AimGuide.RINGS_AND_CROSS || f == null) {
+            drawCross(canvas, cx, cy, d)
+        }
+        if (wantRings && f != null) drawBadge(canvas)
+    }
+
+    /** The colour the guide draws in for the current state. */
+    private fun stateColour(): Int {
+        if (preserveNightVision) return themeAccent(context)
+        return when (match) {
+            GuideMatch.MATCH -> MATCH_GREEN
+            GuideMatch.MISMATCH -> MISMATCH_AMBER
+            else -> themeAccent(context)
+        }
+    }
+
+    /** Dashed while the match is doubtful, solid once it is not — so the
+     *  state reads without colour at all. */
+    private fun stateDash(): android.graphics.DashPathEffect? = when (match) {
+        GuideMatch.MATCH -> null
+        GuideMatch.UNKNOWN, GuideMatch.CHECKING -> android.graphics.DashPathEffect(floatArrayOf(10f, 8f), 0f)
+        GuideMatch.MISMATCH -> android.graphics.DashPathEffect(floatArrayOf(4f, 7f), 0f)
+    }
+
+    /** A word in the corner, because a colour alone is not a message. */
+    private fun drawBadge(canvas: Canvas) {
+        val text = match.label
+        val pad = label.textSize * 0.6f
+        val x = pad + label.textSize * 0.2f
+        val y = pad + label.textSize
+        val c = stateColour()
+        label.textAlign = Paint.Align.LEFT
+        labelHalo.textAlign = Paint.Align.LEFT
+        val was = label.color
+        label.color = withAlpha(c, 255)
+        canvas.drawText(text, x, y, labelHalo)
+        canvas.drawText(text, x, y, label)
+        label.color = was
+        label.textAlign = Paint.Align.CENTER
+        labelHalo.textAlign = Paint.Align.CENTER
+    }
+
+    private fun drawCross(canvas: Canvas, cx: Float, cy: Float, d: Float) {
+        val arm = d * armFraction
+        val gap = d * gapFraction
+        for (p in listOf(halo, stroke, core)) {
+            canvas.drawLine(cx - gap - arm, cy, cx - gap, cy, p)
+            canvas.drawLine(cx + gap, cy, cx + gap + arm, cy, p)
+            canvas.drawLine(cx, cy - gap - arm, cx, cy - gap, p)
+            canvas.drawLine(cx, cy + gap, cx, cy + gap + arm, p)
+            canvas.drawCircle(cx, cy, gap * 0.55f, p)
+        }
+    }
+
+    /**
+     * The face's scoring rings, at their true RATIOS.
+     *
+     * Everything is scaled by the outermost ring, so the whole family grows
+     * and shrinks together and the SPACING between circles is fixed by the
+     * face. That is what makes this a check on the face and not merely a
+     * framing aid.
+     */
+    private fun drawRings(canvas: Canvas, f: TargetFace, cx: Float, cy: Float, d: Float) {
+        val outerMm = f.outerRadiusMm
+        val pxPerMm = (d * sizeFraction / 2f) / outerMm.toFloat()
+
+        ring.color = withAlpha(stateColour(), 255)
+        ring.pathEffect = stateDash()
+        markRing.color = lighten(stateColour(), 0.35f)
+        markRing.pathEffect = stateDash()
+
+        for (r in f.rings.sortedByDescending { it.radiusMm }) {
+            val rPx = (r.radiusMm * pxPerMm).toFloat()
+            if (rPx < 4f) continue
+            canvas.drawCircle(cx, cy, rPx, ringHalo)
+            canvas.drawCircle(cx, cy, rPx, ring)
+        }
+        if (f.blackDiameterMm > 0.0) {
+            val rPx = (f.blackDiameterMm / 2.0 * pxPerMm).toFloat()
+            if (rPx >= 4f) {
+                canvas.drawCircle(cx, cy, rPx, ringHalo)
+                canvas.drawCircle(cx, cy, rPx, markRing)
+            }
+        }
+        val name = f.name
+        val y = cy + (d * sizeFraction / 2f) + label.textSize * 1.6f
+        if (y < height - 4) {
+            canvas.drawText(name, cx, y, labelHalo)
+            canvas.drawText(name, cx, y, label)
+        }
+    }
+
     private companion object {
-        /** colorAccent from the theme, or the dark theme's gold if the
-         *  attribute is somehow missing. */
+        /** Only used where the theme is not preserving night vision. */
+        val MATCH_GREEN = Color.rgb(76, 209, 100)
+        val MISMATCH_AMBER = Color.rgb(255, 156, 46)
+
         fun themeAccent(context: Context): Int {
             val tv = TypedValue()
             return if (context.theme.resolveAttribute(
@@ -99,23 +274,5 @@ class CrosshairView @JvmOverloads constructor(
             (Color.green(colour) + (255 - Color.green(colour)) * f).toInt().coerceIn(0, 255),
             (Color.blue(colour) + (255 - Color.blue(colour)) * f).toInt().coerceIn(0, 255)
         )
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        if (width < 8 || height < 8) return
-        val cx = width / 2f
-        val cy = height / 2f
-        val d = min(width, height).toFloat()
-        val arm = d * armFraction
-        val gap = d * gapFraction
-
-        for (p in listOf(halo, stroke, core)) {
-            canvas.drawLine(cx - gap - arm, cy, cx - gap, cy, p)
-            canvas.drawLine(cx + gap, cy, cx + gap + arm, cy, p)
-            canvas.drawLine(cx, cy - gap - arm, cx, cy - gap, p)
-            canvas.drawLine(cx, cy + gap, cx, cy + gap + arm, p)
-            canvas.drawCircle(cx, cy, gap * 0.55f, p)
-        }
     }
 }

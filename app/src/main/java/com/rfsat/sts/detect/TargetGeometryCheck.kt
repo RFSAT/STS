@@ -234,9 +234,26 @@ object TargetGeometryCheck {
                 append(" No catalogue face matches these proportions. If this is a club or " +
                     "custom card, add it under Targets, or the score will be wrong.")
             }
-            append(" Scoring against the wrong face usually finds no hits at all.")
+            append(" ")
+            append(WRONG_FACE_COST)
         }
     }
+
+    /**
+     * What a wrong face actually costs, in one sentence, so that every place
+     * the app doubts the face says the same thing.
+     *
+     * Not a vague caution. The face sets millimetres per pixel, so its error
+     * goes straight into every radius and therefore into every score; and
+     * because the detector sizes what it looks for from the same number, a
+     * face wrong by enough finds no hits at all rather than wrong ones.
+     */
+    const val WRONG_FACE_COST =
+        "Scoring against the wrong face scales every shot's distance from centre, so the score " +
+            "will be wrong by roughly the amount the two faces differ — and if they differ " +
+            "enough, no hits are found at all. Do not force the guide to fit by moving closer " +
+            "or further: the rings are drawn at this face's own proportions, so changing " +
+            "distance resizes them all together and can never make a different face line up."
 
     /** How far the measured black-to-pitch ratio may sit from the face's own
      *  before the face is called wrong. Real faces in the catalogue span 3.0

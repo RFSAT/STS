@@ -69,6 +69,11 @@ class SessionActivity : BaseActivity() {
          *  runner-up was 8% out, so 5% separates them comfortably. */
         const val IDENTIFY_TOLERANCE = 0.05
 
+        /** How often the live face check may run. A full ring fit costs about
+         *  a second, so this is a compromise between a badge that follows the
+         *  card and a preview that stays smooth. */
+        const val FACE_CHECK_INTERVAL_MS = 2500L
+
         const val EXTRA_NEW = "start_new"
         private const val REQ_PERMISSIONS = 4711
 
@@ -86,6 +91,9 @@ class SessionActivity : BaseActivity() {
     private var camera: androidx.camera.core.Camera? = null
     private var stills: androidx.camera.core.ImageCapture? = null
     private var captureResolution: CaptureResolution = CaptureResolution.DEFAULT
+    private var faceCheckRunning = false
+    private var lastFaceCheckMs = 0L
+    private var lastAnnouncedMatch: com.rfsat.sts.ui.GuideMatch? = null
     private var externalSource: FrameSource? = null
     private val audio = AudioShotDetector()
 
@@ -169,6 +177,7 @@ class SessionActivity : BaseActivity() {
                 pendingTargetSelection = idx
                 binding.spTarget.setSelection(idx)
                 selectedFace = faces[idx]
+                refreshGuide()
                 TargetRepository(this).setActiveFace(faces[idx].id)
                 notifyUser("Target face switched to ${faces[idx].name} to match the rules.")
             }
@@ -188,6 +197,12 @@ class SessionActivity : BaseActivity() {
             if (i == pendingTargetSelection) { pendingTargetSelection = -1; return@onSelected }
             val f = faces.getOrNull(i) ?: return@onSelected
             selectedFace = f
+            // A new face means the old verdict says nothing about this one.
+            binding.crosshair.match = com.rfsat.sts.ui.GuideMatch.UNKNOWN
+            lastAnnouncedMatch = null
+            lastFaceCheckMs = 0L
+            refreshGuide()
+            checkFaceAgainstView()
             TargetRepository(this).setActiveFace(f.id)
             registration = null   // the face changed; the old mapping is void
             live = null
@@ -228,6 +243,32 @@ class SessionActivity : BaseActivity() {
             refreshStatus()
         }
         binding.btnReference.setOnClickListener { doSetReference() }
+        binding.spGuide.adapter = adapter(com.rfsat.sts.ui.AimGuide.values().map { it.label })
+        binding.spGuide.setSelection(
+            com.rfsat.sts.ui.AimGuide.values().indexOf(ScaleSettings.aimGuide())
+        )
+        binding.spGuide.onItemSelectedListener = onSelected { i ->
+            val chosen = com.rfsat.sts.ui.AimGuide.values()[i]
+            if (chosen != ScaleSettings.aimGuide()) {
+                ScaleSettings.setAimGuide(this, chosen)
+                refreshGuide()
+                checkFaceAgainstView()
+            }
+        }
+        binding.sbGuideSize.progress = (ScaleSettings.aimGuideSize() * 100).toInt()
+        binding.sbGuideSize.setOnSeekBarChangeListener(
+            object : android.widget.SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: android.widget.SeekBar?, p: Int, user: Boolean) {
+                    if (!user) return
+                    ScaleSettings.setAimGuideSize(this@SessionActivity, p / 100f)
+                    refreshGuide()
+                }
+                override fun onStartTrackingTouch(s: android.widget.SeekBar?) {}
+                override fun onStopTrackingTouch(s: android.widget.SeekBar?) {}
+            }
+        )
+        refreshGuide()
+
         binding.spResolution.adapter = adapter(CaptureResolution.values().map { it.label })
         binding.spResolution.setSelection(CaptureResolution.values().indexOf(captureResolution))
         binding.spResolution.onItemSelectedListener = onSelected { i ->
@@ -427,6 +468,9 @@ class SessionActivity : BaseActivity() {
 
     private fun onFrame(frame: LumaFrame) {
         latestFrame.set(frame)
+        // Re-check periodically while aiming, so the corner badge follows the
+        // card rather than reporting what was true a minute ago.
+        runOnUiThread { checkFaceAgainstView() }
         if (analysisSize?.width != frame.width || analysisSize?.height != frame.height) {
             analysisSize = Size(frame.width, frame.height)
             runOnUiThread { binding.overlay.setSourceGeometry(frame.width, frame.height) }
@@ -838,6 +882,91 @@ class SessionActivity : BaseActivity() {
         }
     }
 
+    /**
+     * Checks the card in front of the camera against the SELECTED face, and
+     * says so if they disagree.
+     *
+     * The ring guide makes a mismatch visible, but only to someone who knows
+     * to look — and the natural response to circles that will not line up is
+     * to walk until they do, which cannot work and wastes the shooter's time
+     * at best. At worst they conclude it is close enough, fire a card, and
+     * get a score that is wrong by however much the two faces differ.
+     *
+     * So the app looks as well. Run once when the guide is turned on and
+     * whenever the face changes, on the analysis thread, and only advisory:
+     * this is a live preview, not a registration, and a card half out of
+     * frame should not produce an accusation.
+     */
+    private fun checkFaceAgainstView() {
+        if (ScaleSettings.aimGuide() == com.rfsat.sts.ui.AimGuide.NONE) return
+        val frame = latestFrame.get() ?: return
+        val face = runCatching { currentFace() }.getOrNull() ?: return
+        val all = runCatching { TargetRepository(this).allFaces() }.getOrNull() ?: return
+        if (faceCheckRunning) return
+
+        // Do not compete with live detection. While a string is being scored
+        // the frames belong to the detector, and a second full ring fit on the
+        // same thread would drop frames — and a dropped frame is a shot the
+        // persistence rule never sees.
+        if (live?.isArmed == true) return
+
+        val now = System.currentTimeMillis()
+        if (now - lastFaceCheckMs < FACE_CHECK_INTERVAL_MS) return
+        lastFaceCheckMs = now
+
+        faceCheckRunning = true
+        if (binding.crosshair.match == com.rfsat.sts.ui.GuideMatch.UNKNOWN) {
+            binding.crosshair.match = com.rfsat.sts.ui.GuideMatch.CHECKING
+        }
+        analysisExecutor.execute {
+            var state = com.rfsat.sts.ui.GuideMatch.UNKNOWN
+            val complaint = runCatching {
+                val fit = RingFinder.find(frame) ?: return@runCatching null
+                if (fit.confidence < 0.35) return@runCatching null
+                val markPx = fit.shape?.model?.semiMajorPx ?: 0.0
+                if (markPx <= 0.0) return@runCatching null
+                val ratio = TargetGeometryCheck.faceMismatch(face, markPx, fit.pitchPx, all)
+                val ranked = RingFinder.identify(
+                    fit, markPx, all, currentRules().distanceM, face.id
+                ).firstOrNull()
+                val named = if (ranked != null && ranked.face.id != face.id &&
+                    ranked.relativeError < IDENTIFY_TOLERANCE
+                ) "The card in front of the camera looks like ${ranked.face.name}, not ${face.name}."
+                else null
+                val problem = ratio ?: named
+                state = if (problem == null) com.rfsat.sts.ui.GuideMatch.MATCH
+                        else com.rfsat.sts.ui.GuideMatch.MISMATCH
+                problem
+            }.getOrNull()
+            runOnUiThread {
+                faceCheckRunning = false
+                binding.crosshair.match = state
+                // The word in the corner is continuous; the full explanation
+                // is said ONCE per change of verdict, so a shooter lining up
+                // for a minute is not told the same thing thirty times.
+                if (complaint != null && state != lastAnnouncedMatch) {
+                    val full = complaint + " " + TargetGeometryCheck.WRONG_FACE_COST
+                    Logger.w("SessionActivity", full)
+                    notifyUser(full)
+                }
+                lastAnnouncedMatch = state
+            }
+        }
+    }
+
+    /** Pushes the guide choice, its size and the SELECTED FACE to the
+     *  overlay. The face matters: the rings drawn are that face's own, and
+     *  the whole point is that a card which does not match will not line up. */
+    private fun refreshGuide() {
+        binding.crosshair.guide = ScaleSettings.aimGuide()
+        binding.crosshair.preserveNightVision =
+            com.rfsat.sts.ui.ThemeManager.mode() == com.rfsat.sts.ui.ThemeMode.NIGHT_RED
+        binding.crosshair.sizeFraction = ScaleSettings.aimGuideSize()
+        binding.crosshair.face = runCatching { currentFace() }.getOrNull()
+        binding.lblGuideSize.text =
+            "Guide size — %d%% of the screen".format((ScaleSettings.aimGuideSize() * 100).toInt())
+    }
+
     private fun refreshLockButton() {
         binding.btnLockCamera.text =
             if (CameraTuning.locked) "Release exposure and focus" else "Lock exposure and focus"
@@ -904,6 +1033,7 @@ class SessionActivity : BaseActivity() {
                 // computed against the previous one, silently. Both are set
                 // here, together, for that reason.
                 selectedFace = faces[idx]
+                refreshGuide()
                 TargetRepository(this).setActiveFace(best.face.id)
             }
             val runnerUp = matches.getOrNull(1)
