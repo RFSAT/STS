@@ -8,7 +8,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -34,7 +37,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="5dp"
             android:background="@drawable/bg_card"
             android:padding="12dp">
 
@@ -45,12 +48,12 @@
             <TableLayout android:id="@+id/tblParams"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="4dp"
                 android:shrinkColumns="1" />
 
             <TextView android:id="@+id/tvDetailFoot"
                 style="@style/Sts.Value"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="5dp"
                 android:textSize="12sp"
                 android:justificationMode="inter_word" />
         </LinearLayout>
@@ -59,11 +62,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="6dp">
+            android:layout_marginTop="4dp">
             <Button android:id="@+id/btnUse"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Use this"
-                style="@style/Sts.ActionButton" />
+                style="@style/Sts.ActionButton.Dense" />
             <Button android:id="@+id/btnEdit"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Copy &amp; edit"

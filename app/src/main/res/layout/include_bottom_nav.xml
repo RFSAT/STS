@@ -1,11 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Toolbar row: the BottomNavigationView holds all five tabs — Home,
      Session, Results, Targets, Settings — exactly at Material's 5-item cap.
-     Exit is appended OUTSIDE the capped menu, visually matched to the items. -->
+     Exit is appended OUTSIDE the capped menu, visually matched to the items.
+
+     Fixed at 52dp rather than left to wrap. Material's default is 56dp plus
+     whatever the label needs, and on the catalogue screens that bar is
+     competing directly with the list it sits under. 52dp still clears the
+     labelled two-line item; going below about 48dp clips them. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="52dp"
     android:orientation="horizontal"
     android:background="?attr/colorSurface">
 
@@ -13,7 +18,7 @@
         android:id="@+id/bottomNav"
         android:layout_width="0dp"
         android:layout_weight="1"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:background="@android:color/transparent"
         app:itemIconTint="@color/bottom_nav_item"
         app:itemTextColor="@color/bottom_nav_item"
@@ -22,7 +27,7 @@
 
     <LinearLayout
         android:id="@+id/btnExit"
-        android:layout_width="56dp"
+        android:layout_width="50dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"

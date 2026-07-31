@@ -8,7 +8,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="4dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -22,11 +25,14 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
+        <!-- 230dp -> 180dp. The preview is there to say WHICH face this is,
+             not to be scored on, and a fifty-dp saving is a whole extra row
+             of the catalogue on a short phone. -->
         <com.rfsat.sts.ui.TargetPlotView
             android:id="@+id/plot"
             android:layout_width="match_parent"
-            android:layout_height="230dp"
-            android:layout_marginTop="8dp"
+            android:layout_height="180dp"
+            android:layout_marginTop="5dp"
             android:background="@drawable/bg_card" />
 
         <!-- Face detail in three parts: summary, an aligned parameter
@@ -36,7 +42,7 @@
              Same treatment as the rules screen, sharing its row layout. -->
         <TextView android:id="@+id/tvDetailHead"
             style="@style/Sts.Value"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="5dp"
             android:textSize="12sp" />
 
         <TableLayout android:id="@+id/tblFace"
@@ -47,7 +53,7 @@
 
         <TextView android:id="@+id/tvDetailFoot"
             style="@style/Sts.Value"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:textSize="12sp"
             android:justificationMode="inter_word" />
 
@@ -55,26 +61,26 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="6dp">
+            android:layout_marginTop="4dp">
             <Button android:id="@+id/btnUse"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Use this"
-                style="@style/Sts.ActionButton" />
+                style="@style/Sts.ActionButton.Dense" />
             <Button android:id="@+id/btnEdit"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Copy &amp; edit"
-                style="@style/Sts.ActionButton" />
+                style="@style/Sts.ActionButton.Dense" />
             <Button android:id="@+id/btnDelete"
                 android:layout_width="0dp" android:layout_weight="1"
                 android:layout_height="wrap_content" android:text="Delete"
-                style="@style/Sts.ActionButton" />
+                style="@style/Sts.ActionButton.Dense" />
         </LinearLayout>
 
         <Button android:id="@+id/btnImport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Add my own target…"
-                style="@style/Sts.ActionButton" />
+                style="@style/Sts.ActionButton.Dense" />
     </LinearLayout>
 
     <ListView

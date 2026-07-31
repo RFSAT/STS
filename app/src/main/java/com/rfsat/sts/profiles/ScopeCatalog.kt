@@ -63,9 +63,18 @@ object ScopeCatalog {
             ClickUnit.MOA_HALF -> "1/2 MOA"
             ClickUnit.MRAD_HUNDREDTH -> "0.01 MRAD"
             ClickUnit.MM_AT_REFERENCE -> "mm at a reference distance"
+            ClickUnit.NONE -> "not adjustable"
         }
-        fun label(): String =
-            "$brand $model \u2014 ${fmt(zoomMin)}-${fmt(zoomMax)}\u00d7${objectiveMm.toInt()}, $clickLabel"
+        /** A diopter, an open rear sight and a bare barrel have no
+         *  magnification and no objective, and printing "1-1x0" for them was
+         *  noise in every picker row. Optics keep the full description. */
+        fun label(): String {
+            val optics = if (zoomMax > 1.0 || objectiveMm > 0.0)
+                " \u2014 ${fmt(zoomMin)}-${fmt(zoomMax)}\u00d7${objectiveMm.toInt()}, $clickLabel"
+            else if (clickUnit == ClickUnit.NONE) ""
+            else " \u2014 $clickLabel"
+            return "$brand $model$optics"
+        }
         private fun fmt(v: Double) = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString()
 
         fun toScopeProfile(): ScopeProfile = ScopeProfile(
@@ -80,12 +89,28 @@ object ScopeCatalog {
             objectiveDiameterMm = objectiveMm,
             focalLengthMm = focalLengthMm,
             heightAboveBarrelIn = heightAboveBarrelIn,
-            // Every VTB entry is a telescopic sight. STS's ScopeProfile
-            // defaults to a match diopter, which would be wrong for all of
-            // them, so it is stated explicitly here rather than left to a
-            // default that happens to differ between the two apps.
-            sightTypeName = SightType.SCOPE.name
+            // WHAT KIND OF SIGHT THIS ACTUALLY IS.
+            //
+            // Every VTB entry is a telescopic sight, and this line used to say
+            // SCOPE for all of them — including the STS additions appended
+            // below, which are diopters, target-pistol rear sights and red
+            // dots. Nothing depended on it until a sight arrived that cannot
+            // be adjusted at all, at which point calling it a telescope would
+            // have had the app offer turret clicks for a bare barrel.
+            sightTypeName = sightType().name,
+            clickMmAtReference = if (clickUnit == ClickUnit.MM_AT_REFERENCE) 2.0 else 0.0,
+            clickReferenceDistanceM = if (clickUnit == ClickUnit.MM_AT_REFERENCE) 10.0 else 0.0
         )
+
+        /** The catalogue groups by [family] for the filter; this maps that
+         *  grouping onto the type the correction advice reads. */
+        fun sightType(): SightType = when (family) {
+            "Diopter" -> SightType.DIOPTER
+            "Open sights", "Iron sights" -> SightType.OPEN_SIGHTS
+            "Red dot" -> SightType.RED_DOT
+            "None" -> SightType.NONE
+            else -> SightType.SCOPE
+        }
     }
 
     private fun mrad(mrads: Double) = mrads * MRAD_MOA
@@ -186,7 +211,21 @@ object ScopeCatalog {
         Entry("Aimpoint", "Micro T-2 (2 MOA)", 1.0, 1.0, 18.0, ClickUnit.MOA_HALF,
             50.0, 50.0, 0.0, 1.4, family = "Red dot"),
         Entry("Holosun", "507C", 1.0, 1.0, 16.0, ClickUnit.MOA_HALF,
-            50.0, 50.0, 0.0, 0.9, family = "Red dot")
+            50.0, 50.0, 0.0, 0.9, family = "Red dot"),
+
+        // ---- sights that cannot be clicked ----
+        //
+        // Both carry no travel and no click, which is the point of them. The
+        // SIGHT RADIUS is deliberately left unset rather than given a
+        // plausible default: it runs from about 150 mm on a service pistol to
+        // 700 mm on an air rifle, and a wrong one would produce a confident
+        // instruction to move the rear sight by the wrong amount. With it
+        // unset the app says so and asks for the measurement, which is a
+        // ruler's work and then exact.
+        Entry("Generic", "Built-in iron sight", 1.0, 1.0, 0.0, ClickUnit.NONE,
+            0.0, 0.0, 0.0, 0.9, family = "Iron sights"),
+        Entry("Generic", "No sight", 1.0, 1.0, 0.0, ClickUnit.NONE,
+            0.0, 0.0, 0.0, 0.0, family = "None")
     )
 
     const val ALL = "All"
@@ -198,7 +237,7 @@ object ScopeCatalog {
     fun brands(): List<String> = listOf(ALL) + all.map { it.brand }.distinct().sorted()
     fun families(): List<String> = listOf(ALL) + all.map { it.family }.distinct()
     fun clickUnits(): List<String> = listOf(ALL, "0.1 MRAD", "1/4 MOA", "1/8 MOA",
-        "1/2 MOA", "mm at a reference distance")
+        "1/2 MOA", "mm at a reference distance", "not adjustable")
     fun magClasses(): List<String> = listOf(ALL, "Low (\u2264 9\u00d7)", "Mid (10\u201320\u00d7)", "High (> 20\u00d7)")
 
     fun filter(brand: String, click: String, mag: String, family: String = ALL): List<Entry> =

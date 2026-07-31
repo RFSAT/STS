@@ -28,7 +28,19 @@ enum class ClickUnit(val label: String) {
     MRAD_TENTH("0.1 MRAD"),
     MOA_HALF("1/2 MOA"),
     MRAD_HUNDREDTH("0.01 MRAD"),
-    MM_AT_REFERENCE("mm at a reference distance")
+    MM_AT_REFERENCE("mm at a reference distance"),
+
+    /**
+     * The sight cannot be adjusted by counting anything.
+     *
+     * A fixed factory iron sight, or no sight at all. This is NOT the same as
+     * a missing click value: it is a positive statement that no click exists,
+     * and it is what stops the app inventing "0 clicks up" for a sight with
+     * no turrets on it. The correction is then reported as the movement the
+     * point of impact needs, and — where the sight radius is known — as how
+     * far the rear sight must physically move.
+     */
+    NONE("No adjustment")
 }
 
 /** What the shooter is actually aiming with. Decides which fields matter and
@@ -37,7 +49,12 @@ enum class SightType(val label: String) {
     SCOPE("Telescopic sight"),
     DIOPTER("Diopter / match iron sights"),
     OPEN_SIGHTS("Open iron sights"),
-    RED_DOT("Red dot / reflex")
+    RED_DOT("Red dot / reflex"),
+
+    /** A fixed sight the shooter cannot adjust, or none at all. The group is
+     *  still worth measuring — it is the only way to know the hold-off — but
+     *  no adjustment can be advised. */
+    NONE("No sight / fixed sight")
 }
 
 /**
@@ -99,6 +116,7 @@ data class ScopeProfile(
             ClickUnit.MRAD_TENTH -> 0.1
             ClickUnit.MRAD_HUNDREDTH -> 0.01
             ClickUnit.MM_AT_REFERENCE -> clickMmAtReference
+            ClickUnit.NONE -> 0.0
         }
 
     val clickUnitIsMoa: Boolean
@@ -129,12 +147,27 @@ data class ScopeProfile(
             ClickUnit.MRAD_TENTH, ClickUnit.MRAD_HUNDREDTH -> clickValue
             ClickUnit.MM_AT_REFERENCE ->
                 if (clickReferenceDistanceM > 0.0) clickMmAtReference / clickReferenceDistanceM else 0.0
+            ClickUnit.NONE -> 0.0
         }
 
-    val hasClicks: Boolean get() = clickMrad > 0.0 && sightType != SightType.OPEN_SIGHTS
+    /**
+     * THE CLICK VALUE DECIDES, NOT THE KIND OF SIGHT.
+     *
+     * This used to read `clickMrad > 0 && sightType != OPEN_SIGHTS`, which
+     * says that no open sight has clicks. That is false of exactly the sights
+     * this app is for: the Morini, Pardini and Walther target-pistol rear
+     * sights in the catalogue are open sights and every one of them is
+     * click-adjustable, to a published millimetre at a stated distance. The
+     * rule went unnoticed only because catalogue picks were all being labelled
+     * telescopic — see ScopeCatalog.toScopeProfile, fixed at the same time.
+     *
+     * A sight with no clicks now says so with [ClickUnit.NONE].
+     */
+    val hasClicks: Boolean get() = clickUnit != ClickUnit.NONE && clickMrad > 0.0
 
     /** How a click should be described back to the shooter. */
     fun clickDescription(): String = when (clickUnit) {
+        ClickUnit.NONE -> "no click adjustment"
         ClickUnit.MM_AT_REFERENCE ->
             String.format("%.2f mm @ %.0f m", clickMmAtReference, clickReferenceDistanceM)
         else -> clickUnit.label

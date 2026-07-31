@@ -212,8 +212,15 @@ class ScoringRulesTest {
 
     @Test
     fun `an open sight with a known radius is told how far to move`() {
+        // ClickUnit.NONE, not MM_AT_REFERENCE. This test has always meant "a
+        // sight with no clicks", and it used to say so by making it an open
+        // sight — back when hasClicks treated every open sight as unclicked.
+        // That rule was wrong about the Morini, Pardini and Walther target
+        // rear sights, which are open sights with published clicks, so the
+        // click value now decides and the absence of one is stated outright.
+        // The behaviour under test is unchanged.
         val iron = ScopeProfile(
-            clickUnit = ClickUnit.MM_AT_REFERENCE,
+            clickUnit = ClickUnit.NONE,
             sightTypeName = SightType.OPEN_SIGHTS.name,
             sightRadiusMm = 500.0
         )

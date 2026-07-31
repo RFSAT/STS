@@ -1,0 +1,176 @@
+{
+  "face": "issf_ap_10m",
+  "gaugeMm": 4.5,
+  "sheet": "A4",
+  "scaleBarMm": 100.0,
+  "cards": {
+    "A": {
+      "title": "Geometry and edge cases",
+      "note": "Punch in the order listed, photographing after each one.",
+      "shots": [
+        {
+          "u": 0.0,
+          "v": 0.0,
+          "label": "A1",
+          "why": "dead centre \u2014 a 10, and the easiest possible case"
+        },
+        {
+          "u": -1.8,
+          "v": 12.7,
+          "label": "A2",
+          "why": "inside the black \u2014 the case that was broken until 1.27"
+        },
+        {
+          "u": -38.6,
+          "v": 0.0,
+          "label": "A3",
+          "why": "ON the 6-ring line \u2014 scores 6 by gauge, 5 by centre alone"
+        },
+        {
+          "u": 44.1,
+          "v": 62.5,
+          "label": "A4",
+          "why": "just inside the 1-ring"
+        },
+        {
+          "u": -68.3,
+          "v": 64.2,
+          "label": "A5",
+          "why": "outside the rings \u2014 a miss, must appear on the plot"
+        },
+        {
+          "u": 8.0,
+          "v": -25.0,
+          "label": "A6",
+          "why": "in the black, low contrast side"
+        },
+        {
+          "u": -95.0,
+          "v": 0.0,
+          "label": "A7",
+          "why": "far out, near the sheet edge \u2014 tests clipping"
+        }
+      ]
+    },
+    "B": {
+      "title": "Overlapping and near shots",
+      "note": "Pairs at decreasing separation. Punch both of a pair, then photograph.",
+      "shots": [
+        {
+          "u": -30.0,
+          "v": 30.0,
+          "label": "B1",
+          "why": "pair 1a"
+        },
+        {
+          "u": -25.5,
+          "v": 30.0,
+          "label": "B2",
+          "why": "pair 1b \u2014 4.5 mm apart, one gauge"
+        },
+        {
+          "u": 30.0,
+          "v": 30.0,
+          "label": "B3",
+          "why": "pair 2a"
+        },
+        {
+          "u": 33.1,
+          "v": 30.0,
+          "label": "B4",
+          "why": "pair 2b \u2014 3.1 mm, 0.7 gauge"
+        },
+        {
+          "u": -30.0,
+          "v": -30.0,
+          "label": "B5",
+          "why": "pair 3a"
+        },
+        {
+          "u": -27.7,
+          "v": -30.0,
+          "label": "B6",
+          "why": "pair 3b \u2014 2.3 mm, 0.5 gauge"
+        },
+        {
+          "u": 30.0,
+          "v": -30.0,
+          "label": "B7",
+          "why": "pair 4a"
+        },
+        {
+          "u": 32.0,
+          "v": -30.0,
+          "label": "B8",
+          "why": "pair 4b \u2014 2.0 mm, touching"
+        }
+      ]
+    },
+    "C": {
+      "title": "Progressive string",
+      "note": "Ten shots in a plausible group. Photograph the blank card first, then after every punch.",
+      "shots": [
+        {
+          "u": 2.1,
+          "v": 3.4,
+          "label": "C1",
+          "why": ""
+        },
+        {
+          "u": -1.5,
+          "v": 5.2,
+          "label": "C2",
+          "why": ""
+        },
+        {
+          "u": 4.0,
+          "v": -2.2,
+          "label": "C3",
+          "why": ""
+        },
+        {
+          "u": -3.8,
+          "v": -1.1,
+          "label": "C4",
+          "why": ""
+        },
+        {
+          "u": 0.7,
+          "v": 8.9,
+          "label": "C5",
+          "why": ""
+        },
+        {
+          "u": 6.2,
+          "v": 4.5,
+          "label": "C6",
+          "why": ""
+        },
+        {
+          "u": -5.1,
+          "v": 3.0,
+          "label": "C7",
+          "why": ""
+        },
+        {
+          "u": 1.9,
+          "v": -6.4,
+          "label": "C8",
+          "why": ""
+        },
+        {
+          "u": -2.4,
+          "v": -7.8,
+          "label": "C9",
+          "why": ""
+        },
+        {
+          "u": 9.5,
+          "v": 1.2,
+          "label": "C10",
+          "why": ""
+        }
+      ]
+    }
+  }
+}

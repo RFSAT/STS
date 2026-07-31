@@ -32,6 +32,62 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.29.0 — feature: two sights that cannot be clicked, and more of a
+        //          catalogue window given over to the catalogue.
+        //
+        //   "Built-in iron sight" and "No sight" are not just two more rows.
+        //   Every sight in the app until now could be adjusted by counting
+        //   something, and three things had to change before a sight that
+        //   cannot be would give an honest answer.
+        //
+        //   ClickUnit.NONE, so the absence of a click is STATED rather than
+        //   inferred from a missing number. Adding it deliberately broke the
+        //   exhaustive `when`s that describe a click, which is what those
+        //   `when`s are for — a seventh unit is a compile error rather than a
+        //   sight that silently labels itself wrongly.
+        //
+        //   hasClicks now asks the CLICK, not the kind of sight. It used to
+        //   read `clickMrad > 0 && sightType != OPEN_SIGHTS`, i.e. no open
+        //   sight has clicks — which is false of exactly the sights this app
+        //   is for. The Morini, Pardini and Walther target rear sights in the
+        //   catalogue are open sights and every one is click-adjustable to a
+        //   published millimetre at a stated distance. The error was hidden
+        //   because ScopeCatalog.toScopeProfile labelled EVERY catalogue pick
+        //   a telescopic sight, diopters and red dots included; it now maps
+        //   the family to the type, which is also what stops a bare barrel
+        //   being offered turret clicks.
+        //
+        //   THE SIGHT RADIUS IS LEFT UNSET, on purpose. It runs from about
+        //   150 mm on a service pistol to 700 mm on an air rifle, and a
+        //   plausible default would produce a confident instruction to move
+        //   the rear sight by the wrong amount. Unset, the app says so and
+        //   asks for the measurement — a ruler's work, and then exact.
+        //
+        //   With no sight at all the app reports the group as a HOLD-OFF
+        //   instead. The first draft of that sentence had both directions
+        //   reversed: shots landing high need a LOWER aim, and moveY is
+        //   already negative in that case. A test pins both axes.
+        //
+        // 1.29.0 — correction: catalogue screens gave too much room to their
+        //          furniture and not enough to the list.
+        //
+        //   Closed spinners 48dp -> 34dp (they are labels, not tap targets;
+        //   the whole widget takes the tap). Dropdown rows 48dp -> 42dp —
+        //   shortened rather than squeezed, because those ARE tap targets and
+        //   below about 40dp a moving finger on a range starts to miss. The
+        //   face preview on Targets 230dp -> 180dp: it is there to say which
+        //   face this is, not to be scored on. The shared bottom bar fixed at
+        //   52dp rather than left to wrap.
+        //
+        //   Footer buttons use a new Sts.ActionButton.Dense at 34dp, applied
+        //   ONLY to the catalogue screens. Not to Sts.ActionButton itself:
+        //   the Results controls were made a uniform 44dp deliberately, and
+        //   shrinking every button in the app to gain rows on two screens is
+        //   the wrong trade.
+        //
+        //   The catalogue dialogs get the freed height back on the list —
+        //   ammunition and sights 320 -> 400dp, firearms 280 -> 360dp.
+        //
         // 1.28.0 — feature: the test card is now PART OF THE APP, and every
         //          build is scored against it.
         //
@@ -1292,8 +1348,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 46
-        versionName = "1.28.0"
+        versionCode = 47
+        versionName = "1.29.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

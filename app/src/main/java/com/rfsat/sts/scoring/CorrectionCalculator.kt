@@ -188,7 +188,15 @@ object CorrectionCalculator {
         var rearY = 0.0
         var hasRear = false
         if (!scope.hasClicks) {
-            if (scope.sightRadiusMm > 0.0) {
+            if (scope.sightType == SightType.NONE && scope.sightRadiusMm <= 0.0) {
+                // Nothing to move. The group is still worth measuring — it is
+                // the only way to know what hold-off the next string needs —
+                // so the correction is reported as the offset it is, without
+                // an instruction that cannot be carried out.
+                warnings += "This setup has no adjustable sight, so no correction can be applied. " +
+                    "The figures below are how far the group sits from the point of aim, which is " +
+                    "the hold-off to use next time."
+            } else if (scope.sightRadiusMm > 0.0) {
                 // Similar triangles: moving the rear sight by r over a sight
                 // radius R swings the line of sight by r/R radians, which puts
                 // the impact r/R * D metres downrange. So the rear sight must
@@ -199,8 +207,9 @@ object CorrectionCalculator {
                 hasRear = true
             } else {
                 warnings += "This sight has no click value and no sight radius recorded, so the app cannot " +
-                    "say how far to move it. Enter the sight radius in Settings and the movement will be " +
-                    "given in millimetres."
+                    "say how far to move it. Measure the distance from the front sight to the rear sight " +
+                    "and enter it as the sight radius in Settings, and the movement will be given in " +
+                    "millimetres."
             }
         }
 
@@ -246,6 +255,15 @@ object CorrectionCalculator {
             return parts.joinToString(", ") +
                 (if (scope.sightType == SightType.OPEN_SIGHTS)
                     " — or move the FRONT sight the same amount the other way." else "")
+        }
+        if (scope.sightType == SightType.NONE) {
+            if (abs(moveX) < 0.05 && abs(moveY) < 0.05) return "The group is on the point of aim."
+            // moveX/moveY are where the IMPACT must go. With no sight the
+            // only way to move it is to aim there, so the hold-off runs the
+            // SAME way, not the opposite: shots landing high need a lower
+            // aim, and moveY is already negative in that case.
+            return "No sight to adjust. Aim ${fmtMm(abs(moveY))} ${if (moveY > 0) "higher" else "lower"} " +
+                "and ${fmtMm(abs(moveX))} ${if (moveX > 0) "right" else "left"} of where you aimed."
         }
         return "Move the point of impact ${fmtMm(abs(moveY))} ${if (moveY > 0) "up" else "down"} and " +
             "${fmtMm(abs(moveX))} ${if (moveX > 0) "right" else "left"}."
