@@ -40,8 +40,24 @@ class TargetPlotView @JvmOverloads constructor(
 ) : View(context, attrs, defStyle) {
 
     // ---- data ----
+    /**
+     * The face being plotted. Changing it resets zoom and pan, because a
+     * different face may be a different size and the old framing would be
+     * meaningless — but ONLY when it really changes.
+     *
+     * Results rebuilds every field on this view after each edit, and this
+     * setter used to reset unconditionally. So nudging a shot by a tenth of
+     * a millimetre threw the user back to the default zoom, at the exact
+     * moment they were zoomed in BECAUSE they were nudging. The refresh was
+     * assigning the same face it already held; the reset was collateral.
+     */
     var face: TargetFace? = null
-        set(v) { field = v; resetView(); invalidate() }
+        set(v) {
+            val changed = field?.id != v?.id
+            field = v
+            if (changed) resetView()
+            invalidate()
+        }
 
     var shots: List<Shot> = emptyList()
         set(v) { field = v; invalidate() }

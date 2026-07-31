@@ -32,6 +32,41 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.25.0 — feature: the camera ADOPTS the face it identifies, and
+        //          the plot no longer loses your zoom when you nudge a shot.
+        //
+        //   MEASURED, on the user's own T0002. The card is ISSF 10 m Air
+        //   Pistol: its black measures 3.723 ring pitches across, and that
+        //   face expects 3.719 — 0.1% out. Against ISSF 10 m Air Rifle, which
+        //   expects 6.100, the same card is 39% out. That is why the SAME
+        //   image scored from a photograph and failed from the camera: Import
+        //   has identified and adopted the face on load since 1.22.0, so it
+        //   quietly corrected the selection; Session only ever COMPLAINED,
+        //   leaving registration scaled against a face 39% wrong, which puts
+        //   every hole outside the detector's size gates. No hits, no error.
+        //
+        //   The ratio was not the doubt it looked like. Run over the same
+        //   card at 1536, 1280, 1080, 900, 760, 640 and 512 px it reads
+        //   3.723, 3.733, 3.730, 3.724, 3.720, 3.723, 3.710 — so neither the
+        //   analysis resolution nor the YUV colour channel was to blame, and
+        //   both were checked before the face was.
+        //
+        //   Guarded against the flip-flop this could otherwise cause: a face
+        //   the app has moved away from is not silently adopted again in the
+        //   same session, and choosing one by hand clears that record, since
+        //   the user may deliberately be going back to it.
+        //
+        //   Both callers now go through adoptFace(), because the spinner and
+        //   selectedFace must move together — the 1.18.0 bug where the screen
+        //   showed one face and the scorer used another came from setting one
+        //   and not the other.
+        //
+        //   ZOOM: TargetPlotView reset zoom and pan on every assignment to
+        //   .face, and Results reassigns it after every edit. So nudging a
+        //   shot by a tenth of a millimetre threw you back to the default
+        //   zoom, at the exact moment you were zoomed in BECAUSE you were
+        //   nudging. It now resets only when the face really changes.
+        //
         // 1.24.0 — feature: the guide says continuously whether the card
         //          matches the selected face.
         //
@@ -1121,8 +1156,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 42
-        versionName = "1.24.0"
+        versionCode = 43
+        versionName = "1.25.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

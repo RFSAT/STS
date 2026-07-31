@@ -94,6 +94,17 @@ class SessionActivity : BaseActivity() {
     private var faceCheckRunning = false
     private var lastFaceCheckMs = 0L
     private var lastAnnouncedMatch: com.rfsat.sts.ui.GuideMatch? = null
+
+    /**
+     * Faces the guide has already moved AWAY from, automatically, in this
+     * session. Two catalogue cards can sit close enough that consecutive
+     * frames rank them differently, and without this the guide would swap
+     * back and forth while the shooter watched. Once the app has decided a
+     * face is not the one in front of the camera, it does not silently
+     * decide the opposite a few seconds later; the user can still choose it
+     * by hand, which clears the record.
+     */
+    private val rejectedFaceIds = HashSet<String>()
     private var externalSource: FrameSource? = null
     private val audio = AudioShotDetector()
 
@@ -197,6 +208,10 @@ class SessionActivity : BaseActivity() {
             if (i == pendingTargetSelection) { pendingTargetSelection = -1; return@onSelected }
             val f = faces.getOrNull(i) ?: return@onSelected
             selectedFace = f
+            // Chosen by hand, so the app's own earlier refusals no longer
+            // apply: the user may deliberately be going back to a face the
+            // guide rejected, and it must not be overruled for that.
+            rejectedFaceIds.clear()
             // A new face means the old verdict says nothing about this one.
             binding.crosshair.match = com.rfsat.sts.ui.GuideMatch.UNKNOWN
             lastAnnouncedMatch = null
@@ -897,6 +912,39 @@ class SessionActivity : BaseActivity() {
      * this is a live preview, not a registration, and a card half out of
      * frame should not produce an accusation.
      */
+    /**
+     * Switches the session to [target], everywhere it has to be switched.
+     *
+     * The spinner AND the field the scorer actually reads. currentFace()
+     * prefers selectedFace over the spinner, and suppressing the listener
+     * with pendingTargetSelection — which is what stops a programmatic
+     * change being mistaken for the user's — also stopped the only code that
+     * updated selectedFace. So the spinner showed the identified face while
+     * every score was computed against the previous one, silently. Both are
+     * set here, together, and both callers go through this one function so
+     * they cannot drift apart again.
+     *
+     * Returns false when the face is not in the list, or is already current.
+     */
+    private fun adoptFace(target: TargetFace): Boolean {
+        val idx = faces.indexOfFirst { it.id == target.id }
+        if (idx < 0) return false
+        val previous = runCatching { currentFace() }.getOrNull()
+        if (previous?.id == target.id) return false
+        if (previous != null) rejectedFaceIds.add(previous.id)
+        pendingTargetSelection = idx
+        binding.spTarget.setSelection(idx)
+        selectedFace = faces[idx]
+        refreshGuide()
+        TargetRepository(this).setActiveFace(target.id)
+        // The reference was built against the old face, so it is now scaled
+        // by the wrong number of millimetres per pixel and must be rebuilt.
+        registration = null
+        live = null
+        refreshStatus()
+        return true
+    }
+
     private fun checkFaceAgainstView() {
         if (ScaleSettings.aimGuide() == com.rfsat.sts.ui.AimGuide.NONE) return
         val frame = latestFrame.get() ?: return
@@ -920,6 +968,7 @@ class SessionActivity : BaseActivity() {
         }
         analysisExecutor.execute {
             var state = com.rfsat.sts.ui.GuideMatch.UNKNOWN
+            var adopt: TargetFace? = null
             val complaint = runCatching {
                 val fit = RingFinder.find(frame) ?: return@runCatching null
                 if (fit.confidence < 0.35) return@runCatching null
@@ -934,12 +983,46 @@ class SessionActivity : BaseActivity() {
                 ) "The card in front of the camera looks like ${ranked.face.name}, not ${face.name}."
                 else null
                 val problem = ratio ?: named
+
+                // ADOPT IT, rather than asking the user to go and do it.
+                //
+                // Telling someone their face is wrong and leaving it wrong is
+                // the worst of both: the guide keeps drawing rings that cannot
+                // line up, registration keeps scaling against the wrong card,
+                // and no hits are found. Import has identified the face on
+                // load since 1.22.0; the camera did not, so the same card
+                // scored fine from a photograph and failed from the preview.
+                //
+                // Only on a clear, unambiguous reading: the selected face must
+                // actually be wrong, the candidate must be well inside the
+                // identification tolerance, and it must not be one already
+                // rejected in this session.
+                if (problem != null && ranked != null && ranked.face.id != face.id &&
+                    ranked.relativeError < IDENTIFY_TOLERANCE &&
+                    !rejectedFaceIds.contains(ranked.face.id)
+                ) {
+                    adopt = ranked.face
+                }
                 state = if (problem == null) com.rfsat.sts.ui.GuideMatch.MATCH
                         else com.rfsat.sts.ui.GuideMatch.MISMATCH
                 problem
             }.getOrNull()
             runOnUiThread {
                 faceCheckRunning = false
+                val chosen = adopt
+                if (chosen != null && adoptFace(chosen)) {
+                    // The guide now draws the adopted face, so the rings on
+                    // screen change under the shooter's eyes — which is the
+                    // clearest possible statement of what just happened.
+                    binding.crosshair.match = com.rfsat.sts.ui.GuideMatch.MATCH
+                    lastAnnouncedMatch = com.rfsat.sts.ui.GuideMatch.MATCH
+                    val msg = "Target face set to %s — that is what the camera sees. %s".format(
+                        chosen.name, "Change it under Target if this is wrong."
+                    )
+                    Logger.i("SessionActivity", msg)
+                    notifyUser(msg)
+                    return@runOnUiThread
+                }
                 binding.crosshair.match = state
                 // The word in the corner is continuous; the full explanation
                 // is said ONCE per change of verdict, so a shooter lining up
@@ -1020,22 +1103,7 @@ class SessionActivity : BaseActivity() {
         val best = matches.firstOrNull()
 
         if (best != null && best.relativeError < IDENTIFY_TOLERANCE) {
-            faces.indexOfFirst { it.id == best.face.id }.takeIf { it >= 0 }?.let { idx ->
-                pendingTargetSelection = idx
-                binding.spTarget.setSelection(idx)
-                // AND the field the scorer actually reads.
-                //
-                // currentFace() prefers selectedFace over the spinner, and
-                // suppressing the listener with pendingTargetSelection — which
-                // is what stops the programmatic change being mistaken for the
-                // user's — also stopped the only code that updated it. So the
-                // spinner showed the identified face while every score was
-                // computed against the previous one, silently. Both are set
-                // here, together, for that reason.
-                selectedFace = faces[idx]
-                refreshGuide()
-                TargetRepository(this).setActiveFace(best.face.id)
-            }
+            adoptFace(best.face)
             val runnerUp = matches.getOrNull(1)
             notifyUser(buildString {
                 append("Identified as %s (%.0f%% agreement".format(best.face.name, 100 * (1 - best.relativeError)))
