@@ -106,6 +106,12 @@ class ResultsActivity : BaseActivity() {
             binding.plot.showPhoto = !binding.plot.showPhoto
             binding.btnShowPhoto.text =
                 if (binding.plot.showPhoto) "Template" else "My photo"
+            notifyUser(
+                if (binding.plot.showPhoto)
+                    "Showing your photograph with the shots on it. The printed template is " +
+                        "hidden so the holes themselves stay visible."
+                else "Showing the target template."
+            )
         }
         binding.btnShowPhoto.isEnabled = ScoredPhoto.available
 

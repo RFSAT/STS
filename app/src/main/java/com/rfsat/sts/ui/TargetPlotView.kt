@@ -67,8 +67,11 @@ class TargetPlotView @JvmOverloads constructor(
     var showPhoto: Boolean = false
         set(value) { field = value; invalidate() }
 
+    /** Shot markers are drawn this much larger than the hole they mark. */
+    private val MARKER_SCALE = 1.5f
+
     /** Dims the photograph so the rings and markers stay legible on top. */
-    var photoDim: Int = 0x55000000
+    var photoDim: Int = 0x22000000
         set(v) { field = v; invalidate() }
 
     /** Called with target-plane mm when the user taps the plot. */
@@ -197,9 +200,16 @@ class TargetPlotView @JvmOverloads constructor(
         val s = pxPerMm(f)
         if (s <= 0f) return
 
-        drawCard(canvas, f, s)
-        if (showPhoto) drawPhoto(canvas, f)
-        if (f.zones.isNotEmpty()) drawZones(canvas, f, s) else drawRings(canvas, f, s)
+        // ONE OR THE OTHER, never both. Drawing the printed template over
+        // the shooter's own card gave two sets of rings a pixel or two apart,
+        // and the eye reads the difference as a registration error whether or
+        // not there is one. The photograph IS the target when it is shown;
+        // the shots, the group and the point of aim go on top of either.
+        val onPhoto = showPhoto && drawPhoto(canvas, f)
+        if (!onPhoto) {
+            drawCard(canvas, f, s)
+            if (f.zones.isNotEmpty()) drawZones(canvas, f, s) else drawRings(canvas, f, s)
+        }
         drawGroup(canvas, f, s)
         drawPoa(canvas, f, s)
         drawShots(canvas, f, s)
@@ -223,9 +233,10 @@ class TargetPlotView @JvmOverloads constructor(
         val dst = RectF(left, top, right, bottom)
         if (dst.width() < 1f || dst.height() < 1f) return false
         canvas.drawBitmap(bmp, null, dst, null)
-        // Knock the photograph back so the rings, the group and the shot
-        // markers stay readable on a busy card.
-        canvas.drawRect(dst, paint(photoDim, Paint.Style.FILL))
+        // Only a light knock-back now that the template is not drawn over it:
+        // enough to keep the markers legible on a bright card, not so much
+        // that the holes themselves become hard to see.
+        if (photoDim != 0) canvas.drawRect(dst, paint(photoDim, Paint.Style.FILL))
         return true
     }
 
@@ -402,16 +413,33 @@ class TargetPlotView @JvmOverloads constructor(
             val live = if (shot.index == draggingIndex) dragMm else null
             val x = toPxX(f, live?.first ?: shot.xMm)
             val y = toPxY(f, live?.second ?: shot.yMm)
-            val rPx = maxOf(minPx, (shot.diameterEstimateMm(f) / 2.0 * s).toFloat())
+            // MARKER_SCALE larger than the hole itself, and hollow, with a
+            // cross on the centre. Over a photograph a filled disc at true
+            // size covers the very hole it is marking, so there is no way to
+            // see whether it was placed correctly — which is exactly what the
+            // photo view exists for. Ringing the hole and crossing its centre
+            // leaves the evidence visible underneath.
+            val holePx = maxOf(minPx, (shot.diameterEstimateMm(f) / 2.0 * s).toFloat())
+            val rPx = holePx * MARKER_SCALE
             val fill = if (shot === last) shotLastPaint else shotPaint
-            // Low-confidence detections are drawn hollow, so a doubtful shot
+            // Low-confidence detections are drawn thinner, so a doubtful shot
             // is visibly doubtful rather than silently counted.
-            if (!shot.manual && shot.confidence < 0.4) {
-                canvas.drawCircle(x, y, rPx, Paint(fill).apply { style = Paint.Style.STROKE; strokeWidth = 2f })
-            } else {
-                canvas.drawCircle(x, y, rPx, fill)
+            val ring = Paint(fill).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = if (!shot.manual && shot.confidence < 0.4) 2f else 3f
             }
+            canvas.drawCircle(x, y, rPx, ring)
             canvas.drawCircle(x, y, rPx, shotEdge)
+            // A straight cross, gapped at the middle so the centre of the
+            // hole is never hidden by the thing pointing at it.
+            val arm = rPx * 1.15f
+            val gap = rPx * 0.30f
+            for (p2 in listOf(shotEdge, ring)) {
+                canvas.drawLine(x - arm, y, x - gap, y, p2)
+                canvas.drawLine(x + gap, y, x + arm, y, p2)
+                canvas.drawLine(x, y - arm, x, y - gap, p2)
+                canvas.drawLine(x, y + gap, x, y + arm, p2)
+            }
 
             if (shot.index == selectedShotIndex) {
                 canvas.drawCircle(x, y, rPx * 2.0f, groupPaint)

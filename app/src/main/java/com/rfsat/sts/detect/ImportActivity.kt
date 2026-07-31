@@ -750,6 +750,19 @@ class ImportActivity : BaseActivity() {
         binding.overlay.detectedMarkers = fit.ringsPx.map {
             Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat())
         }
+        // Everything else the detector saw, dashed. A ring inside the black
+        // that is found but not part of the fitted family looks exactly like
+        // one that was never seen, and the two mean different things.
+        val used = fit.ringsPx.toSet()
+        binding.overlay.unusedMarkers = fit.candidatesPx
+            .filter { c -> used.none { kotlin.math.abs(it - c) < 1.0 } }
+            .map { Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat()) }
+        Logger.i(
+            "ImportActivity",
+            "%d ring candidates found, %d used by the fitted family".format(
+                fit.candidatesPx.size, fit.ringCount
+            )
+        )
         reg.warnings.forEach { Logger.w("Registration", it) }
         refreshStatus()
     }

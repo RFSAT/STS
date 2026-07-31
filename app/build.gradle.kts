@@ -32,6 +32,35 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.22.0 — feature: Results markers, photo/template swap, a brighter
+        //          crosshair, and the rings that were found but not used.
+        //
+        //   SHOT MARKERS are half as large again as the hole, hollow, with a
+        //   gapped cross on the centre. A filled disc at true size covers the
+        //   very hole it marks, which defeats the photo view: the point of
+        //   showing the photograph is to check whether a marker sits where a
+        //   hole actually is.
+        //
+        //   PHOTO AND TEMPLATE are now alternatives, not layers. Drawing the
+        //   printed template over the shooter's own card put two sets of
+        //   rings a pixel or two apart, and the eye reads that as a
+        //   registration error whether or not there is one. Shots, group and
+        //   point of aim go on top of whichever is shown.
+        //
+        //   THE CROSSHAIR was a 2 px line at 82 per cent alpha, which
+        //   disappears against a white card in sunlight. Now full alpha, 3.5
+        //   px, a heavier dark halo for contrast either way, longer arms, and
+        //   a bright core. The core is a LIGHTENED accent rather than white,
+        //   so night-red stays red — a white core would put back the one
+        //   bright thing that theme exists to remove.
+        //
+        //   RINGS FOUND BUT NOT USED are now drawn dashed on the registration
+        //   overlay, and counted in the log. "Detected and left out of the
+        //   family" and "never detected at all" looked identical and mean
+        //   quite different things: the first is a ladder that chose a
+        //   subset, the second is a ring the detector could not see. This
+        //   answers, on the card itself, which is happening.
+        //
         // 1.21.0 — feature: merged shots, the shot-count check, hole-centre
         //          precision as its own metric, and stage timings.
         //
@@ -972,8 +1001,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 37
-        versionName = "1.21.0"
+        versionCode = 38
+        versionName = "1.22.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

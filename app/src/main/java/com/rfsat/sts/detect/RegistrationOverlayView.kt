@@ -133,6 +133,10 @@ class RegistrationOverlayView @JvmOverloads constructor(
     private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#AA000000"); style = Paint.Style.FILL
     }
+    private val unusedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#8878909A"); style = Paint.Style.STROKE; strokeWidth = 2f
+        pathEffect = android.graphics.DashPathEffect(floatArrayOf(6f, 6f), 0f)
+    }
     private val detPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFD32F2F"); style = Paint.Style.STROKE; strokeWidth = 4f
     }
@@ -150,6 +154,18 @@ class RegistrationOverlayView @JvmOverloads constructor(
 
     /** Detections drawn back onto the preview, in source pixels. */
     var detectedMarkers: List<Triple<Float, Float, Float>> = emptyList()
+        set(v) { field = v; invalidate() }
+
+    /**
+     * Rings that were FOUND but left out of the fitted family.
+     *
+     * Drawn thinner and dashed, because "detected and not used" and "never
+     * detected" look identical otherwise and mean quite different things: the
+     * first is a ladder that chose a subset, the second is a ring the
+     * detector could not see at all. Told apart, a user can say which of the
+     * two is happening on their card.
+     */
+    var unusedMarkers: List<Triple<Float, Float, Float>> = emptyList()
         set(v) { field = v; invalidate() }
 
     // ------------------------------------------------------------------
@@ -354,8 +370,14 @@ class RegistrationOverlayView @JvmOverloads constructor(
     }
 
     private fun drawDetections(canvas: Canvas) {
-        if (srcWidth <= 0 || detectedMarkers.isEmpty()) return
+        if (srcWidth <= 0) return
         val s = srcScale()
+        // The unused ones first, so a ring that is both found and used shows
+        // its solid marker rather than the dashed one.
+        unusedMarkers.forEach { (sx, sy, r) ->
+            val (x, y) = sourceToView(sx.toDouble(), sy.toDouble())
+            canvas.drawCircle(x, y, (r * s).coerceAtLeast(8f), unusedPaint)
+        }
         detectedMarkers.forEach { (sx, sy, r) ->
             val (x, y) = sourceToView(sx.toDouble(), sy.toDouble())
             canvas.drawCircle(x, y, (r * s).coerceAtLeast(8f), detPaint)

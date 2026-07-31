@@ -29,7 +29,7 @@ class CrosshairView @JvmOverloads constructor(
 ) : View(context, attrs, defStyle) {
 
     /** Fraction of the smaller screen dimension spanned by each arm. */
-    private val armFraction = 0.09f
+    private val armFraction = 0.11f
 
     /** Gap left open at the centre so the crosshair never hides the very
      *  thing being aimed at — a ten ring is a small dot on some faces. */
@@ -44,16 +44,34 @@ class CrosshairView @JvmOverloads constructor(
      */
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 2f
-        color = withAlpha(themeAccent(context), 210)
+        strokeWidth = 3.5f
+        color = withAlpha(themeAccent(context), 255)
+    }
+
+    /**
+     * A bright core inside the accent line.
+     *
+     * On a phone held up in sunlight the screen is competing with the sun,
+     * and a single 2 px line at 82 per cent alpha simply disappears against a
+     * white card. Full alpha, a wider line, a heavier dark halo for contrast
+     * either way, and a thin bright core down the middle.
+     *
+     * The core is a LIGHTENED accent rather than white, so the night-red
+     * theme stays red — a white core would put back the one bright thing that
+     * theme exists to remove.
+     */
+    private val core = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.4f
+        color = lighten(themeAccent(context), 0.55f)
     }
 
     /** Drawn under the white line, one pixel wider, so the crosshair stays
      *  visible on a white card as well as on a black aiming mark. */
     private val halo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeWidth = 4f
-        color = Color.argb(110, 0, 0, 0)
+        strokeWidth = 6.5f
+        color = Color.argb(170, 0, 0, 0)
     }
 
     init {
@@ -73,6 +91,14 @@ class CrosshairView @JvmOverloads constructor(
 
         fun withAlpha(colour: Int, alpha: Int): Int =
             Color.argb(alpha, Color.red(colour), Color.green(colour), Color.blue(colour))
+
+        /** Moves a colour [f] of the way toward white, keeping its hue. */
+        fun lighten(colour: Int, f: Float): Int = Color.argb(
+            255,
+            (Color.red(colour) + (255 - Color.red(colour)) * f).toInt().coerceIn(0, 255),
+            (Color.green(colour) + (255 - Color.green(colour)) * f).toInt().coerceIn(0, 255),
+            (Color.blue(colour) + (255 - Color.blue(colour)) * f).toInt().coerceIn(0, 255)
+        )
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -84,7 +110,7 @@ class CrosshairView @JvmOverloads constructor(
         val arm = d * armFraction
         val gap = d * gapFraction
 
-        for (p in listOf(halo, stroke)) {
+        for (p in listOf(halo, stroke, core)) {
             canvas.drawLine(cx - gap - arm, cy, cx - gap, cy, p)
             canvas.drawLine(cx + gap, cy, cx + gap + arm, cy, p)
             canvas.drawLine(cx, cy - gap - arm, cx, cy - gap, p)

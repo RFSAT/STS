@@ -32,7 +32,12 @@ data class RingFit(
      *  non-null, every pixel coordinate in this RingFit is in CORRECTED
      *  coordinates, and [correctedFrame] maps them back to the source. */
     val correction: ShapeCorrection? = null,
-    val correctedFrame: CorrectedFrame? = null
+    val correctedFrame: CorrectedFrame? = null,
+    /** EVERY ring candidate found, not only the ones the ladder used.
+     *  Carried so the overlay can show the difference: a ring that was
+     *  detected but left out of the family looks identical to one that was
+     *  never seen at all, and they mean quite different things. */
+    val candidatesPx: List<Double> = emptyList()
 ) {
     /** The tilt the ring ellipticity implies, degrees. */
     val impliedTiltDeg: Double
@@ -352,6 +357,7 @@ object RingFinder {
             Logger.i("RingFinder", "only ${peaks.size} ring candidates; not enough to fit")
             return null
         }
+        val allCandidates = peaks.map { it * step }
         val fit = fitLadder(peaks, if (markRadiusPx > 0) markRadiusPx / step else 0.0) ?: run {
             Logger.i("RingFinder", "ring candidates do not form an even progression")
             return null
@@ -365,7 +371,8 @@ object RingFinder {
             residualPx = fit.residual * step,
             confidence = fit.confidence,
             axisRatio = vote?.axisRatio ?: 1.0,
-            orientationDeg = vote?.orientationDeg ?: 0.0
+            orientationDeg = vote?.orientationDeg ?: 0.0,
+            candidatesPx = allCandidates
         )
         Logger.i(
             "RingFinder",
