@@ -32,6 +32,32 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.22.1 — correction: the WEAKER registration was the automatic one.
+        //
+        //   On loading a photograph the app ran the aiming-mark path, which
+        //   takes the scale from the black mark multiplied by the ratio of
+        //   whichever face happens to be SELECTED — so it is only ever as
+        //   right as that selection, and selecting the wrong face is the
+        //   single largest cause of nothing being detected at all (1.12.0).
+        //
+        //   It now identifies instead: fits the ring family, measures the
+        //   pitch over five to nine rings, lets the fit say WHICH face it is
+        //   rather than assuming, and cross-checks pitch against mark. That
+        //   is the same route as the "Identify and register" button, and the
+        //   0.2-point difference between the two paths reported from the
+        //   field is exactly this — a scale disagreement of about one per
+        //   cent, not a bug in either.
+        //
+        //   The mark path remains, as a FALLBACK rather than the default,
+        //   which is the right way round. It is used automatically when the
+        //   rings cannot be fitted at all, and when the face has no even
+        //   pitch to fit — the practical and service faces put their scoring
+        //   zones at unequal spacings by design, and for those the mark is
+        //   the only measurement there is. That second case previously left
+        //   the card unregistered with a message and no fallback.
+        //
+        //   Both buttons stay, so either method can still be forced by hand.
+        //
         // 1.22.0 — feature: Results markers, photo/template swap, a brighter
         //          crosshair, and the rings that were found but not used.
         //
@@ -1001,8 +1027,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 38
-        versionName = "1.22.0"
+        versionCode = 39
+        versionName = "1.22.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

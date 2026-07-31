@@ -272,11 +272,20 @@ class ImportActivity : BaseActivity() {
             )
             binding.overlay.clearAll()
             registration = null
-            // Detection is cheap and almost always right, so run it the
-            // moment a photograph arrives rather than making the user ask.
-            // A box they merely have to check is a different task from a box
-            // they have to place.
-            doAutoDetect(silent = true)
+            // IDENTIFY, not merely detect.
+            //
+            // This ran the aiming-mark path on load, which takes the scale
+            // from the black mark multiplied by the ratio of whichever face
+            // happens to be SELECTED — so it is only as right as that
+            // selection. Fitting the ring family instead measures the pitch
+            // over five to nine rings, says which face it is rather than
+            // assuming, and cross-checks the two against each other.
+            //
+            // It falls back to the mark on its own when the rings cannot be
+            // fitted, or when the face has no even pitch to fit, so the
+            // weaker method is still there — as a fallback rather than as the
+            // default, which is the right way round.
+            doIdentifyTarget(silent = true)
         }
         refreshStatus()
     }
@@ -646,9 +655,9 @@ class ImportActivity : BaseActivity() {
      * that went wrong before — the box on the 9 ring, the box on the 5 ring,
      * every distance half its true size — came from the old order.
      */
-    private fun doIdentifyTarget() {
+    private fun doIdentifyTarget(silent: Boolean = false) {
         val frame = detectionFrame() ?: run {
-            notifyUser("No picture to work from yet.")
+            if (!silent) notifyUser("No picture to work from yet.")
             return
         }
         val mark = BlackMarkDetector.detect(frame)
@@ -724,7 +733,15 @@ class ImportActivity : BaseActivity() {
         val rules = currentRules()
         val reg = TargetRegistration.fromRingFit(face, fit, rules.gaugeDiameterMm, transform)
         if (reg == null) {
-            notifyUser("${face.name} has unevenly pitched rings, so a fitted pitch cannot set its scale.")
+            // Not a failure of the fit — some faces simply have no single
+            // ring pitch to scale from. The practical and service faces put
+            // their scoring zones at unequal spacings by design, and for
+            // those the aiming mark is the only measurement there is.
+            notifyUser(
+                "${face.name} has unevenly pitched rings, so a fitted pitch cannot set its " +
+                    "scale. Registering from the aiming mark instead."
+            )
+            doAutoDetect(silent = true)
             return
         }
         registration = reg
