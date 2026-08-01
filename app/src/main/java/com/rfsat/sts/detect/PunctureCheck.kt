@@ -46,16 +46,39 @@ object PunctureCheck {
      *  floor would decline every candidate rather than judge it. */
     private const val MIN_BAND_PIXELS = 4
 
-    /** How far out the profile is read, in gauges. Past about 1.25 the
-     *  profile has reached the paper and adds nothing but neighbours. */
-    const val SPAN_GAUGES = 1.25
+    /** How far out the profile is read, in gauges.
+     *
+     *  1.25 reached PRINTED FEATURES. A shot in the middle of an ISSF air
+     *  pistol face sits 1.28 gauges from the 10-ring line, so the outermost
+     *  band of a centre hole was sampling the printed circle and reading it
+     *  as structure. On the punched test card that alone took the 10 from
+     *  1.00 monotonic to 0.71 and threw it out. */
+    const val SPAN_GAUGES = 1.0
 
     /** A step may fall this many levels against the trend and still count as
      *  monotonic; JPEG blocking and paper grain both cost a level or two. */
     private const val STEP_SLACK = 3.0
 
-    /** Fraction of steps that must follow the trend. */
-    private const val MIN_MONOTONIC = 0.85
+    /**
+     * Fraction of steps that must follow the trend — now a weak sanity floor
+     * rather than the discriminator it was built to be.
+     *
+     * MEASURED, and it does not do the job it was added for. Sampled over
+     * blank paper, printed ring lines, ring numerals and the black field, the
+     * negatives score 1.00 monotonic as often as real holes do: monotonicity
+     * separates a hole from PRINT hardly at all. What it reliably did was
+     * reject real shots — on the punched card three of six, because a punched
+     * hole has a bright burr around it that a pellet hole does not, and a
+     * five-level wobble from paper grain costs a whole step out of seven.
+     *
+     * The CONTRAST floor was doing the work all along. On the original card
+     * the ISSF roundel, the club crest and the footer text measured 15, -29
+     * and 1 levels against 57 to 145 for real holes; on the punched card the
+     * six holes measure 44 to 98 while every printed feature measures under
+     * 5. So contrast is kept as the test and this is reduced to catching
+     * something wildly structured.
+     */
+    private const val MIN_MONOTONIC = 0.6
 
     /** Levels between the centre band and the outermost. Below this the
      *  candidate has no core worth speaking of. */
@@ -80,7 +103,7 @@ object PunctureCheck {
      *  zero and cannot move a total — on every configuration measured the
      *  score came out exactly right — but they put marks on the plot where
      *  no shot was fired. */
-    private const val MIN_MONOTONIC_STRICT = 0.95
+    private const val MIN_MONOTONIC_STRICT = 0.75
 
     data class Profile(
         val bands: DoubleArray,

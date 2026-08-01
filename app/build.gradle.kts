@@ -32,6 +32,77 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.30.0 — feature: a SECOND OPINION from Claude, on demand, that is
+        //          not allowed to score.
+        //
+        //   The premise it was proposed on does not hold, and the design
+        //   follows from that. The card scored correctly earlier was not read
+        //   by eye: the holes were counted by eye and then MEASURED — circles
+        //   fitted to the printed rings, scale by least squares, each radius
+        //   computed. The 6 on that card turns on 0.8 mm, and nothing looking
+        //   at a JPEG resolves 0.8 mm. A vision model's positions carry a few
+        //   per cent of the image, several millimetres on a 170 mm card,
+        //   against 0.2 to 1.7 mm for a hole the app has measured.
+        //
+        //   So the division of labour is by what each is good at. The model
+        //   is asked which face, how many holes, roughly where, and whether
+        //   the photograph is usable at all — recognition and counting. The
+        //   app keeps ring fitting, scale, centroid and the gauge rule. Our
+        //   measured failure is RECALL, not precision, and counting is
+        //   exactly what the model does well.
+        //
+        //   NOTHING IT SAYS BECOMES A SCORE. A position it reports is only a
+        //   place to look again; anything unconfirmed is offered to the
+        //   shooter and, if accepted, recorded as MANUAL — the same flag a
+        //   tap on the plot sets — so no report can present a suggested shot
+        //   as a measured one. Both callers now go through one
+        //   placeManualShot() so they cannot drift apart.
+        //
+        //   Coordinates are requested as FRACTIONS OF THE IMAGE. The model
+        //   cannot know the scale, and asking it for millimetres would invite
+        //   it to invent them. The image sent is the RECTIFIED photograph,
+        //   which is already on the millimetre grid, so a fraction maps to
+        //   millimetres in one linear step with no projection to add error.
+        //
+        //   The key is from the Anthropic Console and is NOT a Claude.ai
+        //   password — the first thing anyone will get wrong, so the dialog
+        //   says so. It is held in EncryptedSharedPreferences, and if the
+        //   device will not provide that the key is NOT written in the clear
+        //   as a fallback: storage fails and the user is told.
+        //
+        //   Off by default, on demand from a button, and useless without a
+        //   connection — which most ranges do not have.
+        //
+        // 1.30.0 — correction: two failures found on the punched test card.
+        //
+        //   A HARMONIC LOCK. Image A2 fitted a ring pitch of 16.4 px where
+        //   the truth is 49 — exactly a third — and scored the card 9 instead
+        //   of 19 with no error anywhere. Now refused. The first version of
+        //   that check was BLIND to it: MarkOutline had latched onto
+        //   something also a third of the right size, so the scale-free ratio
+        //   between mark and pitch came out at 3.40 against an expected 3.72
+        //   and looked fine. A scale-free test cannot see a consistent
+        //   rescaling of both its terms. BlackMarkDetector measures the mark
+        //   independently of the ladder — 182 px against a pitch of 16.36 is
+        //   a ratio of 11.1, which is 199 per cent out.
+        //
+        //   THE MONOTONIC PROFILE TEST WAS DOING NO GOOD. Measured against
+        //   blank paper, printed ring lines, numerals and the black field,
+        //   every one scores 1.00 monotonic exactly as real holes do — it
+        //   separates a hole from print essentially not at all. What it did
+        //   reliably was reject real shots: three of six on the punched card,
+        //   because a drilled hole has a bright burr a pellet hole does not,
+        //   and a five-level wobble from paper grain costs a whole step out
+        //   of seven. The CONTRAST floor was doing the work all along (holes
+        //   44 to 98 levels, printed features under 5). Demoted to a sanity
+        //   floor. Its window also shrank from 1.25 gauges to 1.0, because at
+        //   1.25 a shot at dead centre samples the printed 10-ring circle.
+        //
+        //   NOT VERIFIED IN THIS SESSION: the offline suite stalled part-way
+        //   through on a slow sandbox. Gates, UI type-check and every suite
+        //   up to and including PunctureCheckTest passed; SourceHoleDetector,
+        //   T0002Corpus, FixedSight and SecondOpinion did not get to run.
+        //
         // 1.29.0 — feature: two sights that cannot be clicked, and more of a
         //          catalogue window given over to the catalogue.
         //
@@ -1348,8 +1419,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 47
-        versionName = "1.29.0"
+        versionCode = 48
+        versionName = "1.30.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
@@ -1450,6 +1521,11 @@ dependencies {
 
     // Profile / target / session persistence
     implementation("com.google.code.gson:gson:2.11.0")
+
+    // Encrypted storage for the Claude API key. A key that bills the user's
+    // own account does not belong in plain SharedPreferences, where any
+    // process with root or a backup extraction can read it.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     testImplementation("junit:junit:4.13.2")
 }

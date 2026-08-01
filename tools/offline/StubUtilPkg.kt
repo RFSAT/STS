@@ -16,3 +16,8 @@ object Log {
     @JvmStatic fun d(t: String, m: String): Int = 0
     @JvmStatic fun getStackTraceString(t: Throwable?): String = ""
 }
+
+object Base64 {
+    const val NO_WRAP = 2
+    fun encodeToString(input: ByteArray, flags: Int): String = ""
+}

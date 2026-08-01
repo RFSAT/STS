@@ -154,6 +154,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="14dp">
+                <Button android:id="@+id/btnSecondOpinion"
+                    style="@style/Sts.GridButton"
+                    android:text="Second opinion" />
                 <Button android:id="@+id/btnShare"
                     style="@style/Sts.GridButton"
                     android:text="Share report" />

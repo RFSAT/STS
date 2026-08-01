@@ -1,10 +1,15 @@
 package com.rfsat.sts.results
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.util.Base64
 import android.os.Bundle
 import android.view.View
 import com.rfsat.sts.R
 import com.rfsat.sts.databinding.ActivityResultsBinding
+import com.rfsat.sts.cloud.CloudSettings
+import com.rfsat.sts.cloud.OpinionReconciler
+import com.rfsat.sts.cloud.SecondOpinion
 import com.rfsat.sts.detect.DetectedHole
 import com.rfsat.sts.detect.SessionActivity
 import com.rfsat.sts.profiles.ProfileRepository
@@ -117,6 +122,7 @@ class ResultsActivity : BaseActivity() {
 
         binding.plot.onTapMm = { u, v -> onPlotTap(u, v) }
 
+        binding.btnSecondOpinion.setOnClickListener { askSecondOpinion() }
         binding.btnShare.setOnClickListener { share(ScoringSession.asReport(this), "STS session report") }
         binding.btnCsv.setOnClickListener { share(ScoringSession.asCsv(), "STS shots CSV") }
         binding.btnClearShots.setOnClickListener { confirmClearShots() }
@@ -166,6 +172,17 @@ class ResultsActivity : BaseActivity() {
             return
         }
 
+        val shot = placeManualShot(uMm, vMm)
+        notifyUser("Shot ${shot.index}: ${shot.displayValue}")
+    }
+
+    /** Places a shot the shooter asked for, at millimetre coordinates, marked
+     *  MANUAL. Shared by a tap on the plot and by accepting a suggestion from
+     *  the second opinion, so the two cannot drift apart — and so that a
+     *  suggested shot is recorded as hand-placed, which is what it is. */
+    private fun placeManualShot(uMm: Double, vMm: Double): Shot {
+        val face = ScoringSession.face(this)
+        val rules = ScoringSession.rules(this)
         val hole = DetectedHole(
             xMm = uMm, yMm = vMm,
             diameterMm = rules.gaugeDiameterMm,
@@ -180,7 +197,7 @@ class ResultsActivity : BaseActivity() {
         )
         ScoringSession.addShot(shot, rules)
         refresh()
-        notifyUser("Shot ${shot.index}: ${shot.displayValue}")
+        return shot
     }
 
     /** Wipes the recorded shots but keeps the target, rules and distance, so
@@ -244,6 +261,101 @@ class ResultsActivity : BaseActivity() {
             }
             .setNegativeButton("Close", null)
             .show()
+    }
+
+
+    /**
+     * Asks Claude what it sees, then puts that beside what was measured.
+     *
+     * NOTHING HERE CHANGES A SCORE BY ITSELF. The model's positions are used
+     * only to point at somewhere the detector may have missed, and each one
+     * is offered to the shooter to accept or reject. A shot accepted this way
+     * is marked MANUAL, exactly as a tap on the plot is, so a report can
+     * never present a suggested shot as a measured one.
+     */
+    private fun askSecondOpinion() {
+        if (!CloudSettings.configured(this)) {
+            notifyUser("Set a Claude API key in Settings and switch the second opinion on.")
+            return
+        }
+        val bmp = ScoredPhoto.bitmap
+        if (bmp == null) {
+            notifyUser(
+                "There is no photograph in this session to look at. The second opinion reads the " +
+                    "picture, so it has nothing to work from on a session scored by hand."
+            )
+            return
+        }
+        val key = CloudSettings.apiKey(this)
+        val model = CloudSettings.model(this)
+        val measured = ScoringSession.state.shots.map {
+            DetectedHole(xMm = it.xMm, yMm = it.yMm, diameterMm = 0.0, contrast = 0.0,
+                confidence = it.confidence, elongation = 1.0)
+        }
+        val faceName = ScoringSession.face(this).name
+        val uMin = ScoredPhoto.uMinMm; val uMax = ScoredPhoto.uMaxMm
+        val vMin = ScoredPhoto.vMinMm; val vMax = ScoredPhoto.vMaxMm
+
+        binding.btnSecondOpinion.isEnabled = false
+        notifyUser("Asking Claude…")
+        Thread {
+            // Re-encoded rather than sent at full size: a phone photograph can
+            // run to several megabytes, the model gains nothing past a couple
+            // of thousand pixels, and the shooter is paying per pixel.
+            val scaled = scaleForUpload(bmp)
+            val out = java.io.ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+            val result = SecondOpinion.ask(key, model, b64)
+            runOnUiThread {
+                binding.btnSecondOpinion.isEnabled = true
+                when (result) {
+                    is SecondOpinion.Result.Failed -> notifyUser(result.message)
+                    is SecondOpinion.Result.Ok -> {
+                        val rec = OpinionReconciler.reconcile(
+                            result.opinion, measured, faceName, uMin, uMax, vMin, vMax
+                        )
+                        showOpinion(rec, result.inputTokens, result.outputTokens)
+                    }
+                }
+            }
+        }.start()
+    }
+
+    /** Longest edge to 1568 px: past roughly this the model is charged for
+     *  detail it does not use. */
+    private fun scaleForUpload(bmp: Bitmap): Bitmap {
+        val longest = maxOf(bmp.width, bmp.height)
+        if (longest <= 1568) return bmp
+        val f = 1568.0 / longest
+        return Bitmap.createScaledBitmap(
+            bmp, (bmp.width * f).toInt(), (bmp.height * f).toInt(), true)
+    }
+
+    private fun showOpinion(rec: OpinionReconciler.Reconciliation, inTok: Int, outTok: Int) {
+        val msg = buildString {
+            append(rec.summary)
+            append("\n\n")
+            append("This is a second pair of eyes, not a second scorer: the app measures every " +
+                "shot it counts to under two millimetres, while a position read off a picture " +
+                "carries several. Nothing above has changed your score.")
+            if (inTok > 0) append("\n\n%,d input and %,d output tokens.".format(inTok, outTok))
+        }
+        val b = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Second opinion")
+            .setMessage(msg)
+            .setNegativeButton("Close", null)
+        if (rec.unconfirmed.isNotEmpty()) {
+            b.setPositiveButton("Add %d suggested".format(rec.unconfirmed.size)) { _, _ ->
+                for (s in rec.unconfirmed) placeManualShot(s.xMm, s.yMm)
+                notifyUser(
+                    "Added ${rec.unconfirmed.size} as MANUAL shots. Check each one against the " +
+                        "photograph and move or delete any that are wrong — their positions came " +
+                        "from the picture, not from a measurement."
+                )
+            }
+        }
+        b.show()
     }
 
     private fun refresh() {

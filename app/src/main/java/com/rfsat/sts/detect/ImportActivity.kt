@@ -741,7 +741,8 @@ class ImportActivity : BaseActivity() {
         val face = currentFace()
         val rules = currentRules()
         val reg = TargetRegistration.fromRingFit(
-            face, fit, rules.gaugeDiameterMm, transform, frame
+            face, fit, rules.gaugeDiameterMm, transform, frame,
+            markRadiusPx = mark?.radiusPx ?: 0.0
         )
         if (reg == null) {
             // Not a failure of the fit — some faces simply have no single

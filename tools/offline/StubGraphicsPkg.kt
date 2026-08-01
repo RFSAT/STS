@@ -1,12 +1,13 @@
 package android.graphics
 
 class Bitmap {
+    enum class CompressFormat { JPEG, PNG }
     val width: Int = 0
     val height: Int = 0
     val isRecycled: Boolean = false
     fun getPixels(p: IntArray, o: Int, s: Int, x: Int, y: Int, w: Int, h: Int) {}
     fun recycle() {}
-    fun compress(f: Any?, q: Int, out: java.io.OutputStream): Boolean = true
+    fun compress(f: CompressFormat, q: Int, out: java.io.OutputStream): Boolean = true
     enum class Config { ARGB_8888, RGB_565 }
     companion object {
         @JvmStatic fun createBitmap(px: IntArray, w: Int, h: Int, c: Config): Bitmap = Bitmap()

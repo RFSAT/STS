@@ -104,17 +104,31 @@ class PunctureCheckTest {
 
     @Test
     fun `outside the scoring area the test is stricter`() {
-        // A profile good enough inside the rings but not out where everything
-        // is print. One band against the trend out of seven is 0.857: over
-        // the ordinary floor of 0.85, under the strict floor of 0.95.
         val g = 24.0
-        // One band against the trend out of seven steps is 0.857: over the
-        // ordinary floor of 0.85, under the strict floor of 0.95.
-        val f = byBand(g, paper, intArrayOf(60, 100, 90, 140, 165, 185, 195, 202))
+        // TWO bands against the trend out of seven steps is 0.714: over the
+        // ordinary floor of 0.6, under the strict floor of 0.75 that applies
+        // where every candidate competes with print rather than paper.
+        val f = byBand(g, paper, intArrayOf(60, 100, 90, 140, 130, 185, 195, 202))
         val p = PunctureCheck.profile(f, 60.0, 60.0, g, inBlack = false)!!
-        assertEquals(6.0 / 7.0, p.monotonic, 1e-9)
+        assertEquals(5.0 / 7.0, p.monotonic, 1e-9)
         assertTrue(PunctureCheck.isPuncture(f, 60.0, 60.0, g, false, outsideScoringArea = false))
         assertFalse(PunctureCheck.isPuncture(f, 60.0, 60.0, g, false, outsideScoringArea = true))
+    }
+
+    @Test
+    fun `contrast is the test that does the work, not monotonicity`() {
+        // Measured on the punched card: every printed feature — ring lines,
+        // numerals, the black field, blank paper — scores 1.00 monotonic,
+        // exactly as real holes do, so monotonicity separates a hole from
+        // print hardly at all. What separates them is contrast: holes 44 to
+        // 98 levels, print under 5. This pins that a perfectly smooth,
+        // perfectly monotonic patch of paper is still refused.
+        val g = 24.0
+        val flat = byBand(g, paper, intArrayOf(198, 199, 199, 200, 200, 201, 201, 202))
+        val p = PunctureCheck.profile(flat, 60.0, 60.0, g, inBlack = false)!!
+        assertEquals(1.0, p.monotonic, 1e-9)
+        assertTrue("contrast was ${p.contrastLevels}", p.contrastLevels < 10.0)
+        assertFalse(PunctureCheck.isPuncture(flat, 60.0, 60.0, g, inBlack = false))
     }
 
     @Test

@@ -107,6 +107,47 @@
                 android:justificationMode="inter_word"
                 android:text="Fits a circle to every visible ring instead of reading their radii off one averaged radial profile. On a flat scan it changes nothing measurable — both recover the true ring pitch to a thousandth of a millimetre. It is here because it reports how far each ring individually sits from where the catalogue puts it, which says whether a card is flat, and that may matter on angled photographs. Off until range photographs say." />
 
+            <!-- ===== Second opinion ===== -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Second opinion (Claude)" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Optional. On the Results screen you can ask Claude how many holes it sees and which face the card is. It does NOT score: positions from a vision model carry several millimetres, while the app measures a hole it has found to under two. Anything it sees that the app did not is offered to you as a suggestion to accept or reject." />
+
+            <CheckBox android:id="@+id/cbCloud"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Enable the second opinion button" />
+
+            <TextView android:id="@+id/tvCloudKey"
+                style="@style/Sts.Value" android:layout_marginTop="2dp" android:textSize="12sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="4dp">
+                <Button android:id="@+id/btnCloudKey"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Set API key…"
+                    style="@style/Sts.ActionButton.Dense" />
+                <Button android:id="@+id/btnCloudClear"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Forget key"
+                    style="@style/Sts.ActionButton.Dense" />
+            </LinearLayout>
+
+            <Spinner android:id="@+id/spCloudModel"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="The key comes from the Anthropic Console and bills your own account — it is not your Claude.ai password, which will not work here. It is kept encrypted on this device and is never written to the log. A card costs a fraction of a penny to check, and needs a connection, which most ranges do not have." />
+
             <!-- ===== Profile sets ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Profile sets" />
 

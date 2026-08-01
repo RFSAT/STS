@@ -368,6 +368,13 @@ class TargetRegistration private constructor(
          *  still a twentieth of a ring at 10 m. */
         private const val FAMILY_MAX_RESIDUAL_MM = 0.25
 
+        /** How far the mark-to-pitch ratio may sit from the face's own before
+         *  the fitted pitch is treated as a harmonic and the whole fit
+         *  refused. 0.40 against the 0.12 used to IDENTIFY a face: this asks
+         *  only whether the pitch is off by a whole factor, and must not fire
+         *  merely because the face is a near neighbour of the right one. */
+        private const val HARMONIC_TOLERANCE = 0.40
+
         /**
          * [frame] is needed only by the optional ring-circle refinement, which
          * has to re-read the printed lines; without it that stage is skipped
@@ -378,7 +385,16 @@ class TargetRegistration private constructor(
             fit: RingFit,
             gaugeDiameterMm: Double,
             transform: BoxTransform = BoxTransform.NONE,
-            frame: LumaFrame? = null
+            frame: LumaFrame? = null,
+            /** Aiming-mark radius from [BlackMarkDetector], source pixels.
+             *  A FALLBACK for the harmonic check below, and not a luxury:
+             *  MarkOutline gives up once the holes have broken the mark's
+             *  edge — "no compact aiming mark found at any threshold" — which
+             *  is precisely the late-string frames where a harmonic lock is
+             *  most likely and least survivable. BlackMarkDetector's cruder
+             *  radius survives that, and a crude radius is ample for asking
+             *  whether a pitch is out by a whole factor. */
+            markRadiusPx: Double = 0.0
         ): TargetRegistration? {
             val pitchMm = face.ringPitchMm ?: run {
                 Logger.w(
@@ -388,6 +404,56 @@ class TargetRegistration private constructor(
                 return null
             }
             if (fit.pitchPx <= 0.0 || pitchMm <= 0.0) return null
+
+            // ---- REFUSE A PITCH THAT IS A HARMONIC OF THE REAL ONE ----
+            //
+            // The ladder can lock onto every second or every third ring and
+            // report a pitch that is an exact fraction of the truth. Nothing
+            // downstream can tell: the fit looks internally consistent, the
+            // registration succeeds, and the card is then scored at the wrong
+            // scale. On the punched test card, image A2 fitted a pitch of
+            // 16.36 px where the true one is about 49 — a third — and scored
+            // 0 where the answer was 19, with no error anywhere.
+            //
+            // The black mark is the check, and it is scale-free: the ratio of
+            // its radius to the ring pitch is a property of the FACE, so a
+            // pitch wrong by a factor of three makes the ratio wrong by a
+            // factor of three. The tolerance is deliberately loose — three
+            // times looser than the one used to identify a face — because
+            // this is not asking whether the face is right, only whether the
+            // pitch is a harmonic. Refusing is the right answer: the callers
+            // fall back to the aiming mark, and no score at all is better
+            // than one silently scaled wrong.
+            // The INDEPENDENT measurement first, and this ordering is the
+            // whole point rather than a preference. On image A2 the ring
+            // ladder locked onto a third of the true pitch — and MarkOutline,
+            // which is fed by the same stage, latched onto something a third
+            // of the true mark. Both wrong by the same factor, so the ratio
+            // between them came out at 3.40 against an expected 3.72 and this
+            // check waved it through. A scale-free test cannot see a
+            // consistent rescaling of both its terms. BlackMarkDetector
+            // measures the mark from the picture and knows nothing of the
+            // ladder: 182 px against a pitch of 16.36 is a ratio of 11.1,
+            // which is 199 per cent out and impossible to miss.
+            val markPx = if (markRadiusPx > 0.0) markRadiusPx
+                         else (fit.shape?.model?.semiMajorPx ?: 0.0)
+            val expectedRatio = TargetGeometryCheck.blackInPitchesOf(face)
+            if (markPx > 0.0 && expectedRatio != null && fit.pitchPx > 0.0) {
+                val observed = markPx / fit.pitchPx
+                val err = abs(observed - expectedRatio) / expectedRatio
+                if (err > HARMONIC_TOLERANCE) {
+                    Logger.w(
+                        "TargetRegistration",
+                        ("Refusing this ring fit: the aiming mark measures %.2f ring pitches across " +
+                            "and %s says %.2f, which is %.0f%% out. The fitted pitch of %.1f px is " +
+                            "almost certainly a harmonic of the real one, and registering on it " +
+                            "would scale every score wrongly.").format(
+                            observed, face.name, expectedRatio, err * 100, fit.pitchPx
+                        )
+                    )
+                    return null
+                }
+            }
 
             val scale = chooseScale(face, fit, pitchMm)
 

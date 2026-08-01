@@ -8,6 +8,8 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.detect.ScaleMode
+import android.text.InputType
+import com.rfsat.sts.cloud.CloudSettings
 import com.rfsat.sts.detect.ScaleSettings
 import com.rfsat.sts.R
 import com.rfsat.sts.ui.WrappingNameAdapter
@@ -68,6 +70,74 @@ class ProfileActivity : BaseActivity() {
         binding.spUnits.setSelection(UnitSystem.values().indexOf(UnitsManager.system()))
         binding.spUnits.onItemSelectedListener = onSelectedIndex { i ->
             UnitsManager.setSystem(this, UnitSystem.values()[i])
+        }
+
+        // ---- second opinion ----
+        fun refreshCloud() {
+            binding.cbCloud.isChecked = CloudSettings.enabled(this)
+            binding.tvCloudKey.text = "API key: ${CloudSettings.maskedKey(this)}"
+        }
+        refreshCloud()
+        binding.spCloudModel.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, CloudSettings.MODELS.map { it.second }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+        binding.spCloudModel.setSelection(
+            CloudSettings.MODELS.indexOfFirst { it.first == CloudSettings.model(this) }
+                .coerceAtLeast(0))
+        binding.spCloudModel.onItemSelectedListener = onSelectedIndex { i ->
+            CloudSettings.MODELS.getOrNull(i)?.let { CloudSettings.setModel(this, it.first) }
+        }
+        binding.cbCloud.setOnClickListener {
+            val want = binding.cbCloud.isChecked
+            if (want && CloudSettings.apiKey(this).isBlank()) {
+                binding.cbCloud.isChecked = false
+                notifyUser("Set an API key first — the button has nothing to call without one.")
+            } else {
+                CloudSettings.setEnabled(this, want)
+                notifyUser(
+                    if (want) "A \u201cSecond opinion\u201d button will appear on the Results screen."
+                    else "The second opinion button is hidden."
+                )
+            }
+        }
+        binding.btnCloudKey.setOnClickListener {
+            val input = android.widget.EditText(this).apply {
+                hint = "sk-ant-…"
+                // Visible, not masked: a key pasted blind is a key typed
+                // wrong, and the dialog is dismissed the moment it is saved.
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+            }
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Claude API key")
+                .setMessage(
+                    "From console.anthropic.com, not your Claude.ai password \u2014 the two are " +
+                        "different and the password will not work. It is stored encrypted on this " +
+                        "device and never written to the log."
+                )
+                .setView(input)
+                .setPositiveButton("Save") { _, _ ->
+                    val v = input.text.toString().trim()
+                    if (v.isBlank()) { notifyUser("Nothing entered."); return@setPositiveButton }
+                    if (CloudSettings.setApiKey(this, v)) {
+                        refreshCloud()
+                        notifyUser("Key stored. Tick the box above to switch the feature on.")
+                    } else {
+                        // Not stored anywhere else: a credential that can spend
+                        // money does not go into a plain file as a fallback.
+                        notifyUser(
+                            "This device would not give the app encrypted storage, so the key has " +
+                                "NOT been saved. It will not be kept in plain text as a fallback."
+                        )
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+        binding.btnCloudClear.setOnClickListener {
+            CloudSettings.setApiKey(this, "")
+            CloudSettings.setEnabled(this, false)
+            refreshCloud()
+            notifyUser("Key forgotten and the feature switched off.")
         }
 
         binding.cbSourceDetect.isChecked = ScaleSettings.sourceDetector()

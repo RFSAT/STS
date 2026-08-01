@@ -50,7 +50,8 @@ for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/H
          scoring/CorrectionCalculator scoring/GroupStatistics scoring/ScoringEngine \
          scoring/Shot scoring/ShotDistribution \
          targets/PracticalGeometry targets/TargetCatalog targets/TargetFace \
-         scoring/ScoredPhoto ui/NameWrap ui/AimGuide detect/ScaleSettings scoring/ShotCountCheck; do
+         scoring/ScoredPhoto ui/NameWrap ui/AimGuide detect/ScaleSettings scoring/ShotCountCheck \
+         cloud/SecondOpinion cloud/OpinionReconciler; do
   cp "$M/$f.kt" "$WORK/src/$(basename $f).kt"
 done
 
@@ -76,7 +77,7 @@ PY
 # One package declaration per file: these must stay SEPARATE files.
 cp "$ROOT"/tools/offline/{JUnit4Shim,LoggerStub,AllRunner}.kt "$WORK/src/"
 # StubUtilPkg carries android.util.Log, so StubLog is not copied here as well.
-cp "$ROOT"/tools/offline/{StubPlatformPkg,StubGraphicsPkg,StubUtilPkg,StubNetPkg,StubCameraX,StubCameraRes}.kt "$WORK/src/"
+cp "$ROOT"/tools/offline/{StubPlatformPkg,StubGraphicsPkg,StubUtilPkg,StubNetPkg,StubCameraX,StubCameraRes,StubJsonPkg}.kt "$WORK/src/"
 cp "$ROOT"/app/src/test/java/com/rfsat/sts/*.kt "$WORK/src/"
 
 echo "compiling $(ls "$WORK/src" | wc -l) files..."
