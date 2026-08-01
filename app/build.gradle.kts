@@ -32,6 +32,47 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.36.0 — correction: "off" now means off. Three faults, all
+        //          reported from real use on T0002.
+        //
+        //   1. FALSE MARKS OUTSIDE THE SCORING AREA WITH THE SWITCH OFF.
+        //      The limit was `outer * 1.10`, which on a 10 m air pistol face
+        //      is 85.5 mm — eight millimetres BEYOND the outermost ring. The
+        //      two false marks on that card sit at 81.2 and 82.8 mm, so
+        //      switching "also find shots that missed the rings" off changed
+        //      nothing about them. The limit is now the furthest a hole's
+        //      CENTRE can be and still have its edge touch the outer ring:
+        //      outer radius plus half a gauge, 80.0 mm on that face. Past
+        //      that a mark cannot score whatever it is.
+        //
+        //      MEASURED on T0002, misses off: 5 marks, all five real, NONE
+        //      beyond the rings, score 19 against a hand-scored 19. Exact.
+        //
+        //   2. REMOVAL WAS TOO TIMID. It offered only the marks with no
+        //      Claude spot within twelve millimetres, so a false mark that
+        //      happened to sit near a real shot counted as "supported" and
+        //      was never offered — accepting every removal still left most of
+        //      them. When Claude has counted fewer shots than the app has
+        //      marked, everything beyond the scoring rings is now a candidate,
+        //      whether or not Claude mentioned it.
+        //
+        //   3. THE DUPLICATE GUARD WAS A GAUGE WIDE, and the re-measure can
+        //      settle a millimetre or two from where the app's own sweep put
+        //      the same hole. At exactly one gauge that gap was enough to add
+        //      a second mark to a shot already there. Now one and a half.
+        //
+        //   WHAT IS STILL TRUE, and now quantified: with misses ON the same
+        //   card gives 16 marks, of which 7 are real and 9 are printing —
+        //   the footer, the crest, the roundel — spread from 81 to 94 mm and
+        //   INTERLEAVED with the two genuine misses at 92.4 and 96.6. No
+        //   threshold on radius, contrast or profile separates them; all
+        //   three were tried and measured. Counting is the only thing that
+        //   has ever arbitrated it, which is what Claude is for here.
+        //
+        //   Practical advice, and the guide should say it: leave the switch
+        //   off unless you want to see where a flyer went, and expect to
+        //   prune when it is on.
+        //
         // 1.35.0 — correction: the second opinion could only make an
         //          OVER-DETECTED card worse. Reported from real use.
         //
@@ -1674,8 +1715,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 53
-        versionName = "1.35.0"
+        versionCode = 54
+        versionName = "1.36.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

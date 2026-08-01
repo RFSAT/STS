@@ -223,7 +223,11 @@ class ResultsActivity : BaseActivity() {
                     // the suggestion has snapped onto the real hole, and two
                     // marks on the same hole are unmistakable.
                     val dup = ScoringSession.state.shots.any {
-                        Math.hypot(it.xMm - found.xMm, it.yMm - found.yMm) <= rules.gaugeDiameterMm
+                        // 1.5 gauges, not 1: the re-measure can settle a
+                        // millimetre or two from where the app's own sweep put
+                        // the same hole, and at exactly one gauge that gap was
+                        // enough to add a second mark to a shot already there.
+                        Math.hypot(it.xMm - found.xMm, it.yMm - found.yMm) <= rules.gaugeDiameterMm * 1.5
                     }
                     if (dup) { duplicates++ } else {
                         placeManualShot(found.xMm, found.yMm)
@@ -272,11 +276,24 @@ class ResultsActivity : BaseActivity() {
      * so refusing to offer removal at all left the second opinion able only
      * to make an over-detected card worse.
      */
-    private fun offerRemoval(unsupported: List<DetectedHole>) {
+    private fun offerRemoval(unsupported: List<DetectedHole>, claudeCount: Int) {
         val face = ScoringSession.face(this)
         val outer = face.outerRadiusMm
+        // EVERYTHING OUTSIDE THE RINGS IS A CANDIDATE, not only what Claude
+        // failed to mention.
+        //
+        // The first version offered only the marks with no Claude spot within
+        // twelve millimetres. On a card with fourteen marks and seven real
+        // shots, a false mark that happened to sit near a real one counted as
+        // "supported" and was never offered — so accepting every removal
+        // still left most of them, which is what was reported. A mark beyond
+        // the scoring rings cannot score whatever else is true of it, and if
+        // Claude has counted fewer shots than the app has marked, those are
+        // the ones to put in front of the shooter.
+        val fewerSeen = ScoringSession.state.shots.size > claudeCount
         val victims = ScoringSession.state.shots.filter { shot ->
-            unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 }
+            unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 } ||
+                (fewerSeen && Math.hypot(shot.xMm, shot.yMm) > outer)
         }
         if (victims.isEmpty()) { notifyUser("Nothing left to remove."); return }
         val outside = victims.count { Math.hypot(it.xMm, it.yMm) > outer }
@@ -487,7 +504,7 @@ class ResultsActivity : BaseActivity() {
         // first is how the second opinion made such a card worse.
         if (rec.overDetected) {
             b.setPositiveButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
-                offerRemoval(rec.unsupported)
+                offerRemoval(rec.unsupported, rec.claimed)
             }
             if (rec.unconfirmed.isNotEmpty()) {
                 b.setNeutralButton("Add %d missed".format(rec.unconfirmed.size)) { _, _ ->
@@ -502,7 +519,7 @@ class ResultsActivity : BaseActivity() {
             }
             if (rec.unsupported.isNotEmpty()) {
                 b.setNeutralButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
-                    offerRemoval(rec.unsupported)
+                    offerRemoval(rec.unsupported, rec.claimed)
                 }
             }
         }

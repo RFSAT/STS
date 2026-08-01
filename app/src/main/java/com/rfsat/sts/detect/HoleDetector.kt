@@ -247,8 +247,13 @@ object HoleDetector {
         // silently drops the worst shots of a string misrepresents the group,
         // and a shooter who has thrown one wants to see where it went. On the
         // user's card two of seven shots were out there, at 1.20x and 1.25x.
-        val outerLimit = reg.face.outerRadiusMm *
-            (if (ScaleSettings.scoreOutsideArea()) OUTSIDE_LIMIT else 1.10)
+        // See the note in [SourceHoleDetector]: with misses off, the limit is
+        // the furthest a hole's centre can sit and still touch the outer ring.
+        // 1.10x left the app marking things outside the scoring rings when it
+        // had been told not to.
+        val outerLimit = if (ScaleSettings.scoreOutsideArea())
+            reg.face.outerRadiusMm * OUTSIDE_LIMIT
+        else reg.face.outerRadiusMm + gaugeDiameterMm / 2.0
         val valid = BooleanArray(n)
         for (idx in 0 until n) {
             if ((frame.data[idx].toInt() and 0xFF) == OUT) continue

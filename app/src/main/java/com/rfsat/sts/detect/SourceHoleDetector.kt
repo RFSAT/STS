@@ -129,7 +129,22 @@ object SourceHoleDetector {
         // point of working in the source frame is that it may be perspective
         // distorted, and the mapping already knows how.
         val outer = reg.face.outerRadiusMm
-        val limit = outer * (if (includeMisses) OUTSIDE_LIMIT else 1.10)
+        // WITH MISSES OFF, LOOK ONLY AS FAR AS A SHOT COULD SCORE.
+        //
+        // This used to read `outer * 1.10`, which on a 10 m air pistol face is
+        // 85.5 mm — eight millimetres OUTSIDE the outermost scoring ring. So
+        // switching "also find shots that missed the rings" off still left the
+        // app marking things beyond the rings, which is not what the switch
+        // says and was reported as exactly that. On the user's card the two
+        // false marks sit at 81.2 and 82.8 mm and survived being switched off.
+        //
+        // The honest limit is the furthest a hole's CENTRE can be and still
+        // have its edge touch the outer ring — outer radius plus half a gauge.
+        // Past that a mark cannot score whatever it is, so with misses off
+        // there is no reason to look, and every reason not to: beyond the
+        // rings is where the printing lives.
+        val limit = if (includeMisses) outer * OUTSIDE_LIMIT
+                    else outer + gaugeDiameterMm / 2.0
         val blackR = reg.face.blackDiameterMm / 2.0
 
         val rMm = DoubleArray(n)
