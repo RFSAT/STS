@@ -106,10 +106,29 @@ class TargetRegistration private constructor(
      */
     fun rectifyColour(source: Bitmap, maxPixels: Int = 4_000_000): Bitmap? {
         if (rectWidth < 2 || rectHeight < 2) return null
+
+        // FINER THAN THE DETECTOR'S GRID, on purpose.
+        //
+        // [rectify] works at eight pixels per scoring gauge because it has to
+        // allocate integral images over the whole card and that grid is a
+        // memory bound, not an accuracy choice. This is a PICTURE: nothing is
+        // allocated per pixel beyond the bitmap itself, and the cap below
+        // already limits it.
+        //
+        // Sharing the detector's grid made the photograph 272 px across a
+        // 170 mm card. That is what the shooter was shown under "My photo",
+        // and it is the only image the Results screen has to work from — so
+        // it also set the ceiling on how well a shot could be re-measured
+        // there, at eight pixels per gauge. Four times finer costs a bitmap
+        // of about 1.2 MP on that card and gives thirty-two.
+        val fine = COLOUR_REFINE
+        val fw = rectWidth * fine
+        val fh = rectHeight * fine
         var step = 1
-        while ((rectWidth / step).toLong() * (rectHeight / step).toLong() > maxPixels) step++
-        val w = (rectWidth / step).coerceAtLeast(1)
-        val h = (rectHeight / step).coerceAtLeast(1)
+        while ((fw / step).toLong() * (fh / step).toLong() > maxPixels) step++
+        val w = (fw / step).coerceAtLeast(1)
+        val h = (fh / step).coerceAtLeast(1)
+        val mmPerOut = mmPerPx * step / fine.toDouble()
 
         val sw = source.width
         val sh = source.height
@@ -119,9 +138,9 @@ class TargetRegistration private constructor(
         val out = IntArray(w * h)
         var o = 0
         for (j in 0 until h) {
-            val v = vMaxMm - (j + 0.5) * mmPerPx * step
+            val v = vMaxMm - (j + 0.5) * mmPerOut
             for (i in 0 until w) {
-                val u = uMinMm + (i + 0.5) * mmPerPx * step
+                val u = uMinMm + (i + 0.5) * mmPerOut
                 val (x, y) = homography.mmToPx(u, v)
                 out[o++] = if (x.isNaN() || y.isNaN()) 0
                 else {
@@ -185,6 +204,10 @@ class TargetRegistration private constructor(
         /** Rectified pixels across one scoring gauge. Overridable ONLY so the
          *  offline rig can measure what it costs; the app never sets it. */
         var pxPerGauge: Double = 8.0
+        /** How much finer than the detection grid the shooter's photograph
+         *  is resampled. See [rectifyColour]. */
+        private const val COLOUR_REFINE = 4
+
         private const val PX_PER_GAUGE = 8.0
 
         /** Beyond this the view is too oblique for the far edge to carry

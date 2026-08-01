@@ -11,6 +11,8 @@ import com.rfsat.sts.cloud.CloudSettings
 import com.rfsat.sts.cloud.OpinionReconciler
 import com.rfsat.sts.cloud.SecondOpinion
 import com.rfsat.sts.detect.DetectedHole
+import com.rfsat.sts.detect.FocusedRemeasure
+import com.rfsat.sts.detect.LumaFrame
 import com.rfsat.sts.detect.SessionActivity
 import com.rfsat.sts.profiles.ProfileRepository
 import com.rfsat.sts.scoring.ScoringEngine
@@ -174,6 +176,72 @@ class ResultsActivity : BaseActivity() {
 
         val shot = placeManualShot(uMm, vMm)
         notifyUser("Shot ${shot.index}: ${shot.displayValue}")
+    }
+
+
+    /**
+     * Takes each suggestion as a PLACE TO LOOK and measures what is actually
+     * there, so a score never carries a position that came off a picture.
+     *
+     * Claude places a hole to within a few per cent of the image — several
+     * millimetres on a 170 mm card, up to a whole ring. The app measures a
+     * hole it can see to between 0.2 and 1.7 mm. So the suggestion decides
+     * WHERE TO MEASURE and the measurement decides where the shot goes.
+     *
+     * A suggestion that lands on blank paper measures nothing, and is then
+     * reported as unconfirmed rather than quietly placed. That is the whole
+     * point of doing this: the model can be wrong about a hole existing, and
+     * when it is, the app should say so instead of scoring it.
+     */
+    private fun addSuggested(suggestions: List<OpinionReconciler.Suggestion>) {
+        val photo = ScoredPhoto.bitmap
+        val rules = ScoringSession.rules(this)
+        val face = ScoringSession.face(this)
+        val blackR = face.blackDiameterMm / 2.0
+        val ringRadii = face.rings.map { it.diameterMm / 2.0 }.toDoubleArray()
+        val frame = photo?.let { LumaFrame.fromBitmap(it) }
+
+        var measured = 0
+        var placedAsGiven = 0
+        var refused = 0
+        var worstDrift = 0.0
+        for (s in suggestions) {
+            val found = if (frame == null) null else FocusedRemeasure.at(
+                frame, ScoredPhoto.uMinMm, ScoredPhoto.uMaxMm,
+                ScoredPhoto.vMinMm, ScoredPhoto.vMaxMm,
+                blackR, rules.gaugeDiameterMm, ringRadii, s.xMm, s.yMm
+            )
+            when {
+                found != null -> {
+                    placeManualShot(found.xMm, found.yMm)
+                    worstDrift = maxOf(worstDrift, found.driftMm)
+                    measured++
+                }
+                frame == null -> { placeManualShot(s.xMm, s.yMm); placedAsGiven++ }
+                else -> refused++
+            }
+        }
+
+        val msg = buildString {
+            if (measured > 0) {
+                append("%d measured on the photograph and placed".format(measured))
+                append(" — the suggestion pointed, the app measured")
+                if (worstDrift > 0.05) append(", moving it by up to %.1f mm".format(worstDrift))
+                append(". ")
+            }
+            if (refused > 0) {
+                append("%d could NOT be confirmed: nothing hole-like was found where it pointed, ".format(refused))
+                append("so nothing was placed. Add them by hand from the plot if you can see them. ")
+            }
+            if (placedAsGiven > 0) {
+                append("%d placed at the suggested position because this session has no ".format(placedAsGiven))
+                append("photograph to measure on — check those against the card. ")
+            }
+            if (measured + placedAsGiven > 0) {
+                append("All are marked MANUAL, because it was not this app that found them.")
+            }
+        }
+        notifyUser(msg.ifBlank { "Nothing to add." })
     }
 
     /** Places a shot the shooter asked for, at millimetre coordinates, marked
@@ -347,12 +415,7 @@ class ResultsActivity : BaseActivity() {
             .setNegativeButton("Close", null)
         if (rec.unconfirmed.isNotEmpty()) {
             b.setPositiveButton("Add %d suggested".format(rec.unconfirmed.size)) { _, _ ->
-                for (s in rec.unconfirmed) placeManualShot(s.xMm, s.yMm)
-                notifyUser(
-                    "Added ${rec.unconfirmed.size} as MANUAL shots. Check each one against the " +
-                        "photograph and move or delete any that are wrong — their positions came " +
-                        "from the picture, not from a measurement."
-                )
+                addSuggested(rec.unconfirmed)
             }
         }
         b.show()

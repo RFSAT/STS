@@ -32,6 +32,23 @@
 -dontwarn javax.annotation.**
 -dontwarn javax.annotation.concurrent.**
 
+#  ...and Tink's OPTIONAL dependencies. KeysDownloader fetches JWT public
+#  keys over HTTP and wants the Google HTTP client and Joda-Time to do it.
+#  Nothing in EncryptedSharedPreferences ever calls it, and neither library
+#  is on the classpath, so R8 sees dangling references and stops.
+#
+#  Note WHY this had to be said at all: the -keep below deliberately keeps
+#  every Tink class, which is what stops R8 discarding KeysDownloader as
+#  unreachable and lets it notice the missing references. Narrowing the keep
+#  would make the warning disappear, and would also risk R8 stripping a key
+#  manager that Tink loads by name — a crash on first use of encrypted
+#  storage, which is far worse than a build that will not link. So the keep
+#  stays broad and the unused optional libraries are warned away.
+-dontwarn com.google.api.client.**
+-dontwarn com.google.api.http.**
+-dontwarn org.joda.time.**
+-dontwarn com.google.errorprone.annotations.**
+
 # Tink loads its key managers and protobuf message classes by name, so R8
 # cannot see the references and would strip them.
 -keep class com.google.crypto.tink.** { *; }

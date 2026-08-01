@@ -32,6 +32,70 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.32.0 — feature: a suggestion from Claude is now MEASURED before
+        //          it becomes a shot.
+        //
+        //   The gap this closes was mine. 1.30.0 was described as re-searching
+        //   where the model pointed; it did not. Accepting a suggestion planted
+        //   a shot AT the model's coordinate, which carries a few per cent of
+        //   the image — several millimetres on a 170 mm card, up to a whole
+        //   ring — against 0.2 to 1.7 mm for a hole the app finds itself.
+        //
+        //   Now the suggestion says only WHERE TO LOOK. [FocusedRemeasure]
+        //   measures what is actually there and the measurement decides where
+        //   the shot goes. Measured on card A frame 6, feeding it suggestions
+        //   deliberately offset from the truth to imitate the model's error:
+        //
+        //     offset given    0 mm    2 mm    4 mm    6 mm
+        //     centre shot     0.2     0.2     1.3     3.2
+        //     boundary shot   0.6     0.5     0.6     1.0
+        //
+        //   It CONVERGES: pointed 4 mm wrong at the shot straddling the black
+        //   edge, it still lands 0.6 mm from truth. Four of the six shots
+        //   confirm within about 1.5 mm.
+        //
+        //   AND IT REFUSES. Four suggestions dropped on blank card — one of
+        //   them inside the aiming mark — are all declined and nothing is
+        //   placed. Before the puncture test was applied here, two of those
+        //   four were placed as shots. That is the property that matters: the
+        //   model can be wrong that a hole exists, and when it is, the app
+        //   must say so rather than score it.
+        //
+        //   TWO THINGS IT STILL GETS WRONG, on the same card: one shot inside
+        //   the black is never confirmed at all, and the shot outside the
+        //   rings measures a consistent 2.2 mm off. So this is better than
+        //   what it replaces — which was no measurement whatever — and it is
+        //   not as good as the detector's own finds. Suggested shots stay
+        //   marked MANUAL for that reason.
+        //
+        //   Printed ring lines are excluded from the core. Inside the aiming
+        //   mark the rings are printed WHITE, which is exactly the "brighter
+        //   than the background" test that finds a hole there, and the two
+        //   central shots were swallowing the 10 and 9 rings and being thrown
+        //   out as far too large.
+        //
+        // 1.32.0 — feature: the shooter's photograph is rectified four times
+        //          finer than the detection grid.
+        //
+        //   [rectify] runs at eight pixels per gauge because it allocates
+        //   integral images over the whole card — a memory bound, not an
+        //   accuracy choice — and rectifyColour was sharing it. That made the
+        //   photograph 272 px across a 170 mm card: what the shooter sees
+        //   under "My photo", and the only image the Results screen has, so it
+        //   also capped how well anything could be re-measured there. Nothing
+        //   is allocated per pixel for a picture, so it now runs at 32 px per
+        //   gauge for about 1.2 MP.
+        //
+        // 1.32.0 — correction: the release build still would not link.
+        //
+        //   R8 moved on from the JSR-305 annotations to Tink's KeysDownloader,
+        //   which wants the Google HTTP client and Joda-Time to fetch JWT keys
+        //   over the network. Nothing in encrypted storage calls it and
+        //   neither library ships. Warned away, with a note on why the broad
+        //   -keep on Tink is what surfaces these at all and why narrowing it
+        //   would be worse: R8 could then strip a key manager Tink loads by
+        //   name, which is a crash on first use rather than a build failure.
+        //
         // 1.31.0 — feature: the background is estimated LOCALLY, and card A
         //          now scores exactly right.
         //
@@ -1470,8 +1534,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 49
-        versionName = "1.31.0"
+        versionCode = 50
+        versionName = "1.32.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
