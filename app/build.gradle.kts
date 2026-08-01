@@ -32,6 +32,57 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.31.0 — feature: the background is estimated LOCALLY, and card A
+        //          now scores exactly right.
+        //
+        //   MEASURED, on the user's punched card A frame with six holes:
+        //     one level per zone   5 of 6 found, score 26 against a truth of 33
+        //     local background     6 of 6 found, score 33 — exact
+        //   The shot it had never found is the one 3.5 mm inside the black
+        //   edge; its error went from 26.3 mm (not found at all) to 0.9 mm.
+        //
+        //   WHY A GLOBAL LEVEL COULD NOT WORK. On card B, photographed
+        //   unretouched, the paper reads 28 to 40 levels darker at the foot of
+        //   the sheet than at the head. The detection threshold is 28. So at
+        //   one end of the card the background was wrong by more than the
+        //   entire threshold — one end reads as a hole everywhere and the
+        //   other as nothing at all. That is not a tuning problem.
+        //
+        //   THE TWO ZONES SURVIVE, and that is the part worth explaining. A
+        //   single local estimate would smear the black mark's edge across a
+        //   window several holes wide and make that edge the strongest
+        //   "hole" on the card. So each side is estimated without ever
+        //   looking at the other — and the zones come from the REGISTRATION,
+        //   which knows in millimetres where the black is, so the boundary is
+        //   a known fact rather than something inferred from pixels.
+        //
+        //   And each pixel is now judged against its OWN zone. Deciding the
+        //   polarity of a whole hole from the zone its CENTRE fell in is what
+        //   lost the boundary shot: half of it was measured against the wrong
+        //   side. Costs about 40 ms on a 1200 px frame.
+        //
+        //   CARD B FOUND THE NEXT FAULT, which this does not fix. Of its four
+        //   pairs the detector finds the two TIGHTEST (2.3 and 2.0 mm apart)
+        //   as one blob each, and misses the two WIDEST (4.5 and 3.1 mm)
+        //   entirely — because a wide pair is elongated, and the shape gate
+        //   throws it out at 1.9. [MergedHoles] exists and knows how to split
+        //   a region holding two shots, but it is wired into the rectified
+        //   detector only, not into [SourceHoleDetector]. Score on that card
+        //   is 10 against a truth of 41. That is the next job.
+        //
+        // 1.31.0 — correction: the RELEASE build would not link.
+        //
+        //   R8 refused to shrink because androidx.security:security-crypto
+        //   pulls in Google Tink, which is compiled against JSR-305
+        //   annotations Android does not ship. Nothing dereferences them at
+        //   run time, so they are warned away rather than satisfied with
+        //   another dependency; Tink's key managers, which it loads by name,
+        //   are kept. Invisible until assembleRelease, because the debug
+        //   build does not run R8 at all.
+        //
+        //   Also a nullable smart-cast that the offline type-check caught and
+        //   the earlier package did not carry.
+        //
         // 1.30.0 — feature: a SECOND OPINION from Claude, on demand, that is
         //          not allowed to score.
         //
@@ -1419,8 +1470,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 48
-        versionName = "1.30.0"
+        versionCode = 49
+        versionName = "1.31.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

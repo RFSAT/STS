@@ -60,6 +60,7 @@ object ScaleSettings {
     private const val KEY_PUNCTURE = "puncture_check"
     private const val KEY_OUTSIDE = "score_outside_area"
     private const val KEY_SOURCE_DET = "source_detector"
+    private const val KEY_LOCAL_BG = "local_background"
     private const val KEY_GUIDE = "aim_guide"
     private const val KEY_GUIDE_SIZE = "aim_guide_size"
 
@@ -69,6 +70,7 @@ object ScaleSettings {
     private var puncture: Boolean = false
     private var outside: Boolean = false
     private var sourceDet: Boolean = true
+    private var localBg: Boolean = true
     private var guide: com.rfsat.sts.ui.AimGuide = com.rfsat.sts.ui.AimGuide.CROSS
     private var guideSize: Float = 0.80f
 
@@ -82,6 +84,7 @@ object ScaleSettings {
         puncture = p.getBoolean(KEY_PUNCTURE, false)
         outside = p.getBoolean(KEY_OUTSIDE, false)
         sourceDet = p.getBoolean(KEY_SOURCE_DET, true)
+        localBg = p.getBoolean(KEY_LOCAL_BG, true)
         guide = com.rfsat.sts.ui.AimGuide.values()
             .firstOrNull { it.name == p.getString(KEY_GUIDE, null) }
             ?: com.rfsat.sts.ui.AimGuide.CROSS
@@ -219,6 +222,27 @@ object ScaleSettings {
     }
 
     fun forceSourceDetector(value: Boolean) { sourceDet = value }
+
+    /**
+     * Estimate the background locally rather than one level for the whole of
+     * the paper and one for the whole of the black.
+     *
+     * ON by default. A card photographed on a table is never evenly lit:
+     * measured on an unretouched photograph the paper reads 28 to 40 levels
+     * darker at the foot of the sheet than at the head, and the detection
+     * threshold is 28 — so at one end the background is wrong by more than
+     * the whole threshold. Switch it off to compare, not because the flat
+     * version is ever likely to be better.
+     */
+    fun localBackground(): Boolean = localBg
+
+    fun setLocalBackground(context: Context, value: Boolean) {
+        localBg = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_LOCAL_BG, value).apply()
+    }
+
+    fun forceLocalBackground(value: Boolean) { localBg = value }
 
     /**
      * Half-width of the wedge, as cos(2*angle). 0.17 is +-35 degrees either

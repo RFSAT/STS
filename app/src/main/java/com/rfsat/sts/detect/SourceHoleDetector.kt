@@ -149,22 +149,32 @@ object SourceHoleDetector {
             LumaFrame(w, h, merged)
         } else frame
 
-        // ---- two backgrounds ----
+        // ---- what the card would look like with no holes in it ----
         //
-        // The paper has a level and the aiming mark has a level, and after the
-        // merge above they are not even on the same scale — which does not
-        // matter, because nothing downstream compares them. Every judgement is
-        // made against the background of the zone the pixel is in.
+        // Every judgement is made against the background of the zone the pixel
+        // is in, and after the merge above the two zones are not even on the
+        // same scale — which does not matter, because nothing compares them.
+        //
+        // LOCAL by preference. One level for the whole of the paper is exact
+        // only on an evenly lit card, and a card photographed on a table never
+        // is: measured on card B, unretouched, the paper reads 28 to 40 levels
+        // darker at the foot of the sheet than at the head, against a
+        // detection threshold of 28. See [LocalBackground].
         val paperLevel = medianOf(work, inScope, inBlack, wantBlack = false) ?: return emptyList()
         val blackLevel = medianOf(work, inScope, inBlack, wantBlack = true) ?: paperLevel
+
+        val local = if (ScaleSettings.localBackground())
+            LocalBackground.estimate(work, inScope, inBlack, gaugePx) else null
+        if (ScaleSettings.localBackground() && local == null) {
+            Logger.w("SourceHoleDetector", "local background could not be estimated; one level per zone")
+        }
 
         val dev = DoubleArray(n)
         for (idx in 0 until n) {
             if (!inScope[idx]) continue
-            val bg = if (inBlack[idx]) blackLevel else paperLevel
+            val bg = local?.get(idx) ?: (if (inBlack[idx]) blackLevel else paperLevel)
             dev[idx] = abs((work.data[idx].toInt() and 0xFF) - bg).toDouble()
         }
-
         // ---- remove everything THINNER than a hole ----
         //
         // A grey-scale opening, not a blur. The first version of this smoothed
@@ -250,7 +260,11 @@ object SourceHoleDetector {
             // NOT `?: run { rejShape++; continue }`: continue inside an inline
             // lambda needs Kotlin 2.2 and this project builds on 2.1, where it
             // compiles locally against a newer compiler and fails in CI.
-            val refined = refineCore(work, cx, cy, gaugePx, if (black) blackLevel else paperLevel, black)
+            val refined = refineCore(
+                work, cx, cy, gaugePx,
+                if (black) blackLevel else paperLevel, black,
+                local, inBlack, w, h
+            )
             if (refined == null) { rejShape++; continue }
             val rx = refined.first
             val ry = refined.second
@@ -315,17 +329,25 @@ object SourceHoleDetector {
      * is looking for the opposite of what is there.
      */
     private fun refineCore(
-        frame: LumaFrame, cx: Double, cy: Double, gaugePx: Double, level: Double, black: Boolean
+        frame: LumaFrame, cx: Double, cy: Double, gaugePx: Double, level: Double, black: Boolean,
+        local: DoubleArray?, inBlack: BooleanArray, w: Int, h: Int
     ): Pair<Double, Double>? {
         val r = (gaugePx * 1.4).toInt().coerceAtLeast(3)
         var sw = 0.0; var sx = 0.0; var sy = 0.0
         for (j in (cy.toInt() - r)..(cy.toInt() + r)) {
             for (i in (cx.toInt() - r)..(cx.toInt() + r)) {
                 if (i < 0 || j < 0 || i >= frame.width || j >= frame.height) continue
+                val idx = j * w + i
                 val v = frame.at(i, j).toDouble()
-                val isCore = if (black) v > level + CORE_MARGIN else v < level - CORE_MARGIN
+                // EACH PIXEL against its OWN zone and its own local level.
+                // Deciding the polarity of a whole hole from the zone its
+                // CENTRE landed in is what lost card A's shot straddling the
+                // black edge: half of it was measured against the wrong side.
+                val pixBlack = if (local != null) inBlack[idx] else black
+                val bg = local?.get(idx) ?: level
+                val isCore = if (pixBlack) v > bg + CORE_MARGIN else v < bg - CORE_MARGIN
                 if (!isCore) continue
-                val wgt = abs(v - level)
+                val wgt = abs(v - bg)
                 sw += wgt; sx += i * wgt; sy += j * wgt
             }
         }
