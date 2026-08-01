@@ -105,12 +105,37 @@ CARDS = {
     (  30.0,  30.0, "B3", "pair 2a"), (  33.1,  30.0, "B4", "pair 2b — 3.1 mm, 0.7 gauge"),
     ( -30.0, -30.0, "B5", "pair 3a"), ( -27.7, -30.0, "B6", "pair 3b — 2.3 mm, 0.5 gauge"),
     (  30.0, -30.0, "B7", "pair 4a"), (  32.0, -30.0, "B8", "pair 4b — 2.0 mm, touching")]),
- "C": ("Progressive string",
-       "Ten shots in a plausible group. Photograph the blank card first, then after every punch.",
-   [(  2.1,   3.4, "C1", ""), ( -1.5,   5.2, "C2", ""), (  4.0,  -2.2, "C3", ""),
-    ( -3.8,  -1.1, "C4", ""), (  0.7,   8.9, "C5", ""), (  6.2,   4.5, "C6", ""),
-    ( -5.1,   3.0, "C7", ""), (  1.9,  -6.4, "C8", ""), ( -2.4,  -7.8, "C9", ""),
-    (  9.5,   1.2, "C10", "")]),
+ # Five OVERLAPPING PAIRS, spread over about 25 mm inside the black.
+ #
+ # The first version of this card was wrong twice over, and both faults came
+ # from the same mistake — designing for the algorithm rather than for the
+ # hand holding the drill.
+ #
+ #   TEN SHOTS INSIDE 10 mm CANNOT BE PUNCHED. Obvious in hindsight; the
+ #   drill body is wider than the spacing.
+ #
+ #   AND THE MARKS THEMSELVES WERE DETECTED. Clustered at the centre they
+ #   overlapped into a dense grey patch INSIDE the aiming mark, and grey on
+ #   black is brighter than its background — which is exactly the test that
+ #   finds a hole there. The detector reported six shots on a card holding
+ #   one. Spread out, each cross is a thin isolated line again, which the
+ #   opening removes as it does on cards A and B.
+ #
+ # The five pairs sit on a 14 mm pentagon, each pair oriented tangentially.
+ # Within a pair the holes are 4.2 mm apart — under one 5 mm gauge, so they
+ # MERGE, and separating them is the whole point. BETWEEN pairs the nearest
+ # holes are 13.0 mm apart, which is two and a half gauges: comfortably
+ # separate, so the card tests splitting a PAIR and not decomposing a
+ # four-way cluster. An earlier spacing put different pairs 6 mm apart, close
+ # enough that two pairs could merge into a quad and the test would quietly
+ # have become a harder one than intended.
+ "C": ("Overlapping pairs",
+       "Five pairs, each pair merging. Photograph the blank card first, then after every punch.",
+   [(   2.1,   14.0, "C1", "pair 1 a"), (  -2.1,   14.0, "C2", "pair 1 b - 4.2 mm"),
+    ( -12.7,    6.3, "C3", "pair 2 a"), ( -14.0,    2.3, "C4", "pair 2 b - 4.2 mm"),
+    (  -9.9,  -10.1, "C5", "pair 3 a"), (  -6.5,  -12.6, "C6", "pair 3 b - 4.2 mm"),
+    (   6.5,  -12.6, "C7", "pair 4 a"), (   9.9,  -10.1, "C8", "pair 4 b - 4.2 mm"),
+    (  14.0,    2.3, "C9", "pair 5 a"), (  12.7,    6.3, "C10", "pair 5 b - 4.2 mm")]),
 }
 
 

@@ -37,6 +37,9 @@ object OpinionReconciler {
          *  because it is also what a false positive looks like. */
         val unsupported: List<DetectedHole>,
         val faceAgrees: Boolean,
+        /** True when the app found more than Claude did AND some of its finds
+         *  are unsupported — the case where the useful action is removal. */
+        val overDetected: Boolean,
         val summary: String
     )
 
@@ -52,6 +55,9 @@ object OpinionReconciler {
         opinion: SecondOpinion.Opinion,
         measured: List<DetectedHole>,
         faceName: String,
+        /** Outermost scoring ring, millimetres. Used only to say WHERE the
+         *  disputed marks are, because that is where the false ones live. */
+        outerRadiusMm: Double,
         uMin: Double, uMax: Double, vMin: Double, vMax: Double
     ): Reconciliation {
         val spotsMm = opinion.spots.map { s ->
@@ -72,8 +78,24 @@ object OpinionReconciler {
             faceName.contains(opinion.faceName, ignoreCase = true) ||
             opinion.faceName.contains(faceName, ignoreCase = true)
 
+        // WHICH WAY THE DISAGREEMENT RUNS DECIDES WHAT TO OFFER.
+        //
+        // The first version of this only ever offered to ADD what Claude saw
+        // and the app missed. On a card where the app had over-detected —
+        // fourteen marks, several of them printing outside the scoring area,
+        // against seven real shots — that made the plot worse, not better:
+        // three more were added and nothing was taken away. Over-detection is
+        // the app's measured failure mode, so an aid that can only add to it
+        // is an aid pointed the wrong way.
+        val overDetected = measured.size > opinion.holeCount && unsupported.isNotEmpty()
+
         val summary = buildString {
             append("Claude counted ${opinion.holeCount}; the app measured ${measured.size}.")
+            if (overDetected) {
+                append(" The app has found MORE than Claude can see, which usually means it has ")
+                append("marked something printed as a shot — start by looking at what to remove, ")
+                append("not at what to add.")
+            }
             if (!opinion.usable) {
                 append(" It also says this photograph is not really good enough to score — ")
                 append("that is worth acting on before anything else.")
@@ -90,12 +112,18 @@ object OpinionReconciler {
                         "these are offered as suggestions to accept or reject, not scored.")
             }
             if (unsupported.isNotEmpty()) {
-                append(" ${unsupported.size} shot(s) the app found were not mentioned; that can " +
-                    "mean the model missed them, and it is also what a false detection looks like.")
+                append(" ${unsupported.size} shot(s) the app found were not mentioned. Claude " +
+                    "missing a real shot looks exactly the same as the app inventing one, so " +
+                    "these are offered for removal rather than removed.")
+                val outside = unsupported.count { hypot(it.xMm, it.yMm) > outerRadiusMm }
+                if (outside > 0) {
+                    append(" ${outside} of them lie outside the scoring rings, where every ")
+                    append("false mark this app has ever produced has been found.")
+                }
             }
             if (opinion.comment.isNotBlank()) append(" It notes: ${opinion.comment}")
         }
         return Reconciliation(measured.size, opinion.holeCount, unconfirmed, unsupported,
-            faceAgrees, summary)
+            faceAgrees, overDetected, summary)
     }
 }

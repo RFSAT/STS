@@ -204,6 +204,7 @@ class ResultsActivity : BaseActivity() {
         var measured = 0
         var placedAsGiven = 0
         var refused = 0
+        var duplicates = 0
         var worstDrift = 0.0
         for (s in suggestions) {
             val found = if (frame == null) null else FocusedRemeasure.at(
@@ -213,9 +214,22 @@ class ResultsActivity : BaseActivity() {
             )
             when {
                 found != null -> {
-                    placeManualShot(found.xMm, found.yMm)
-                    worstDrift = maxOf(worstDrift, found.driftMm)
-                    measured++
+                    // ALREADY THERE? A measured position is the right thing to
+                    // compare, not the model's. Claude places a hole several
+                    // millimetres out, so a suggestion for a shot the app HAD
+                    // already found can miss it on raw coordinates and be
+                    // added a second time — which is how a card with seven
+                    // shots ends up with seventeen marks. Once re-measured,
+                    // the suggestion has snapped onto the real hole, and two
+                    // marks on the same hole are unmistakable.
+                    val dup = ScoringSession.state.shots.any {
+                        Math.hypot(it.xMm - found.xMm, it.yMm - found.yMm) <= rules.gaugeDiameterMm
+                    }
+                    if (dup) { duplicates++ } else {
+                        placeManualShot(found.xMm, found.yMm)
+                        worstDrift = maxOf(worstDrift, found.driftMm)
+                        measured++
+                    }
                 }
                 frame == null -> { placeManualShot(s.xMm, s.yMm); placedAsGiven++ }
                 else -> refused++
@@ -228,6 +242,10 @@ class ResultsActivity : BaseActivity() {
                 append(" — the suggestion pointed, the app measured")
                 if (worstDrift > 0.05) append(", moving it by up to %.1f mm".format(worstDrift))
                 append(". ")
+            }
+            if (duplicates > 0) {
+                append("%d were the shots the app had ALREADY found, once measured, and were ".format(duplicates))
+                append("not added twice. ")
             }
             if (refused > 0) {
                 append("%d could NOT be confirmed: nothing hole-like was found where it pointed, ".format(refused))
@@ -242,6 +260,56 @@ class ResultsActivity : BaseActivity() {
             }
         }
         notifyUser(msg.ifBlank { "Nothing to add." })
+    }
+
+
+    /**
+     * Offers to remove the marks Claude did not see.
+     *
+     * NOT automatic, and the wording says why: Claude missing a real shot and
+     * the app inventing one look identical from here. But over-detection is
+     * this app's measured failure — printing outside the rings read as shots —
+     * so refusing to offer removal at all left the second opinion able only
+     * to make an over-detected card worse.
+     */
+    private fun offerRemoval(unsupported: List<DetectedHole>) {
+        val face = ScoringSession.face(this)
+        val outer = face.outerRadiusMm
+        val victims = ScoringSession.state.shots.filter { shot ->
+            unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 }
+        }
+        if (victims.isEmpty()) { notifyUser("Nothing left to remove."); return }
+        val outside = victims.count { Math.hypot(it.xMm, it.yMm) > outer }
+        val msg = buildString {
+            append("Remove ${victims.size} shot(s) that Claude did not see?")
+            if (outside > 0) {
+                append("\n\n$outside of them lie outside the scoring rings. Every false mark ")
+                append("this app has produced on a test card has been out there, so those are ")
+                append("the likeliest to be wrong.")
+            }
+            append("\n\nThis cannot tell a shot Claude missed from one the app invented. ")
+            append("Check them on the plot with My photo selected before agreeing.")
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Remove unsupported marks")
+            .setMessage(msg)
+            .setPositiveButton("Remove all ${victims.size}") { _, _ ->
+                for (v in victims) ScoringSession.removeShot(v)
+                refresh()
+                notifyUser("Removed ${victims.size}. Undo by adding them back from the plot.")
+            }
+            .setNeutralButton(
+                if (outside > 0) "Remove only the $outside outside the rings" else "Cancel"
+            ) { _, _ ->
+                if (outside > 0) {
+                    val out = victims.filter { Math.hypot(it.xMm, it.yMm) > outer }
+                    for (v in out) ScoringSession.removeShot(v)
+                    refresh()
+                    notifyUser("Removed $outside outside the scoring rings.")
+                }
+            }
+            .setNegativeButton("Keep them", null)
+            .show()
     }
 
     /** Places a shot the shooter asked for, at millimetre coordinates, marked
@@ -361,6 +429,7 @@ class ResultsActivity : BaseActivity() {
                 confidence = it.confidence, elongation = 1.0)
         }
         val faceName = ScoringSession.face(this).name
+        val outerMm = ScoringSession.face(this).outerRadiusMm
         val uMin = ScoredPhoto.uMinMm; val uMax = ScoredPhoto.uMaxMm
         val vMin = ScoredPhoto.vMinMm; val vMax = ScoredPhoto.vMaxMm
 
@@ -381,7 +450,7 @@ class ResultsActivity : BaseActivity() {
                     is SecondOpinion.Result.Failed -> notifyUser(result.message)
                     is SecondOpinion.Result.Ok -> {
                         val rec = OpinionReconciler.reconcile(
-                            result.opinion, measured, faceName, uMin, uMax, vMin, vMax
+                            result.opinion, measured, faceName, outerMm, uMin, uMax, vMin, vMax
                         )
                         showOpinion(rec, result.inputTokens, result.outputTokens)
                     }
@@ -413,9 +482,28 @@ class ResultsActivity : BaseActivity() {
             .setTitle("Second opinion")
             .setMessage(msg)
             .setNegativeButton("Close", null)
-        if (rec.unconfirmed.isNotEmpty()) {
-            b.setPositiveButton("Add %d suggested".format(rec.unconfirmed.size)) { _, _ ->
-                addSuggested(rec.unconfirmed)
+        // The primary button follows the direction of the disagreement. On an
+        // over-detected card the useful action is removal, and offering "add"
+        // first is how the second opinion made such a card worse.
+        if (rec.overDetected) {
+            b.setPositiveButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
+                offerRemoval(rec.unsupported)
+            }
+            if (rec.unconfirmed.isNotEmpty()) {
+                b.setNeutralButton("Add %d missed".format(rec.unconfirmed.size)) { _, _ ->
+                    addSuggested(rec.unconfirmed)
+                }
+            }
+        } else {
+            if (rec.unconfirmed.isNotEmpty()) {
+                b.setPositiveButton("Add %d suggested".format(rec.unconfirmed.size)) { _, _ ->
+                    addSuggested(rec.unconfirmed)
+                }
+            }
+            if (rec.unsupported.isNotEmpty()) {
+                b.setNeutralButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
+                    offerRemoval(rec.unsupported)
+                }
             }
         }
         b.show()

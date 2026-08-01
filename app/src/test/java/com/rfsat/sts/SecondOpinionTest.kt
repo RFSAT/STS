@@ -30,7 +30,7 @@ class SecondOpinionTest {
         (xMm - uMin) / (uMax - uMin), (vMax - yMm) / (vMax - vMin), "note")
 
     private fun run(op: SecondOpinion.Opinion, measured: List<DetectedHole>) =
-        OpinionReconciler.reconcile(op, measured, face.name, uMin, uMax, vMin, vMax)
+        OpinionReconciler.reconcile(op, measured, face.name, face.outerRadiusMm, uMin, uMax, vMin, vMax)
 
     @Test
     fun `a hole both agree on produces no suggestion`() {
@@ -53,12 +53,42 @@ class SecondOpinionTest {
     }
 
     @Test
+    fun `when the app finds MORE than Claude, removal is what gets offered`() {
+        // The case that made a real card worse: the app marked fourteen,
+        // several of them printing outside the rings, against seven real
+        // shots — and the only action offered was to add three more.
+        val op = SecondOpinion.Opinion(face.name, 1, listOf(spotAt(10.0, 10.0)), true, "")
+        val out = run(op, listOf(hole(10.0, 10.0), hole(-55.0, -30.0), hole(80.0, 40.0)))
+        assertTrue("must recognise the direction of the disagreement", out.overDetected)
+        assertEquals(2, out.unsupported.size)
+        assertTrue(out.summary.contains("start by looking at what to remove"))
+    }
+
+    @Test
+    fun `marks outside the scoring rings are called out for removal`() {
+        val op = SecondOpinion.Opinion(face.name, 1, listOf(spotAt(0.0, 0.0)), true, "")
+        // 80 mm is outside the 77.75 mm outer ring
+        val out = run(op, listOf(hole(0.0, 0.0), hole(80.0, 10.0), hole(-82.0, 5.0)))
+        assertTrue(out.overDetected)
+        assertTrue("said: ${out.summary}", out.summary.contains("outside the scoring rings"))
+    }
+
+    @Test
+    fun `when the counts agree, removal is not urged`() {
+        val op = SecondOpinion.Opinion(face.name, 2,
+            listOf(spotAt(10.0, 10.0), spotAt(-20.0, 5.0)), true, "")
+        val out = run(op, listOf(hole(10.0, 10.0), hole(-20.0, 5.0)))
+        assertFalse(out.overDetected)
+        assertTrue(out.unsupported.isEmpty())
+    }
+
+    @Test
     fun `a shot the model missed is reported both ways round`() {
         val op = SecondOpinion.Opinion(face.name, 1, listOf(spotAt(10.0, 10.0)), true, "")
         val out = run(op, listOf(hole(10.0, 10.0), hole(-55.0, -30.0)))
         assertEquals(1, out.unsupported.size)
-        assertTrue("must say a false detection looks the same",
-            out.summary.contains("false detection"))
+        assertTrue("must say the two cases look alike",
+            out.summary.contains("looks exactly the same"))
     }
 
     @Test

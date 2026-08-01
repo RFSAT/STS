@@ -1,6 +1,6 @@
 {
   "face": "issf_ap_10m",
-  "gaugeMm": 4.5,
+  "gaugeMm": 5.0,
   "sheet": "A4",
   "scaleBarMm": 100.0,
   "cards": {
@@ -107,68 +107,68 @@
       ]
     },
     "C": {
-      "title": "Progressive string",
-      "note": "Ten shots in a plausible group. Photograph the blank card first, then after every punch.",
+      "title": "Overlapping pairs",
+      "note": "Five pairs, each pair merging. Photograph the blank card first, then after every punch.",
       "shots": [
         {
           "u": 2.1,
-          "v": 3.4,
+          "v": 14.0,
           "label": "C1",
-          "why": ""
+          "why": "pair 1 a"
         },
         {
-          "u": -1.5,
-          "v": 5.2,
+          "u": -2.1,
+          "v": 14.0,
           "label": "C2",
-          "why": ""
+          "why": "pair 1 b - 4.2 mm"
         },
         {
-          "u": 4.0,
-          "v": -2.2,
+          "u": -12.7,
+          "v": 6.3,
           "label": "C3",
-          "why": ""
+          "why": "pair 2 a"
         },
         {
-          "u": -3.8,
-          "v": -1.1,
+          "u": -14.0,
+          "v": 2.3,
           "label": "C4",
-          "why": ""
+          "why": "pair 2 b - 4.2 mm"
         },
         {
-          "u": 0.7,
-          "v": 8.9,
+          "u": -9.9,
+          "v": -10.1,
           "label": "C5",
-          "why": ""
+          "why": "pair 3 a"
         },
         {
-          "u": 6.2,
-          "v": 4.5,
+          "u": -6.5,
+          "v": -12.6,
           "label": "C6",
-          "why": ""
+          "why": "pair 3 b - 4.2 mm"
         },
         {
-          "u": -5.1,
-          "v": 3.0,
+          "u": 6.5,
+          "v": -12.6,
           "label": "C7",
-          "why": ""
+          "why": "pair 4 a"
         },
         {
-          "u": 1.9,
-          "v": -6.4,
+          "u": 9.9,
+          "v": -10.1,
           "label": "C8",
-          "why": ""
+          "why": "pair 4 b - 4.2 mm"
         },
         {
-          "u": -2.4,
-          "v": -7.8,
+          "u": 14.0,
+          "v": 2.3,
           "label": "C9",
-          "why": ""
+          "why": "pair 5 a"
         },
         {
-          "u": 9.5,
-          "v": 1.2,
+          "u": 12.7,
+          "v": 6.3,
           "label": "C10",
-          "why": ""
+          "why": "pair 5 b - 4.2 mm"
         }
       ]
     }

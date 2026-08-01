@@ -32,6 +32,45 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.35.0 — correction: the second opinion could only make an
+        //          OVER-DETECTED card worse. Reported from real use.
+        //
+        //   On T0002 the app marked FOURTEEN, several of them printing
+        //   outside the scoring rings. Claude counted SEVEN, which is the
+        //   right answer — that card was hand-scored at 9, 6, 2, 1, 1 and two
+        //   misses. The reconciler then offered to ADD three more and nothing
+        //   else, so the plot went from fourteen wrong to seventeen wrong.
+        //
+        //   THE FAULT WAS ASYMMETRY. The reconciler computed the marks Claude
+        //   did not see, and only mentioned them in a sentence. Over-detection
+        //   is this app's measured failure mode, so an aid that can add and
+        //   cannot remove is pointed the wrong way. Removal is now an offered
+        //   action, and when the app has found MORE than Claude it is the
+        //   PRIMARY button — the summary says so too, in the first sentence.
+        //
+        //   Not automatic, and the dialog says why: Claude missing a real shot
+        //   and the app inventing one look identical from here. What it can do
+        //   is say WHERE the disputed marks are, and offer to remove only the
+        //   ones outside the scoring rings — which is where every false mark
+        //   this app has produced on a test card has been found.
+        //
+        //   AND A DUPLICATE GUARD, which was the other half of the same
+        //   report. A suggestion is matched against existing shots on the
+        //   MEASURED position, not on Claude's: the model places a hole
+        //   several millimetres out, so a suggestion for a shot the app had
+        //   already found could miss it on raw coordinates and be added a
+        //   second time. Once re-measured it has snapped onto the real hole,
+        //   and two marks on one hole are unmistakable.
+        //
+        //   WORTH KNOWING for anyone reading the T0002 numbers: fourteen marks
+        //   needs "also find shots that missed the rings" switched on, which
+        //   extends the search to 1.35x the outer ring — into the footer text,
+        //   the club crest and the ISSF roundel. That switch has carried this
+        //   known limitation since 1.26.0. Claude counting the shots is the
+        //   first thing that has been able to arbitrate it, because how many
+        //   holes are on a card is a counting question and counting is what a
+        //   vision model is good at.
+        //
         // 1.34.0 — correction: a shot in the TEN RING was being dropped, and
         //          the reason was a threshold doing the wrong job.
         //
@@ -1635,8 +1674,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 52
-        versionName = "1.34.0"
+        versionCode = 53
+        versionName = "1.35.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
