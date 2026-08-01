@@ -71,6 +71,28 @@ object SourceHoleDetector {
     /** Levels from the zone background before a pixel counts as core. */
     private const val CORE_MARGIN = 55
 
+    /** A region this many times a gauge's area is asked whether it holds more
+     *  than one shot. Matches [MergedHoles]' own floor, so a region is never
+     *  offered to the splitter that the splitter would refuse. */
+    private const val MERGED_AREA_RATIO = 1.55
+
+    /** Confidence given to a shot recovered by splitting. Deliberately modest:
+     *  it is an inference about where two shots were, not a measurement of
+     *  one, and the Results plot shows it as such. */
+    private const val MERGED_CONFIDENCE = 0.40
+
+    /** Mean deviation a region must carry before it may be split. Twice the
+     *  detection threshold: a shadow or a crease clears the threshold and
+     *  little more, a hole clears it several times over. */
+    private const val MERGED_MIN_MEAN_DEV = 56.0
+
+    /** Beyond this many gauges' worth of area, a region is NOT split and NOT
+     *  reported. [MergedHoles] separates along one axis, which is right for a
+     *  pair and meaningless for a rosette of eight; and reporting three shots
+     *  where there are eight is worse than reporting none, because a count
+     *  that looks plausible will be believed. The log says what was seen. */
+    private const val MAX_MERGED_PARTS = 3
+
     /**
      * [frame] is the colour detection channel; [luma] is the plain luminance
      * of the same picture, and is used INSIDE THE AIMING MARK.
@@ -210,6 +232,8 @@ object SourceHoleDetector {
         var rejSize = 0
         var rejShape = 0
         var rejProfile = 0
+        var splitInto = 0
+        var responseInt: IntArray? = null
         val minArea = 0.15 * Math.PI * gaugePx * gaugePx
 
         for (seed in 0 until n) {
@@ -249,6 +273,81 @@ object SourceHoleDetector {
             val l2 = (sxx + syy - t) / 2.0
             val elong = if (l2 > 1e-9) sqrt(l1 / l2) else Double.MAX_VALUE
             val dia = 2.0 * sqrt(count / Math.PI)
+
+            // ---- IS THIS ONE SHOT, OR SEVERAL RUN TOGETHER? ----
+            //
+            // Asked BEFORE the single-shot gates, because those gates are what
+            // destroys a merged group. Measured on the punched cards: from the
+            // second shot onwards on card C the cluster is found as ONE blob
+            // every time and then thrown away — on profile, on size, on shape,
+            // a different gate each frame depending on the shape it happened
+            // to have. Card C scored 0 against a truth of 79, card B 10
+            // against 41, and in every one of those frames the region was
+            // sitting there in the blob list.
+            //
+            // A split is an INFERENCE about where two shots were, not a
+            // measurement of one, and it is marked as such: merged = true and
+            // a deliberately modest confidence. The puncture test is not
+            // applied to the parts — a part of a peanut does not have the
+            // radial profile of an isolated hole, and demanding one is
+            // precisely what rejected the two-shot frame on card C.
+            val expectedArea = Math.PI * (gaugePx / 2.0) * (gaugePx / 2.0)
+
+            // ONLY A REGION THAT IS STRONGLY A HOLE MAY BE SPLIT.
+            //
+            // The parts of a split are emitted without the puncture test —
+            // deliberately, because a part of a peanut has no isolated
+            // profile — so nothing else stands between a blob and being
+            // reported as several shots. Without this line the first frame of
+            // card C turned one real hole and two patches of shadow into SIX
+            // shots and scored 45 where the truth was 10. A crease sits just
+            // over the detection threshold; a hole sits far above it.
+            var devSum = 0.0
+            for (p in members) devSum += dev[p]
+            val meanDev = devSum / count
+            val plausibleParts = count / expectedArea
+
+            if (count >= expectedArea * MERGED_AREA_RATIO &&
+                meanDev >= MERGED_MIN_MEAN_DEV &&
+                plausibleParts <= MAX_MERGED_PARTS + 0.75
+            ) {
+                if (responseInt == null) {
+                    responseInt = IntArray(n) { dev[it].roundToInt() }
+                }
+                val parts = MergedHoles.split(
+                    members.toIntArray(), count, responseInt!!, w, gaugePx, expectedArea
+                )
+                if (parts.size > 1) {
+                    var placed = 0
+                    for (part in parts) {
+                        val (pu, pv) = reg.homography.pxToMm(part.x, part.y)
+                        if (pu.isNaN() || pv.isNaN()) continue
+                        val pDia = 2.0 * sqrt(part.pixels / Math.PI)
+                        if (pDia < MIN_DIA * gaugePx * 0.7) continue
+                        out.add(
+                            DetectedHole(
+                                xMm = pu, yMm = pv,
+                                diameterMm = pDia * gaugeDiameterMm / gaugePx,
+                                contrast = 0.0,
+                                confidence = MERGED_CONFIDENCE,
+                                elongation = 1.0,
+                                merged = true
+                            )
+                        )
+                        placed++
+                    }
+                    if (placed > 0) {
+                        Logger.i(
+                            "SourceHoleDetector",
+                            ("a region of %d px, %.1f gauges' worth, split into %d shots — the " +
+                                "size, roundness and profile gates would have thrown it away whole")
+                                .format(count, count / expectedArea, placed)
+                        )
+                        splitInto += placed
+                        continue
+                    }
+                }
+            }
 
             val clipped = minX == 0 || minY == 0 || maxX == w - 1 || maxY == h - 1
             val maxE = if (clipped) MAX_ELONGATION_EDGE else MAX_ELONGATION
@@ -292,7 +391,8 @@ object SourceHoleDetector {
         Logger.i(
             "SourceHoleDetector",
             ("source %dx%d, gauge %.1f mm = %.1f px, smoothing box %d, limit %.1f mm | " +
-                "%d blobs -> %d holes (rejected %d on size, %d on shape, %d on profile)").format(
+                "%d blobs -> %d holes (rejected %d on size, %d on shape, %d on profile" +
+                (if (splitInto > 0) ", %d recovered from merged groups)".format(splitInto) else ")")).format(
                 w, h, gaugeDiameterMm, gaugePx, box, limit, blobs, out.size, rejSize, rejShape, rejProfile
             )
         )

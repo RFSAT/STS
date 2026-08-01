@@ -32,6 +32,65 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.33.0 — feature: a region holding more than one shot is SPLIT
+        //          instead of thrown away.
+        //
+        //   Measured on card B, which carries four pairs at 4.5, 3.1, 2.3 and
+        //   2.0 mm apart:
+        //     frame        before        after      truth
+        //     B2 (1 pair)  0, score 0    2, score 11   2, 11   exact
+        //     B3           0, score 0    3, score 16   3, 16   exact
+        //   The 4.5 mm pair now separates correctly and both shots score.
+        //
+        //   WHY IT WAS LOST. The cluster was always FOUND — one blob, every
+        //   frame — and then rejected by whichever single-shot gate happened
+        //   to catch it: on profile, on size, on shape, a different one each
+        //   time. So the split is asked for BEFORE those gates, and the parts
+        //   are not put through the puncture test at all: a part of a peanut
+        //   has no isolated radial profile, and demanding one is exactly what
+        //   rejected the two-shot frame.
+        //
+        //   A SPLIT IS AN INFERENCE, and is marked as one — merged = true, and
+        //   a confidence of 0.40 against 1.0 for a measured shot.
+        //
+        //   ONE GUARD EARNED ITS PLACE IMMEDIATELY. With nothing standing
+        //   between a blob and being reported as several shots, the first
+        //   frame of card C turned one hole and two patches into SIX shots,
+        //   scoring 45 where the truth was 10. A region must now carry twice
+        //   the detection threshold in mean deviation before it may be split.
+        //
+        //   AND A REGION TOO BIG IS REFUSED RATHER THAN GUESSED AT.
+        //   [MergedHoles] separates along one axis, which is right for a pair
+        //   and meaningless for a rosette of eight. Reporting three shots
+        //   where there are eight is worse than reporting none, because a
+        //   count that looks plausible will be believed.
+        //
+        // 1.33.0 — measurement: the two-photograph difference method does NOT
+        //          work on hand-held re-photographs, and the splitter is
+        //          therefore necessary rather than a fallback.
+        //
+        //   The null test settles it: two photographs of the SAME UNPUNCHED
+        //   card differ by 3 phantom holes on card C and 10 on card B.
+        //   Registering each frame independently made it worse, 5 and 6 — so
+        //   it is not camera movement. At the rectified plane's 0.625 mm/px a
+        //   printed ring line is half a pixel wide, and no alignment a ring
+        //   fit can give makes those lines cancel. This was tested BEFORE
+        //   building the splitter, on the theory that differencing would
+        //   separate merged shots for free. It does not, and the hour spent
+        //   checking saved the effort being spent on the wrong thing.
+        //
+        //   Not tested: the same method from a FIXED MOUNT with the lighting
+        //   undisturbed, which is what the app has always asked for.
+        //
+        //   CARD C IS CONTAMINATED BY ITS OWN SHEET and cannot be used as a
+        //   measurement until regenerated. Its ten punch crosses sit within
+        //   10 mm of centre, so they overlap into a dense grey patch INSIDE
+        //   the aiming mark — and grey on black is brighter than its
+        //   background, which is exactly the test that finds a hole there. On
+        //   cards A and B the marks are spread out and mostly on paper, where
+        //   a 0.15 mm line is removed by the opening. The sheet generator
+        //   needs the marks moved off the black for that card.
+        //
         // 1.32.0 — feature: a suggestion from Claude is now MEASURED before
         //          it becomes a shot.
         //
@@ -1534,8 +1593,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 50
-        versionName = "1.32.0"
+        versionCode = 51
+        versionName = "1.33.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
