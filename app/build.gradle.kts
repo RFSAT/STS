@@ -32,6 +32,48 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.34.0 — correction: a shot in the TEN RING was being dropped, and
+        //          the reason was a threshold doing the wrong job.
+        //
+        //   [FocusedRemeasure] refused the shot at (-1.8, 12.7) — inside the
+        //   aiming mark, a nine — at every offset it was pointed with. The
+        //   shot at dead centre, a ten, survived. The two sat either side of
+        //   an arbitrary line and nothing said so.
+        //
+        //   WHAT IT ACTUALLY WAS. Core pixels were those more than a FIXED 30
+        //   levels from the local background. Inside the mark a hole stands a
+        //   hundred levels or more above the ink and drags a bright halo with
+        //   it: measured on that shot, the eight radial bands read 134, 130,
+        //   121, 107, 77, 64, 61 and 48 against a background of 27. Every
+        //   band but the last cleared 30, so the "hole" measured 3.20 gauge
+        //   areas against a ceiling of 3.00 and was thrown out — by seven per
+        //   cent. The centre shot measured 2.89 and passed. Neither number
+        //   was about the hole; both were about how much ink was nearby.
+        //
+        //   THE FIX IS TO STOP USING AN ABSOLUTE LEVEL. The edge of the hole
+        //   is now taken at HALF ITS OWN HEIGHT above the background, which
+        //   is the standard way to size a feature without its contrast
+        //   setting its apparent size, with the old margin kept only as a
+        //   floor so a flat window still yields nothing. The peak is a 90th
+        //   percentile rather than the brightest pixel, because one specular
+        //   glint off torn paper would otherwise halve the threshold for the
+        //   whole hole.
+        //
+        //   MEASURED, card A frame 6, suggestions offset to imitate a vision
+        //   model's error:
+        //     offset 0 mm   0.1  1.7  1.0  1.5  2.2  0.5 mm — six of six
+        //     offset 3 mm   0.6  1.8  1.8  1.5  2.2  0.5 mm — six of six
+        //   Before: five of six, with the nine in the black never confirmed
+        //   at any offset. All four suggestions dropped on blank card are
+        //   still refused, so nothing was traded away for this.
+        //
+        //   The two worstresiduals are the shot outside the rings at 2.2 mm,
+        //   which scores nothing either way, and the nine at 1.7 mm — checked,
+        //   and not enough to move it across the 13.75 mm ring line.
+        //
+        //   NO REGRESSION: card A frame 6 still detects six of six and scores
+        //   33 against a truth of 33.
+        //
         // 1.33.0 — feature: a region holding more than one shot is SPLIT
         //          instead of thrown away.
         //
@@ -1593,8 +1635,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 51
-        versionName = "1.33.0"
+        versionCode = 52
+        versionName = "1.34.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

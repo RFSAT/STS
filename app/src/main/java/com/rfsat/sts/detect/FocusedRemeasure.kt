@@ -35,9 +35,29 @@ object FocusedRemeasure {
      *  neighbouring shot on any plausible group. */
     private const val SEARCH_GAUGES = 1.6
 
-    /** Levels from the local background before a pixel counts as core. Lower
-     *  than the sweep's own margin because this window has a reason to be
-     *  looked at; see the note above. */
+    /**
+     * Where the edge of the hole is, as a fraction of its own height above
+     * the local background — half-maximum, the standard way to size a feature
+     * without its contrast setting its apparent size.
+     *
+     * A FIXED level does not work, and the reason a shot in the ten ring went
+     * missing. Inside the aiming mark a hole stands 100 levels or more above
+     * the ink and drags a bright halo out with it: measured on the shot at
+     * (-1.8, 12.7), the eight radial bands read 134, 130, 121, 107, 77, 64,
+     * 61 and 48 against a background of 27. With a fixed margin of 30, every
+     * band but the last counted as core, the "hole" measured 3.20 gauge areas
+     * against a ceiling of 3.00, and it was thrown out — by seven per cent.
+     * The shot at dead centre measured 2.89 and survived. Two shots either
+     * side of an arbitrary line, and one of them a ten.
+     *
+     * At half-maximum that same window gives about 1.3 gauge areas, which is
+     * a hole. The threshold now scales with the feature instead of with the
+     * ink around it, so it behaves the same in the black as on the paper.
+     */
+    private const val HALF_MAXIMUM = 0.5
+
+    /** ...but a flat window must not produce a core at all, however small its
+     *  own range. This is the floor under the half-maximum level. */
     private const val CORE_MARGIN = 30.0
 
     /** Accepted core area, as a fraction of a gauge's area. Wide, because a
@@ -122,6 +142,24 @@ object FocusedRemeasure {
         val blackBg = median(blackRim)
         if (paperBg == null && blackBg == null) return null
 
+        // ---- how far the hole stands above its background ----
+        //
+        // Taken as a high percentile rather than the single brightest pixel: a
+        // specular glint off torn paper is one pixel and would halve the
+        // threshold for the whole hole.
+        val blackPeak = percentileIn(photo, cx, cy, r.toDouble(), x0, x1, y0, y1,
+            uMin, vMax, mmPerPxX, mmPerPxY, blackRadiusMm, ringRadiiMm, wantBlack = true, high = true)
+        val paperPeak = percentileIn(photo, cx, cy, r.toDouble(), x0, x1, y0, y1,
+            uMin, vMax, mmPerPxX, mmPerPxY, blackRadiusMm, ringRadiiMm, wantBlack = false, high = false)
+        val blackCut = blackBg?.let { bg ->
+            val peak = blackPeak ?: return@let null
+            maxOf(bg + CORE_MARGIN, bg + HALF_MAXIMUM * (peak - bg))
+        }
+        val paperCut = paperBg?.let { bg ->
+            val peak = paperPeak ?: return@let null
+            minOf(bg - CORE_MARGIN, bg - HALF_MAXIMUM * (bg - peak))
+        }
+
         // ---- the core, each pixel against its own zone ----
         var sw = 0.0; var sx = 0.0; var sy = 0.0
         var count = 0
@@ -137,7 +175,8 @@ object FocusedRemeasure {
                 // A hole is BRIGHTER than the aiming mark and DARKER than the
                 // paper. Deciding that per pixel rather than per hole is what
                 // lets a shot straddling the black edge be measured at all.
-                val isCore = if (inBlack) value > bg + CORE_MARGIN else value < bg - CORE_MARGIN
+                val cut = (if (inBlack) blackCut else paperCut) ?: continue
+                val isCore = if (inBlack) value > cut else value < cut
                 if (!isCore) continue
                 if (onPrintedRing(hypot(u, v), ringRadiiMm)) continue
                 val wgt = abs(value - bg)
@@ -187,6 +226,32 @@ object FocusedRemeasure {
     private fun onPrintedRing(rMm: Double, rings: DoubleArray): Boolean {
         for (rr in rings) if (abs(rMm - rr) < RING_BAND_MM) return true
         return false
+    }
+
+    /** The 90th (or 10th) percentile of one zone inside the window, ignoring
+     *  printed ring lines. Null when the zone is barely present. */
+    private fun percentileIn(
+        photo: LumaFrame, cx: Double, cy: Double, r: Double,
+        x0: Int, x1: Int, y0: Int, y1: Int,
+        uMin: Double, vMax: Double, mmPerPxX: Double, mmPerPxY: Double,
+        blackRadiusMm: Double, ringRadiiMm: DoubleArray,
+        wantBlack: Boolean, high: Boolean
+    ): Double? {
+        val v = ArrayList<Int>()
+        for (j in y0..y1) {
+            for (i in x0..x1) {
+                if (hypot(i - cx, j - cy) > r) continue
+                val u = uMin + (i + 0.5) * mmPerPxX
+                val vv = vMax - (j + 0.5) * mmPerPxY
+                val rr = hypot(u, vv)
+                if ((rr <= blackRadiusMm) != wantBlack) continue
+                if (onPrintedRing(rr, ringRadiiMm)) continue
+                v.add(photo.at(i, j))
+            }
+        }
+        if (v.size < 24) return null
+        val s = v.sorted()
+        return s[((if (high) 0.90 else 0.10) * (s.size - 1)).toInt()].toDouble()
     }
 
     private fun median(v: List<Int>): Double? {
