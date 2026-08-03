@@ -137,6 +137,17 @@
                     style="@style/Sts.ActionButton.Dense" />
             </LinearLayout>
 
+            <CheckBox android:id="@+id/cbCloudOverride"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Let Claude&apos;s answer override the app" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Applies the second opinion without asking: marks Claude does not see are removed, shots it sees that the app missed are added. It uses Claude&apos;s positions, which carry several millimetres against the 0.2 to 1.7 mm the app measures for a hole it can see — on a 10 m face the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots are marked hand-placed for that reason. Worth having when the app is over-detecting, which is its usual failure; worth leaving off when it is not." />
+
             <Spinner android:id="@+id/spCloudModel"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp" />

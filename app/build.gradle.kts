@@ -32,6 +32,42 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.38.0 — feature: the second opinion can be set to WIN.
+        //
+        //   Settings -> "Let Claude's answer override the app". Off by
+        //   default. With it on the reconciliation is applied without asking:
+        //   marks Claude does not see are removed, shots it sees that the app
+        //   missed are added, and Claude's POSITIONS are used.
+        //
+        //   THE ORDER OF OPERATIONS IS THE POINT, and it is not what was
+        //   first asked for. The request was to send the app's own hit list
+        //   to Claude and have it judge without being biased by it. Those two
+        //   cannot both happen: anything in the prompt anchors the answer, so
+        //   fourteen positions in front of the model is fourteen positions it
+        //   will tend to confirm — which is exactly the failure that would
+        //   make the feature worthless. So the call stays IMAGE ONLY, the
+        //   model never sees what the app thought, and the comparison is done
+        //   locally afterwards, where it is arithmetic and cannot be wrong.
+        //
+        //   WHAT IT COSTS, stated rather than buried. A vision model places a
+        //   hole to a few per cent of the image, several millimetres on a
+        //   170 mm card; the app measures one it can see to between 0.2 and
+        //   1.7 mm. On a 10 m air pistol face the rings are 8 mm apart, so a
+        //   shot placed from Claude's coordinates can be a ring out. Shots
+        //   placed this way are recorded as HAND-PLACED, so the Results list
+        //   and any report show them as positions that were not measured —
+        //   the setting may trade accuracy, but it may not hide that it did.
+        //
+        //   WHAT IT BUYS is the other half of the trade, and it is real: the
+        //   app's measured failure is over-detection, printing read as shots,
+        //   and counting is the one thing the model does better. On T0002 it
+        //   counts seven and is right.
+        //
+        //   A targeted second call — sending the disputed marks back and
+        //   asking "shot, or printing?" — is deliberately NOT built yet. It
+        //   would double the cost per card and give a reason rather than a
+        //   count, and one unbiased pass already finds the false marks.
+        //
         // 1.37.0 — correction: removal removed ONE. Reported from real use.
         //
         //   Asked to delete nine marks, the app deleted one and said nothing.
@@ -1749,8 +1785,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 55
-        versionName = "1.37.0"
+        versionCode = 56
+        versionName = "1.38.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

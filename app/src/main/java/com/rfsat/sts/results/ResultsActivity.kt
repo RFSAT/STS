@@ -480,12 +480,53 @@ class ResultsActivity : BaseActivity() {
             bmp, (bmp.width * f).toInt(), (bmp.height * f).toInt(), true)
     }
 
+
+    /**
+     * Replaces the app's answer with Claude's, existence AND position.
+     *
+     * The position is taken as Claude gives it, which is what the setting
+     * asks for and which costs accuracy: several millimetres against the
+     * 0.2 to 1.7 mm the app measures for a hole it can see. Every shot placed
+     * here is therefore marked hand-placed, so the Results list and any
+     * report show it as a position that was not measured.
+     */
+    private fun applyOverride(rec: OpinionReconciler.Reconciliation) {
+        val gauge = ScoringSession.rules(this).gaugeDiameterMm
+        val victims = ScoringSession.state.shots.filter { shot ->
+            rec.unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 }
+        }
+        ScoringSession.removeShots(victims)
+        var added = 0
+        for (s in rec.unconfirmed) {
+            val dup = ScoringSession.state.shots.any {
+                Math.hypot(it.xMm - s.xMm, it.yMm - s.yMm) <= gauge * 1.5
+            }
+            if (!dup) { placeManualShot(s.xMm, s.yMm); added++ }
+        }
+        refresh()
+        notifyUser(buildString {
+            append("Claude's answer applied: ${victims.size} removed, $added added. ")
+            append("Added shots use Claude's positions, which carry several millimetres — ")
+            append("they are marked hand-placed and are worth checking on the plot.")
+        })
+    }
+
     private fun showOpinion(rec: OpinionReconciler.Reconciliation, inTok: Int, outTok: Int) {
         val msg = buildString {
             append(rec.summary)
             append("\n\n")
             append("Nothing here has changed your score yet.")
         }
+        // ---- Claude wins, if that is what the shooter asked for ----
+        //
+        // Applied without a prompt, because a setting that then asks every
+        // time is not a setting. What it is NOT allowed to do is pretend the
+        // result was measured: everything it places is marked hand-placed.
+        if (CloudSettings.overrideApp(this)) {
+            applyOverride(rec)
+            return
+        }
+
         val b = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Second opinion")
             .setMessage(msg)

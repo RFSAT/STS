@@ -100,6 +100,16 @@ class ProfileActivity : BaseActivity() {
                 )
             }
         }
+        binding.cbCloudOverride.isChecked = CloudSettings.overrideApp(this)
+        binding.cbCloudOverride.setOnClickListener {
+            val on = binding.cbCloudOverride.isChecked
+            CloudSettings.setOverrideApp(this, on)
+            notifyUser(
+                if (on) "Claude's answer will be applied without asking. Its positions carry " +
+                    "several millimetres, so added shots are marked hand-placed \u2014 check them."
+                else "The second opinion will offer changes rather than make them."
+            )
+        }
         binding.btnCloudKey.setOnClickListener {
             val input = android.widget.EditText(this).apply {
                 hint = "sk-ant-…"

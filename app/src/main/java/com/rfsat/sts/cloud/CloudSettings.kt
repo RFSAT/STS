@@ -27,6 +27,7 @@ object CloudSettings {
     private const val KEY_API = "api_key"
     private const val KEY_MODEL = "model"
     private const val KEY_ENABLED = "enabled"
+    private const val KEY_OVERRIDE = "override_app"
 
     /** Offered in the picker. Vision-capable models only. */
     val MODELS = listOf(
@@ -76,6 +77,31 @@ object CloudSettings {
 
     fun setEnabled(context: Context, value: Boolean) {
         store(context)?.edit()?.putBoolean(KEY_ENABLED, value)?.apply()
+    }
+
+    /**
+     * Let Claude's answer win outright — both WHETHER there is a shot and
+     * WHERE it is.
+     *
+     * OFF by default, and the cost is worth stating plainly rather than
+     * burying: a vision model places a hole to a few per cent of the image,
+     * several millimetres on a 170 mm card, where the app measures one it can
+     * see to between 0.2 and 1.7 mm. On a 10 m air pistol face the rings are
+     * 8 mm apart, so a position taken from the model can be a ring out.
+     *
+     * What it buys is the other half: the app's measured failure is
+     * over-detection — printing read as shots — and counting is the one thing
+     * the model does better. With this on, that is fixed without asking.
+     *
+     * Shots placed this way are recorded as HAND-PLACED, because that is what
+     * they are: their position was not measured. A report can then never show
+     * them as though it had been.
+     */
+    fun overrideApp(context: Context): Boolean =
+        store(context)?.getBoolean(KEY_OVERRIDE, false) ?: false
+
+    fun setOverrideApp(context: Context, value: Boolean) {
+        store(context)?.edit()?.putBoolean(KEY_OVERRIDE, value)?.apply()
     }
 
     fun configured(context: Context): Boolean = enabled(context) && apiKey(context).isNotBlank()
