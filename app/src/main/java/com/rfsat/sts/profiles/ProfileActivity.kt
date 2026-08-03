@@ -9,6 +9,7 @@ import android.widget.EditText
 import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.detect.ScaleMode
 import android.text.InputType
+import com.rfsat.sts.cloud.AiProvider
 import com.rfsat.sts.cloud.CloudSettings
 import com.rfsat.sts.cloud.ScoringSource
 import com.rfsat.sts.detect.ScaleSettings
@@ -35,6 +36,8 @@ import com.rfsat.sts.ui.UnitsManager
  * under it is the one that set describes. Save the edit as a new set, or
  * re-apply the old one.
  */
+private const val OTHER_MODEL = "Other\u2026"
+
 class ProfileActivity : BaseActivity() {
 
     private lateinit var binding: ActivityProfileBinding
@@ -79,14 +82,61 @@ class ProfileActivity : BaseActivity() {
             binding.tvCloudKey.text = "API key: ${CloudSettings.maskedKey(this)}"
         }
         refreshCloud()
-        binding.spCloudModel.adapter = android.widget.ArrayAdapter(
-            this, R.layout.spinner_item, CloudSettings.MODELS.map { it.second }
+        // ---- provider, then the models that provider offers ----
+        //
+        // The model list is rebuilt when the provider changes, because a
+        // Claude model identifier means nothing to OpenAI and the other way
+        // round. Keys and model choices are remembered per provider, so
+        // switching to compare the two and back does not mean pasting a key
+        // in again.
+        fun refreshModels() {
+            val opts = CloudSettings.models(this).map { it.second } + OTHER_MODEL
+            binding.spCloudModel.adapter = android.widget.ArrayAdapter(
+                this, R.layout.spinner_item, opts
+            ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+            val current = CloudSettings.model(this)
+            val idx = CloudSettings.models(this).indexOfFirst { it.first == current }
+            binding.spCloudModel.setSelection(if (idx >= 0) idx else opts.size - 1)
+        }
+
+        binding.spProvider.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, AiProvider.values().map { it.label }
         ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
-        binding.spCloudModel.setSelection(
-            CloudSettings.MODELS.indexOfFirst { it.first == CloudSettings.model(this) }
-                .coerceAtLeast(0))
+        binding.spProvider.setSelection(AiProvider.values().indexOf(CloudSettings.provider(this)))
+        binding.spProvider.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = AiProvider.values().getOrNull(i) ?: return@onSelectedIndex
+            CloudSettings.setProvider(this, chosen)
+            refreshModels()
+            refreshCloud()
+            notifyUser(
+                if (CloudSettings.apiKey(this).isBlank())
+                    "${chosen.label} selected. It needs its own key, from ${chosen.console}."
+                else "${chosen.label} selected."
+            )
+        }
+        refreshModels()
         binding.spCloudModel.onItemSelectedListener = onSelectedIndex { i ->
-            CloudSettings.MODELS.getOrNull(i)?.let { CloudSettings.setModel(this, it.first) }
+            val list = CloudSettings.models(this)
+            val picked = list.getOrNull(i)
+            if (picked != null) { CloudSettings.setModel(this, picked.first); return@onSelectedIndex }
+            // "Other": a list of model names goes stale the week it is
+            // written, and being unable to type a newer one would strand
+            // anyone whose account has moved on.
+            val input = EditText(this).apply { hint = "model identifier" }
+            AlertDialog.Builder(this)
+                .setTitle("Other model")
+                .setMessage("Type the model identifier exactly as the service publishes it. " +
+                    "It must be able to read images and to answer against a schema.")
+                .setView(input)
+                .setPositiveButton("Use") { _, _ ->
+                    val v = input.text.toString().trim()
+                    if (v.isNotBlank()) {
+                        CloudSettings.setModel(this, v)
+                        notifyUser("Using $v.")
+                    } else refreshModels()
+                }
+                .setNegativeButton("Cancel") { _, _ -> refreshModels() }
+                .show()
         }
         binding.cbCloud.setOnClickListener {
             val want = binding.cbCloud.isChecked
@@ -125,17 +175,18 @@ class ProfileActivity : BaseActivity() {
         }
         binding.btnCloudKey.setOnClickListener {
             val input = android.widget.EditText(this).apply {
-                hint = "sk-ant-…"
+                hint = CloudSettings.provider(this@ProfileActivity).keyHint
                 // Visible, not masked: a key pasted blind is a key typed
                 // wrong, and the dialog is dismissed the moment it is saved.
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
             }
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Claude API key")
+                .setTitle("${CloudSettings.provider(this).label} API key")
                 .setMessage(
-                    "From console.anthropic.com, not your Claude.ai password \u2014 the two are " +
-                        "different and the password will not work. It is stored encrypted on this " +
-                        "device and never written to the log."
+                    "From ${CloudSettings.provider(this).console}, not the password you sign in " +
+                        "to the chat service with \u2014 they are different and the password will " +
+                        "not work. It is stored encrypted on this device and never written to " +
+                        "the log."
                 )
                 .setView(input)
                 .setPositiveButton("Save") { _, _ ->
@@ -716,7 +767,7 @@ class ProfileActivity : BaseActivity() {
             "a millimetre. It is here because it reports how far each ring individually sits " +
             "from where the catalogue puts it, which says whether a card is flat.")
         moreInfo(binding.infoCloud, "Second opinion",
-            "Claude looks at the photograph and reports how many holes it can see and roughly " +
+            "The service you choose looks at the photograph and reports how many holes it can see and roughly " +
             "where. It does not score: a position read off a picture carries several " +
             "millimetres, while the app measures a hole it has found to under two. Anything it " +
             "sees that the app did not is offered as a suggestion, and the app measures the " +
@@ -734,10 +785,12 @@ class ProfileActivity : BaseActivity() {
             "can be drawn in the right place. The picture sent is the flattened card, so the " +
             "marks land exactly where you see them. Falls back to Embedded if no key is set.")
         moreInfo(binding.infoKey, "API key",
-            "The key comes from the Anthropic Console and bills your own account. It is not " +
-            "your Claude.ai password, which will not work here. It is kept encrypted on this " +
-            "device and is never written to the log. A card costs a fraction of a penny to " +
-            "check, and needs a connection, which most ranges do not have.")
+            "The key comes from the chosen service's own console — console.anthropic.com for " +
+            "Claude, platform.openai.com for OpenAI — and bills that account. It is not the " +
+            "password you sign in to the chat service with; those will not work here. A key is " +
+            "kept for each service separately and encrypted on this device, and is never " +
+            "written to the log. A card costs a fraction of a penny to check, and needs a " +
+            "connection, which most ranges do not have.")
     }
 
     private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {

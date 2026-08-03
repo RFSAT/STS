@@ -51,7 +51,7 @@ for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/H
          scoring/Shot scoring/ShotDistribution \
          targets/PracticalGeometry targets/TargetCatalog targets/TargetFace \
          scoring/ScoredPhoto ui/NameWrap ui/AimGuide detect/ScaleSettings scoring/ShotCountCheck \
-         cloud/SecondOpinion cloud/OpinionReconciler; do
+         cloud/SecondOpinion cloud/OpinionReconciler cloud/AiProvider; do
   cp "$M/$f.kt" "$WORK/src/$(basename $f).kt"
 done
 

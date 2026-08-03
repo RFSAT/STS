@@ -435,6 +435,7 @@ class ResultsActivity : BaseActivity() {
             return
         }
         val fullDelegation = CloudSettings.engine(this) == ScoringSource.CLOUD
+        val provider = CloudSettings.provider(this)
         val key = CloudSettings.apiKey(this)
         val model = CloudSettings.model(this)
         val measured = ScoringSession.state.shots.map {
@@ -456,7 +457,7 @@ class ResultsActivity : BaseActivity() {
             val out = java.io.ByteArrayOutputStream()
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
             val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-            val result = SecondOpinion.ask(key, model, b64, scoreToo = fullDelegation)
+            val result = SecondOpinion.ask(provider, key, model, b64, scoreToo = fullDelegation)
             runOnUiThread {
                 binding.btnSecondOpinion.isEnabled = true
                 when (result) {

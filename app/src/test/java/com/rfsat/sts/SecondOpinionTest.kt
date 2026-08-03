@@ -1,5 +1,6 @@
 package com.rfsat.sts
 
+import com.rfsat.sts.cloud.AiProvider
 import com.rfsat.sts.cloud.OpinionReconciler
 import com.rfsat.sts.cloud.SecondOpinion
 import com.rfsat.sts.detect.DetectedHole
@@ -31,6 +32,26 @@ class SecondOpinionTest {
 
     private fun run(op: SecondOpinion.Opinion, measured: List<DetectedHole>) =
         OpinionReconciler.reconcile(op, measured, face.name, face.outerRadiusMm, uMin, uMax, vMin, vMax)
+
+    @Test
+    fun `every provider is asked the same question and refuses without a key`() {
+        // Both services are held to one schema and one prompt, so a card
+        // scored by either arrives downstream in the same shape. The only
+        // thing that must differ is which console the error names.
+        for (p in AiProvider.values()) {
+            val r = SecondOpinion.ask(p, "", "any-model", "", scoreToo = false)
+            assertTrue(r is SecondOpinion.Result.Failed)
+            assertTrue("must name the service: ${(r as SecondOpinion.Result.Failed).message}",
+                r.message.contains(p.label))
+        }
+    }
+
+    @Test
+    fun `each provider names its own console, so a key is looked for in the right place`() {
+        assertTrue(AiProvider.ANTHROPIC.console.contains("anthropic"))
+        assertTrue(AiProvider.OPENAI.console.contains("openai"))
+        assertTrue(AiProvider.ANTHROPIC.keyHint != AiProvider.OPENAI.keyHint)
+    }
 
     @Test
     fun `a hole both agree on produces no suggestion`() {

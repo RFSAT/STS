@@ -39,14 +39,30 @@ object CloudSettings {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_OVERRIDE = "override_app"
     private const val KEY_ENGINE = "engine"
+    private const val KEY_PROVIDER = "provider"
 
-    /** Offered in the picker. Vision-capable models only. */
-    val MODELS = listOf(
-        "claude-haiku-4-5-20251001" to "Haiku 4.5 — cheapest, fastest",
-        "claude-sonnet-5" to "Sonnet 5 — balanced (recommended)",
-        "claude-opus-5" to "Opus 5 — most capable, dearest"
+    /** Offered in the picker. Vision-capable models only.
+     *
+     *  Deliberately short lists rather than everything either service has
+     *  published: a model that cannot see an image, or cannot be held to a
+     *  schema, fails in a way the shooter cannot diagnose. "Other" lets a
+     *  newer identifier be typed in, so a list going stale strands nobody. */
+    val MODELS: Map<AiProvider, List<Pair<String, String>>> = mapOf(
+        AiProvider.ANTHROPIC to listOf(
+            "claude-haiku-4-5-20251001" to "Haiku 4.5 — cheapest, fastest",
+            "claude-sonnet-5" to "Sonnet 5 — balanced (recommended)",
+            "claude-opus-5" to "Opus 5 — most capable, dearest"
+        ),
+        AiProvider.OPENAI to listOf(
+            "gpt-4o-mini" to "GPT-4o mini — cheapest, fastest",
+            "gpt-4o" to "GPT-4o — balanced (recommended)"
+        )
     )
-    const val DEFAULT_MODEL = "claude-sonnet-5"
+
+    val DEFAULT_MODEL: Map<AiProvider, String> = mapOf(
+        AiProvider.ANTHROPIC to "claude-sonnet-5",
+        AiProvider.OPENAI to "gpt-4o"
+    )
 
     private var prefs: SharedPreferences? = null
 
@@ -66,22 +82,43 @@ object CloudSettings {
         }.getOrNull()
     }
 
-    fun apiKey(context: Context): String = store(context)?.getString(KEY_API, "").orEmpty()
+    fun provider(context: Context): AiProvider =
+        store(context)?.getString(KEY_PROVIDER, null)
+            ?.let { n -> AiProvider.values().firstOrNull { it.name == n } }
+            ?: AiProvider.ANTHROPIC
+
+    fun setProvider(context: Context, value: AiProvider) {
+        store(context)?.edit()?.putString(KEY_PROVIDER, value.name)?.apply()
+    }
+
+    /** The key for whichever provider is chosen. Each is kept separately, so
+     *  switching back and forth does not mean pasting a key in again. */
+    fun apiKey(context: Context): String = apiKey(context, provider(context))
+
+    fun apiKey(context: Context, p: AiProvider): String =
+        store(context)?.getString(KEY_API + "_" + p.name, "").orEmpty()
 
     /** False when the key could not be stored SAFELY, which the caller must
      *  report rather than pretend succeeded. */
     fun setApiKey(context: Context, value: String): Boolean {
-        val p = store(context) ?: return false
-        p.edit().putString(KEY_API, value.trim()).apply()
+        val st = store(context) ?: return false
+        st.edit().putString(KEY_API + "_" + provider(context).name, value.trim()).apply()
         return true
     }
 
-    fun model(context: Context): String =
-        store(context)?.getString(KEY_MODEL, DEFAULT_MODEL) ?: DEFAULT_MODEL
+    fun model(context: Context): String {
+        val p = provider(context)
+        val fallback = DEFAULT_MODEL[p].orEmpty()
+        return store(context)?.getString(KEY_MODEL + "_" + p.name, fallback) ?: fallback
+    }
 
     fun setModel(context: Context, value: String) {
-        store(context)?.edit()?.putString(KEY_MODEL, value)?.apply()
+        store(context)?.edit()
+            ?.putString(KEY_MODEL + "_" + provider(context).name, value)?.apply()
     }
+
+    fun models(context: Context): List<Pair<String, String>> =
+        MODELS[provider(context)].orEmpty()
 
     fun enabled(context: Context): Boolean =
         store(context)?.getBoolean(KEY_ENABLED, false) ?: false

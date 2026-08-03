@@ -32,6 +32,48 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.44.0 — feature: OpenAI alongside Claude. Settings -> AI service.
+        //
+        //   Both are sent the SAME rectified picture, the same question and
+        //   the same hole schema, and both are held to it by the mechanism
+        //   their own API provides — a forced tool call for Anthropic, a
+        //   json_schema response format with strict set for OpenAI. Nothing
+        //   downstream knows or cares which replied, which is the point: a
+        //   card scored by either arrives in one shape.
+        //
+        //   Keys and model choices are kept PER SERVICE, so switching to
+        //   compare the two and back does not mean pasting a key in again.
+        //   The model list is rebuilt when the service changes, because a
+        //   Claude identifier means nothing to OpenAI. Each list is short and
+        //   carries an "Other" entry: a list of model names goes stale the
+        //   week it is written, and being unable to type a newer one would
+        //   strand anyone whose account has moved on.
+        //
+        //   ON THE UPLOADED SUGGESTION, and where it was followed.
+        //
+        //   Its normalised coordinates, its structured outputs and its
+        //   warning against trusting a vision model to score outright were
+        //   already how this app works — and its four-step hybrid pipeline,
+        //   arrived at independently, is a fair description of what STS
+        //   already does: registration, detection, model as arbiter of the
+        //   doubtful, deterministic scoring from measured geometry.
+        //
+        //   Its overlay-offset caveat does not arise here. The picture sent
+        //   is the RECTIFIED card, already on the millimetre grid the plot
+        //   draws in, so a fraction maps back with one linear step and there
+        //   is no FIT_CENTER letterboxing to compensate for.
+        //
+        //   WHERE IT WAS NOT FOLLOWED: it advises a backend, so the key never
+        //   ships in the APK. Sound advice for a DEVELOPER'S key, which is
+        //   what that warning is about — an extracted key spends the
+        //   developer's money on everyone's behalf. Here the key is the
+        //   SHOOTER'S OWN, entered by them and billing them; a backend would
+        //   move it onto someone else's server, add an operating cost to a
+        //   free app, and put every user's target photographs through a
+        //   third party. It is stored in the Android keystore and never
+        //   logged. Anyone wanting the backend model can point the app at
+        //   their own by changing one endpoint.
+        //
         // 1.43.0 — feature: the Targets preview is square, so a face fills
         //          the width — and the ring numerals appear at last.
         //
@@ -1932,8 +1974,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 61
-        versionName = "1.43.0"
+        versionCode = 62
+        versionName = "1.44.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

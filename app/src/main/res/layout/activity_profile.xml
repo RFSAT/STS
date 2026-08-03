@@ -159,6 +159,15 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp" android:layout_marginTop="4dp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:text="AI service:" />
+
+            <Spinner android:id="@+id/spProvider"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
             <CheckBox android:id="@+id/cbCloud"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Enable the second opinion button" />

@@ -526,6 +526,7 @@ class ImportActivity : BaseActivity() {
         ScoredPhoto.set(rect, reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm)
         val face = currentFace()
         val rules = currentRules()
+        val provider = CloudSettings.provider(this)
         val key = CloudSettings.apiKey(this)
         val model = CloudSettings.model(this)
         val gauge = rules.gaugeDiameterMm
@@ -539,7 +540,7 @@ class ImportActivity : BaseActivity() {
                 rect, rect.width * 1568 / longest, rect.height * 1568 / longest, true)
             send.compress(Bitmap.CompressFormat.JPEG, 85, out)
             val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-            val result = SecondOpinion.ask(key, model, b64, scoreToo = true)
+            val result = SecondOpinion.ask(provider, key, model, b64, scoreToo = true)
             runOnUiThread {
                 when (result) {
                     is SecondOpinion.Result.Failed -> notifyUser(result.message)
