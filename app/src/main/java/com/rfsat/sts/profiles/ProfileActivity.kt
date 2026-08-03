@@ -110,6 +110,16 @@ class ProfileActivity : BaseActivity() {
                 else "The second opinion will offer changes rather than make them."
             )
         }
+        binding.cbCloudFull.isChecked = CloudSettings.fullDelegation(this)
+        binding.cbCloudFull.setOnClickListener {
+            val on = binding.cbCloudFull.isChecked
+            CloudSettings.setFullDelegation(this, on)
+            notifyUser(
+                if (on) "Second opinion will now score the card outright, replacing whatever the " +
+                    "app found. Every shot will be marked hand-placed."
+                else "The app will find the shots again; Claude will only be asked for an opinion."
+            )
+        }
         binding.btnCloudKey.setOnClickListener {
             val input = android.widget.EditText(this).apply {
                 hint = "sk-ant-…"

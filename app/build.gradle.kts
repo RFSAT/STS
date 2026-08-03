@@ -32,6 +32,35 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.39.0 — feature: Claude can find AND score the card outright.
+        //
+        //   Settings -> "Let Claude find and score the shots outright". Off by
+        //   default. The app's own hole finding is not run at all; the shots
+        //   on the plot are Claude's, positions included.
+        //
+        //   REGISTRATION IS STILL THE APP'S, and that is not a half measure.
+        //   Without knowing where the card is and how big it is there is no
+        //   millimetre grid, and without a grid nothing can be drawn in the
+        //   right place on the photograph or compared with a catalogue face.
+        //
+        //   AND IT IS WHAT MAKES THE POSITIONS LINE UP. The picture sent is
+        //   the RECTIFIED card — already on the grid the plot draws in — so a
+        //   fraction of that image maps back to millimetres in one linear
+        //   step, with no projection in between. The marks land exactly where
+        //   the shooter sees them on their own photograph, which was the
+        //   condition attached to this request.
+        //
+        //   THE APP STILL SCORES THE POSITION IT IS GIVEN, from the ring
+        //   geometry, and reports how many of Claude's rings disagree with
+        //   it. It does not quietly pick a winner: a disagreement means
+        //   either the position or the ring is wrong, and knowing WHICH SHOTS
+        //   those are is the whole value of having two answers.
+        //
+        //   Every shot is recorded as hand-placed, because no position here
+        //   was measured. The trade is the app's 0.2 to 1.7 mm for the
+        //   several millimetres a vision model gives — on a 10 m face, where
+        //   the rings are 8 mm apart, that can be a ring.
+        //
         // 1.38.0 — feature: the second opinion can be set to WIN.
         //
         //   Settings -> "Let Claude's answer override the app". Off by
@@ -1785,8 +1814,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 56
-        versionName = "1.38.0"
+        versionCode = 57
+        versionName = "1.39.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

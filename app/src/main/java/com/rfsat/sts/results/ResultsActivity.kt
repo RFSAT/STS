@@ -433,6 +433,7 @@ class ResultsActivity : BaseActivity() {
             )
             return
         }
+        val fullDelegation = CloudSettings.fullDelegation(this)
         val key = CloudSettings.apiKey(this)
         val model = CloudSettings.model(this)
         val measured = ScoringSession.state.shots.map {
@@ -454,16 +455,19 @@ class ResultsActivity : BaseActivity() {
             val out = java.io.ByteArrayOutputStream()
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
             val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-            val result = SecondOpinion.ask(key, model, b64)
+            val result = SecondOpinion.ask(key, model, b64, scoreToo = fullDelegation)
             runOnUiThread {
                 binding.btnSecondOpinion.isEnabled = true
                 when (result) {
                     is SecondOpinion.Result.Failed -> notifyUser(result.message)
                     is SecondOpinion.Result.Ok -> {
-                        val rec = OpinionReconciler.reconcile(
-                            result.opinion, measured, faceName, outerMm, uMin, uMax, vMin, vMax
-                        )
-                        showOpinion(rec, result.inputTokens, result.outputTokens)
+                        if (fullDelegation) scoreFromClaude(result.opinion, uMin, uMax, vMin, vMax)
+                        else {
+                            val rec = OpinionReconciler.reconcile(
+                                result.opinion, measured, faceName, outerMm, uMin, uMax, vMin, vMax
+                            )
+                            showOpinion(rec, result.inputTokens, result.outputTokens)
+                        }
                     }
                 }
             }
@@ -490,6 +494,50 @@ class ResultsActivity : BaseActivity() {
      * here is therefore marked hand-placed, so the Results list and any
      * report show it as a position that was not measured.
      */
+
+    /**
+     * Throws away the app's shots and takes Claude's, positions and all.
+     *
+     * The picture sent is the RECTIFIED card, which is already on the
+     * millimetre grid the plot draws in — so a fraction of that image maps
+     * back with one linear step and the marks land exactly where the shooter
+     * sees them on the photograph. That is the whole reason for sending the
+     * rectified copy rather than the original.
+     *
+     * The app still scores each position from the ring geometry, and reports
+     * where that disagrees with the ring Claude gave. It does not silently
+     * pick a winner: a disagreement means the position or the ring is wrong,
+     * and which shots those are is the useful thing to know.
+     */
+    private fun scoreFromClaude(
+        opinion: SecondOpinion.Opinion,
+        uMin: Double, uMax: Double, vMin: Double, vMax: Double
+    ) {
+        val face = ScoringSession.face(this)
+        val gauge = ScoringSession.rules(this).gaugeDiameterMm
+        ScoringSession.removeShots(ScoringSession.state.shots.toList())
+        var disagreed = 0
+        for (sp in opinion.spots) {
+            val u = uMin + sp.xFrac * (uMax - uMin)
+            val v = vMax - sp.yFrac * (vMax - vMin)
+            val shot = placeManualShot(u, v)
+            if (sp.ring >= 0) {
+                val ours = face.scoreInteger(Math.hypot(u, v), gauge / 2.0)
+                if (ours != sp.ring) disagreed++
+            }
+        }
+        refresh()
+        notifyUser(buildString {
+            append("Scored by Claude: ${opinion.spots.size} shots. ")
+            if (disagreed > 0) {
+                append("$disagreed disagree with the ring the geometry gives at that position — ")
+                append("check those on the plot. ")
+            }
+            append("All are marked hand-placed: the positions were not measured.")
+            if (opinion.comment.isNotBlank()) append(" It notes: ${opinion.comment}")
+        })
+    }
+
     private fun applyOverride(rec: OpinionReconciler.Reconciliation) {
         val gauge = ScoringSession.rules(this).gaugeDiameterMm
         val victims = ScoringSession.state.shots.filter { shot ->

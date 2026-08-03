@@ -28,6 +28,7 @@ object CloudSettings {
     private const val KEY_MODEL = "model"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_OVERRIDE = "override_app"
+    private const val KEY_FULL = "full_delegation"
 
     /** Offered in the picker. Vision-capable models only. */
     val MODELS = listOf(
@@ -102,6 +103,33 @@ object CloudSettings {
 
     fun setOverrideApp(context: Context, value: Boolean) {
         store(context)?.edit()?.putBoolean(KEY_OVERRIDE, value)?.apply()
+    }
+
+    /**
+     * Let Claude find and score the shots outright, with the app's own hole
+     * detection not run at all.
+     *
+     * WHAT IS STILL THE APP'S. Registration — where the card is, how big it
+     * is, where the rings fall. That is not an omission: without it there is
+     * no millimetre grid, and without a grid nothing can be drawn in the
+     * right place on the photograph or compared with a catalogue face. The
+     * picture sent is the RECTIFIED card, already on that grid, so a fraction
+     * of the image maps back to millimetres in one linear step and the marks
+     * land exactly where the shooter sees them.
+     *
+     * WHAT IT COSTS is the whole of the app's measurement accuracy: 0.2 to
+     * 1.7 mm becomes several. Every shot is recorded as hand-placed.
+     *
+     * The app still scores the position it is given from the ring geometry,
+     * and says so when that disagrees with the ring Claude reported — a
+     * disagreement means one of the two is wrong and the shooter should know
+     * which shots they are.
+     */
+    fun fullDelegation(context: Context): Boolean =
+        store(context)?.getBoolean(KEY_FULL, false) ?: false
+
+    fun setFullDelegation(context: Context, value: Boolean) {
+        store(context)?.edit()?.putBoolean(KEY_FULL, value)?.apply()
     }
 
     fun configured(context: Context): Boolean = enabled(context) && apiKey(context).isNotBlank()

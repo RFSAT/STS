@@ -43,7 +43,10 @@ object SecondOpinion {
         /** 0..1 across the image, left to right and top to bottom. */
         val xFrac: Double,
         val yFrac: Double,
-        val note: String
+        val note: String,
+        /** Ring value Claude gives this shot, or -1 when it was not asked.
+         *  Only requested when Claude is scoring the card outright. */
+        val ring: Int = -1
     )
 
     data class Opinion(
@@ -82,11 +85,21 @@ object SecondOpinion {
         millimetres and do not score the shots — that is measured elsewhere.
     """.trimIndent()
 
+    private val SCORING_EXTRA = """
+        This picture has been flattened onto the target's own scoring grid, so
+        the printed rings are true circles about the centre of the image.
+
+        Add a "ring" to each hole: the ring value it scores, counting the
+        centre as 10 and the outermost printed ring as 1, or 0 for a shot
+        outside them all. A shot counts for the highest ring its HOLE touches,
+        not the ring its centre sits in.
+    """.trimIndent()
+
     /**
      * [jpegBase64] is the card photograph. Blocking; call it off the main
      * thread. Never logs the key, and never logs the image.
      */
-    fun ask(apiKey: String, model: String, jpegBase64: String): Result {
+    fun ask(apiKey: String, model: String, jpegBase64: String, scoreToo: Boolean = false): Result {
         if (apiKey.isBlank()) return Result.Failed("No API key is set.")
         val body = JSONObject().apply {
             put("model", model)
@@ -104,7 +117,7 @@ object SecondOpinion {
                     })
                     .put(JSONObject().apply {
                         put("type", "text")
-                        put("text", PROMPT)
+                        put("text", if (scoreToo) PROMPT + "\n\n" + SCORING_EXTRA else PROMPT)
                     }))
             }))
         }.toString()
@@ -170,7 +183,7 @@ object SecondOpinion {
                 val h = arr.optJSONObject(i) ?: continue
                 val x = h.optDouble("x", -1.0); val y = h.optDouble("y", -1.0)
                 if (x < 0 || y < 0 || x > 1 || y > 1) continue
-                spots += Spot(x, y, h.optString("note"))
+                spots += Spot(x, y, h.optString("note"), h.optInt("ring", -1))
             }
         }
         return Result.Ok(
