@@ -111,6 +111,7 @@ class ProfileActivity : BaseActivity() {
                 else "The second opinion will offer changes rather than make them."
             )
         }
+        wireMoreInfo()
         binding.spEngine.adapter = android.widget.ArrayAdapter(
             this, R.layout.spinner_item, ScoringSource.values().map { it.label }
         ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
@@ -661,6 +662,84 @@ class ProfileActivity : BaseActivity() {
         }
 
     /** Filter spinners only ever need "something changed". */
+
+    /**
+     * Puts the long explanation behind a link instead of under the switch.
+     *
+     * The settings screen had grown a paragraph per option — mechanism,
+     * measured evidence, the reasoning behind a default. All true, none of it
+     * what someone deciding whether to tick a box needs to read. The line
+     * under each option now says what to expect; the paragraph is one tap
+     * away for anyone who wants to know why.
+     */
+    private fun moreInfo(view: android.widget.TextView, title: String, body: String) {
+        view.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(body)
+                .setPositiveButton("Close", null)
+                .show()
+        }
+    }
+
+    private fun wireMoreInfo() {
+        moreInfo(binding.infoScale, "Scale",
+            "Millimetres per pixel can be measured from the spacing of the printed rings, or " +
+            "from the radius of the black aiming mark against the ratio the catalogue gives for " +
+            "this face. The two are independent. Cross-checking averages them when they agree " +
+            "and reports it when they do not, which usually means the wrong face is selected.")
+        moreInfo(binding.infoWedge, "Tilt-axis ring spacing",
+            "Along the axis a card tilts about, the distance to the camera does not change, so " +
+            "the scale there is exact. Measuring only in that direction should remove the drift " +
+            "seen on angled cards. On the images tested it helped on some and hurt on others, " +
+            "so it needs real range photographs before it can be trusted.")
+        moreInfo(binding.infoSource, "Find shots in the photograph",
+            "Looks for holes in the picture as it arrived rather than in the flattened copy, and " +
+            "reads plain brightness inside the black aiming mark — where the colour comparison " +
+            "used elsewhere has nothing left to measure, because black ink and the grey fibres " +
+            "of a hole through it are equally unlike the paper. On the test card this is the " +
+            "difference between a score of 10 and the correct 19.")
+        moreInfo(binding.infoPuncture, "Puncture test",
+            "A hole takes the most material out of its centre, so it gets steadily lighter " +
+            "outwards until it reaches the paper. A printed roundel or a letter does not. On " +
+            "the test card this removed a piece of the maker's footer that was being reported " +
+            "as a shot, and kept every real hole.")
+        moreInfo(binding.infoOutside, "Shots that missed",
+            "Shots outside the outermost ring score nothing, so this cannot change a total. It " +
+            "is for seeing where a flyer went: a plot that quietly omits the worst shots of a " +
+            "string misrepresents the group. Everything out there is print, so this needs the " +
+            "puncture test and applies it more strictly — and on the test card it still marks " +
+            "some of the footer and the logos.")
+        moreInfo(binding.infoFamily, "Scale from fitted ring circles",
+            "Fits a circle to every visible ring instead of reading their radii off one averaged " +
+            "radial profile. On a flat scan both recover the true ring pitch to a thousandth of " +
+            "a millimetre. It is here because it reports how far each ring individually sits " +
+            "from where the catalogue puts it, which says whether a card is flat.")
+        moreInfo(binding.infoCloud, "Second opinion",
+            "Claude looks at the photograph and reports how many holes it can see and roughly " +
+            "where. It does not score: a position read off a picture carries several " +
+            "millimetres, while the app measures a hole it has found to under two. Anything it " +
+            "sees that the app did not is offered as a suggestion, and the app measures the " +
+            "position before any shot is placed.")
+        moreInfo(binding.infoOverride, "Claude overrides the app",
+            "Marks Claude does not see are removed and shots it sees that the app missed are " +
+            "added, without asking. It uses Claude's positions, which carry several millimetres " +
+            "against the 0.2 to 1.7 mm the app measures for a hole it can see — on a 10 m face " +
+            "the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots " +
+            "are marked hand-placed for that reason.")
+        moreInfo(binding.infoEngine, "What scores a card",
+            "Embedded runs the app's own detection, with Claude available afterwards as a " +
+            "second opinion. Cloud AI does not run it at all — Claude finds and scores the " +
+            "shots, and the app only works out where the card is, because without that nothing " +
+            "can be drawn in the right place. The picture sent is the flattened card, so the " +
+            "marks land exactly where you see them. Falls back to Embedded if no key is set.")
+        moreInfo(binding.infoKey, "API key",
+            "The key comes from the Anthropic Console and bills your own account. It is not " +
+            "your Claude.ai password, which will not work here. It is kept encrypted on this " +
+            "device and is never written to the log. A card costs a fraction of a penny to " +
+            "check, and needs a connection, which most ranges do not have.")
+    }
+
     private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {
         override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) = block()
         override fun onNothingSelected(p: AdapterView<*>?) = Unit

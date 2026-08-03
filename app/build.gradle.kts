@@ -32,6 +32,30 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.42.0 — correction: the settings screen explained itself instead
+        //          of describing itself.
+        //
+        //   Every option had grown a paragraph — the mechanism, the measured
+        //   evidence, the reasoning behind its default. All of it true, none
+        //   of it what someone deciding whether to tick a box needs to read
+        //   at that moment. Ten options, ten paragraphs, and the list of
+        //   options was the thing that got lost.
+        //
+        //   Each option now carries ONE LINE saying what to expect:
+        //
+        //       Fewer false hits: rejects printed marks that happen to look
+        //       like shots.
+        //
+        //   with the paragraph one tap away under "More info". Nothing was
+        //   deleted — every explanation still exists, it is simply no longer
+        //   in the way of the switch it describes.
+        //
+        //   Worth recording how this happened, because it was not an
+        //   accident: each of those paragraphs was written to justify a
+        //   default or record a measurement, one release at a time, and each
+        //   was reasonable on its own. Documentation belongs in the source
+        //   and in the guide; a settings screen is a control panel.
+        //
         // 1.41.0 — correction: "the reply was not in the expected form",
         //          reported on Opus 5. The fault was the parsing, not the
         //          model.
@@ -1873,8 +1897,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 59
-        versionName = "1.41.0"
+        versionCode = 60
+        versionName = "1.42.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -50,7 +50,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Millimetres per pixel can be measured from the spacing of the printed rings, or from the radius of the black aiming mark against the ratio the catalogue gives for this face. The two are independent. Cross-checking averages them when they agree and reports it when they do not, which usually means the wrong face is selected." />
+                android:text="How the app works out millimetres per pixel. Cross-check is safest — it usually catches a wrong target face." />
+
+            <TextView android:id="@+id/infoScale"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbWedge"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -61,7 +67,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Experimental, and off by default. Along the axis a card tilts about, the distance to the camera does not change, so the scale there is exact. Measuring only in that direction should remove the drift seen on angled cards — on the images tested so far it helped on some and hurt on others, so it needs real range photographs before it can be trusted." />
+                android:text="Experimental. May help on cards photographed at an angle, and may make them worse. Leave off unless you are testing it." />
+
+            <TextView android:id="@+id/infoWedge"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbSourceDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -72,7 +84,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="On by default. Looks for holes in the picture as it arrived, rather than in the flattened copy, and reads plain brightness inside the black aiming mark — where the colour comparison used everywhere else has nothing left to measure, because black ink and the grey fibres of a hole through it are equally unlike the paper. On the test card this is the difference between a score of 10 and the correct 19: the shot in the black is worth 9 on its own. Turn it off to go back to the previous detector." />
+                android:text="Leave on. Finds shots in the photograph itself, including inside the black — with it off, centre hits are often missed." />
+
+            <TextView android:id="@+id/infoSource"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbPuncture"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -83,7 +101,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="A hole takes the most material out of its centre, so it gets steadily lighter outwards until it reaches the paper. A printed roundel or a letter does not. This refuses card furniture that is dark, round and about a pellet across — on the test card it removed a piece of the maker&apos;s footer that was being reported as a shot, and kept every real hole." />
+                android:text="Fewer false hits: rejects printed marks that happen to look like shots." />
+
+            <TextView android:id="@+id/infoPuncture"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbOutside"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -94,7 +118,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Shots outside the outermost ring score nothing, so this cannot change a total. It is for seeing where a flyer went: a plot that quietly omits the worst shots of a string misrepresents the group. Everything out there is print, so this needs the puncture test above and applies it more strictly." />
+                android:text="Shows shots that missed the rings. They score nothing, and printing near the edge of the card may be marked too." />
+
+            <TextView android:id="@+id/infoOutside"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbFamily"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -105,7 +135,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Fits a circle to every visible ring instead of reading their radii off one averaged radial profile. On a flat scan it changes nothing measurable — both recover the true ring pitch to a thousandth of a millimetre. It is here because it reports how far each ring individually sits from where the catalogue puts it, which says whether a card is flat, and that may matter on angled photographs. Off until range photographs say." />
+                android:text="No visible difference on a flat card. May help on cards photographed at an angle." />
+
+            <TextView android:id="@+id/infoFamily"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <!-- ===== Second opinion ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Second opinion (Claude)" />
@@ -115,7 +151,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Optional. On the Results screen you can ask Claude how many holes it sees and which face the card is. It does NOT score: positions from a vision model carry several millimetres, while the app measures a hole it has found to under two. Anything it sees that the app did not is offered to you as a suggestion to accept or reject." />
+                android:text="Ask Claude to check a card. Needs a connection and costs a fraction of a penny each time." />
+
+            <TextView android:id="@+id/infoCloud"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <CheckBox android:id="@+id/cbCloud"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -146,7 +188,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Applies the second opinion without asking: marks Claude does not see are removed, shots it sees that the app missed are added. It uses Claude&apos;s positions, which carry several millimetres against the 0.2 to 1.7 mm the app measures for a hole it can see — on a 10 m face the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots are marked hand-placed for that reason. Worth having when the app is over-detecting, which is its usual failure; worth leaving off when it is not." />
+                android:text="Applies Claude's answer without asking. Useful when the app marks things that are not shots; positions are less precise than the app's." />
+
+            <TextView android:id="@+id/infoOverride"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -162,7 +210,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Embedded runs the app&apos;s own detection, with Claude available afterwards as a second opinion. Cloud AI does not run it at all — Claude finds and scores the shots, and the app only works out where the card is, because without that nothing can be drawn in the right place. Cloud AI needs a connection, costs a fraction of a penny per card, and marks every shot hand-placed: its positions carry several millimetres where the app measures 0.2 to 1.7. It falls back to Embedded if no key is set." />
+                android:text="Embedded uses the app's own detection. Cloud AI hands the whole job to Claude — needs a connection, and positions are less precise." />
+
+            <TextView android:id="@+id/infoEngine"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <Spinner android:id="@+id/spCloudModel"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -173,7 +227,13 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="The key comes from the Anthropic Console and bills your own account — it is not your Claude.ai password, which will not work here. It is kept encrypted on this device and is never written to the log. A card costs a fraction of a penny to check, and needs a connection, which most ranges do not have." />
+                android:text="From console.anthropic.com — not your Claude.ai password. Kept encrypted on this device." />
+
+            <TextView android:id="@+id/infoKey"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
 
             <!-- ===== Profile sets ===== -->
             <TextView style="@style/Sts.SectionHeading" android:text="Profile sets" />
