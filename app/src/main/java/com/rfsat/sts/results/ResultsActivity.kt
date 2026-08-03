@@ -8,6 +8,7 @@ import android.view.View
 import com.rfsat.sts.R
 import com.rfsat.sts.databinding.ActivityResultsBinding
 import com.rfsat.sts.cloud.CloudSettings
+import com.rfsat.sts.cloud.ScoringSource
 import com.rfsat.sts.cloud.OpinionReconciler
 import com.rfsat.sts.cloud.SecondOpinion
 import com.rfsat.sts.detect.DetectedHole
@@ -433,7 +434,7 @@ class ResultsActivity : BaseActivity() {
             )
             return
         }
-        val fullDelegation = CloudSettings.fullDelegation(this)
+        val fullDelegation = CloudSettings.engine(this) == ScoringSource.CLOUD
         val key = CloudSettings.apiKey(this)
         val model = CloudSettings.model(this)
         val measured = ScoringSession.state.shots.map {

@@ -21,6 +21,16 @@ import com.rfsat.sts.log.Logger
  * unavailable the key is NOT quietly written in the clear — storage fails,
  * the caller is told, and the feature stays off.
  */
+/** What actually scores a card when a photograph is imported.
+ *
+ *  NOT named ScoringEngine: com.rfsat.sts.scoring.ScoringEngine already is
+ *  the object that turns a hole into a score, and two types a letter apart
+ *  in the same file is a bug waiting to be written. */
+enum class ScoringSource(val label: String) {
+    EMBEDDED("Embedded — the app's own algorithms"),
+    CLOUD("Cloud AI — Claude finds and scores")
+}
+
 object CloudSettings {
 
     private const val FILE = "sts_cloud"
@@ -28,7 +38,7 @@ object CloudSettings {
     private const val KEY_MODEL = "model"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_OVERRIDE = "override_app"
-    private const val KEY_FULL = "full_delegation"
+    private const val KEY_ENGINE = "engine"
 
     /** Offered in the picker. Vision-capable models only. */
     val MODELS = listOf(
@@ -106,30 +116,36 @@ object CloudSettings {
     }
 
     /**
-     * Let Claude find and score the shots outright, with the app's own hole
-     * detection not run at all.
+     * Which engine runs when a photograph is imported.
      *
-     * WHAT IS STILL THE APP'S. Registration — where the card is, how big it
-     * is, where the rings fall. That is not an omission: without it there is
-     * no millimetre grid, and without a grid nothing can be drawn in the
-     * right place on the photograph or compared with a catalogue face. The
-     * picture sent is the RECTIFIED card, already on that grid, so a fraction
-     * of the image maps back to millimetres in one linear step and the marks
-     * land exactly where the shooter sees them.
+     * This replaced three overlapping checkboxes — "enable the button",
+     * "override the app" and "find and score outright" — that had accumulated
+     * one request at a time and between them described states nobody wanted,
+     * such as overriding an engine that was not running. There is one choice
+     * now, and [overrideApp] is what it means under EMBEDDED only.
      *
-     * WHAT IT COSTS is the whole of the app's measurement accuracy: 0.2 to
-     * 1.7 mm becomes several. Every shot is recorded as hand-placed.
+     *   EMBEDDED runs the app's own detection. Claude is available on the
+     *   Results screen as a second opinion, advisory unless [overrideApp].
      *
-     * The app still scores the position it is given from the ring geometry,
-     * and says so when that disagrees with the ring Claude reported — a
-     * disagreement means one of the two is wrong and the shooter should know
-     * which shots they are.
+     *   CLOUD does not run the app's hole finding at all. Registration is
+     *   still the app's, because without knowing where the card is and how
+     *   big it is there is no millimetre grid and nothing can be drawn in the
+     *   right place. The picture sent is the RECTIFIED card, already on that
+     *   grid, so the marks land exactly where the shooter sees them.
+     *
+     * Falls back to EMBEDDED when no key is set, rather than importing a
+     * photograph and scoring nothing.
      */
-    fun fullDelegation(context: Context): Boolean =
-        store(context)?.getBoolean(KEY_FULL, false) ?: false
+    fun engine(context: Context): ScoringSource {
+        val want = store(context)?.getString(KEY_ENGINE, null)
+            ?.let { name -> ScoringSource.values().firstOrNull { it.name == name } }
+            ?: ScoringSource.EMBEDDED
+        return if (want == ScoringSource.CLOUD && apiKey(context).isBlank())
+            ScoringSource.EMBEDDED else want
+    }
 
-    fun setFullDelegation(context: Context, value: Boolean) {
-        store(context)?.edit()?.putBoolean(KEY_FULL, value)?.apply()
+    fun setEngine(context: Context, value: ScoringSource) {
+        store(context)?.edit()?.putString(KEY_ENGINE, value.name)?.apply()
     }
 
     fun configured(context: Context): Boolean = enabled(context) && apiKey(context).isNotBlank()

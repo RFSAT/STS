@@ -148,16 +148,21 @@
                 android:justificationMode="inter_word"
                 android:text="Applies the second opinion without asking: marks Claude does not see are removed, shots it sees that the app missed are added. It uses Claude&apos;s positions, which carry several millimetres against the 0.2 to 1.7 mm the app measures for a hole it can see — on a 10 m face the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots are marked hand-placed for that reason. Worth having when the app is over-detecting, which is its usual failure; worth leaving off when it is not." />
 
-            <CheckBox android:id="@+id/cbCloudFull"
+            <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Let Claude find and score the shots outright" />
+                android:textSize="12sp" android:layout_marginTop="4dp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:text="On import, score with:" />
+
+            <Spinner android:id="@+id/spEngine"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="The app&apos;s own hole finding is not run at all. It still works out where the card is and how big it is, because without that nothing can be drawn in the right place — and the picture sent is the flattened card, so the marks land exactly where you see them on your photograph. Every shot is marked hand-placed, because its position was not measured. The app still scores each position from the ring geometry and tells you where that disagrees with the ring Claude gave." />
+                android:text="Embedded runs the app&apos;s own detection, with Claude available afterwards as a second opinion. Cloud AI does not run it at all — Claude finds and scores the shots, and the app only works out where the card is, because without that nothing can be drawn in the right place. Cloud AI needs a connection, costs a fraction of a penny per card, and marks every shot hand-placed: its positions carry several millimetres where the app measures 0.2 to 1.7. It falls back to Embedded if no key is set." />
 
             <Spinner android:id="@+id/spCloudModel"
                 android:layout_width="match_parent" android:layout_height="wrap_content"

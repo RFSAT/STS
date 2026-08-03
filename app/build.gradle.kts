@@ -32,6 +32,38 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.40.0 — feature: ONE choice of what scores a card, made on import.
+        //
+        //   Settings -> "On import, score with:" — Embedded, or Cloud AI.
+        //
+        //   This replaces three overlapping checkboxes that had accumulated
+        //   one request at a time: "enable the button", "override the app"
+        //   and "find and score outright". Between them they described states
+        //   nobody wanted — overriding an engine that was not running, or
+        //   delegating outright while the embedded detector still ran first
+        //   and threw its work away. Adding a switch per request is how a
+        //   settings screen stops meaning anything.
+        //
+        //   AND IT NOW RUNS WHERE IT SAYS IT DOES. Cloud AI fires from the
+        //   IMPORT screen, in place of the embedded detection, not from a
+        //   button on Results afterwards. A setting that says "on import" and
+        //   then needs a second action on another screen is not the setting
+        //   it claims to be.
+        //
+        //   Registration stays with the app under both. Without knowing where
+        //   the card is and how big it is there is no millimetre grid, and
+        //   without a grid nothing can be drawn in the right place. The
+        //   picture sent is the RECTIFIED card, already on that grid, so a
+        //   fraction of the image maps back with one linear step and the
+        //   marks land exactly where the shooter sees them.
+        //
+        //   Cloud AI falls back to Embedded when no key is set, rather than
+        //   importing a photograph and scoring nothing.
+        //
+        //   The enum is ScoringSource, not ScoringEngine: the scoring package
+        //   already owns a ScoringEngine that turns a hole into a score, and
+        //   two types a letter apart is a bug waiting to be written.
+        //
         // 1.39.0 — feature: Claude can find AND score the card outright.
         //
         //   Settings -> "Let Claude find and score the shots outright". Off by
@@ -1814,8 +1846,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 57
-        versionName = "1.39.0"
+        versionCode = 58
+        versionName = "1.40.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

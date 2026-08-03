@@ -10,6 +10,7 @@ import androidx.appcompat.app.AlertDialog
 import com.rfsat.sts.detect.ScaleMode
 import android.text.InputType
 import com.rfsat.sts.cloud.CloudSettings
+import com.rfsat.sts.cloud.ScoringSource
 import com.rfsat.sts.detect.ScaleSettings
 import com.rfsat.sts.R
 import com.rfsat.sts.ui.WrappingNameAdapter
@@ -110,15 +111,16 @@ class ProfileActivity : BaseActivity() {
                 else "The second opinion will offer changes rather than make them."
             )
         }
-        binding.cbCloudFull.isChecked = CloudSettings.fullDelegation(this)
-        binding.cbCloudFull.setOnClickListener {
-            val on = binding.cbCloudFull.isChecked
-            CloudSettings.setFullDelegation(this, on)
-            notifyUser(
-                if (on) "Second opinion will now score the card outright, replacing whatever the " +
-                    "app found. Every shot will be marked hand-placed."
-                else "The app will find the shots again; Claude will only be asked for an opinion."
-            )
+        binding.spEngine.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, ScoringSource.values().map { it.label }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+        binding.spEngine.setSelection(ScoringSource.values().indexOf(CloudSettings.engine(this)))
+        binding.spEngine.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = ScoringSource.values().getOrNull(i) ?: return@onSelectedIndex
+            CloudSettings.setEngine(this, chosen)
+            if (chosen == ScoringSource.CLOUD && CloudSettings.apiKey(this).isBlank()) {
+                notifyUser("Cloud AI needs an API key. Until one is set, imports use the embedded algorithms.")
+            } else notifyUser("Imports will be scored by: ${chosen.label}")
         }
         binding.btnCloudKey.setOnClickListener {
             val input = android.widget.EditText(this).apply {

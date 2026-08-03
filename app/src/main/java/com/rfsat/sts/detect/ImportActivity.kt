@@ -1,6 +1,10 @@
 package com.rfsat.sts.detect
 
 import android.graphics.Bitmap
+import com.rfsat.sts.cloud.SecondOpinion
+import com.rfsat.sts.cloud.ScoringSource
+import com.rfsat.sts.cloud.CloudSettings
+import android.util.Base64
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -504,9 +508,96 @@ class ImportActivity : BaseActivity() {
         }
     }
 
+
+    /**
+     * Sends the rectified card to Claude and takes its answer whole.
+     *
+     * The RECTIFIED copy, not the original, and that is what makes the marks
+     * land where the shooter sees them: it is already on the millimetre grid
+     * the plot draws in, so a fraction of the image maps back with one linear
+     * step and no projection in between.
+     */
+    private fun scoreWithCloud(reg: TargetRegistration, shot: Bitmap) {
+        val rect = runCatching { reg.rectifyColour(shot) }.getOrNull()
+        if (rect == null) {
+            notifyUser("The card could not be flattened for scoring; falling back to the app's own detection.")
+            return
+        }
+        ScoredPhoto.set(rect, reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm)
+        val face = currentFace()
+        val rules = currentRules()
+        val key = CloudSettings.apiKey(this)
+        val model = CloudSettings.model(this)
+        val gauge = rules.gaugeDiameterMm
+        val uMin = reg.uMinMm; val uMax = reg.uMaxMm
+        val vMin = reg.vMinMm; val vMax = reg.vMaxMm
+        notifyUser("Scoring with Claude…")
+        Thread {
+            val out = java.io.ByteArrayOutputStream()
+            val longest = maxOf(rect.width, rect.height)
+            val send = if (longest <= 1568) rect else Bitmap.createScaledBitmap(
+                rect, rect.width * 1568 / longest, rect.height * 1568 / longest, true)
+            send.compress(Bitmap.CompressFormat.JPEG, 85, out)
+            val b64 = Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+            val result = SecondOpinion.ask(key, model, b64, scoreToo = true)
+            runOnUiThread {
+                when (result) {
+                    is SecondOpinion.Result.Failed -> notifyUser(result.message)
+                    is SecondOpinion.Result.Ok -> {
+                        if (binding.cbReplace.isChecked) {
+                            ScoringSession.startNew(face, rules, distanceFromField())
+                        }
+                        var disagreed = 0
+                        for (sp in result.opinion.spots) {
+                            val u = uMin + sp.xFrac * (uMax - uMin)
+                            val v = vMax - sp.yFrac * (vMax - vMin)
+                            val hole = DetectedHole(
+                                xMm = u, yMm = v, diameterMm = gauge,
+                                contrast = 0.0, confidence = 1.0, elongation = 1.0
+                            )
+                            val idx = ScoringSession.state.shots.count { !it.sighter } + 1
+                            ScoringSession.addShot(
+                                ScoringEngine.scoreHole(
+                                    hole, face, rules, ProfileRepository(this).getBullet(),
+                                    index = idx,
+                                    series = ScoringEngine.seriesFor(idx, rules),
+                                    manual = true
+                                ), rules
+                            )
+                            if (sp.ring >= 0 &&
+                                face.scoreInteger(Math.hypot(u, v), gauge / 2.0) != sp.ring
+                            ) disagreed++
+                        }
+                        refreshStatus()
+                        notifyUser(buildString {
+                            append("Claude scored ${result.opinion.spots.size} shots. ")
+                            if (disagreed > 0) {
+                                append("$disagreed disagree with the ring the geometry gives at ")
+                                append("that position — check those on the plot. ")
+                            }
+                            append("All are marked hand-placed: no position here was measured.")
+                        })
+                    }
+                }
+            }
+        }.start()
+    }
+
     private fun doDetect() {
         val reg = registration ?: run { notifyUser("Register the card first."); return }
         val shot = shotBitmap ?: return
+
+        // ---- CLOUD AI: the embedded detection does not run at all ----
+        //
+        // Here rather than behind a button on Results, because the setting
+        // says "on import" and a setting that needs a second action somewhere
+        // else is not the setting it claims to be. Registration above has
+        // already happened, and it must: without the millimetre grid there is
+        // nothing to draw shots on and no way to map what comes back.
+        if (CloudSettings.engine(this) == ScoringSource.CLOUD) {
+            scoreWithCloud(reg, shot)
+            return
+        }
         val rules = currentRules()
         val face = currentFace()
 
