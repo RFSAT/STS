@@ -181,7 +181,12 @@ class TargetPlotView @JvmOverloads constructor(
     private fun baseSpanMm(f: TargetFace): Double {
         val span = if (fitScoringAreaOnly) {
             when {
-                f.rings.isNotEmpty() -> f.outerRadiusMm * 2.15
+                // 2.05, not 2.15. The margin was five per cent of the radius
+                // either side; on the Targets preview, where the box is now
+                // square so the face can fill it, that visibly failed to. A
+                // ring face is drawn to its outermost printed ring and wants
+                // only enough room not to touch the edge.
+                f.rings.isNotEmpty() -> f.outerRadiusMm * 2.05
                 f.zones.isNotEmpty() -> maxOf(f.faceWidthMm, f.faceHeightMm) * 1.05
                 else -> maxOf(f.faceWidthMm, f.faceHeightMm)
             }

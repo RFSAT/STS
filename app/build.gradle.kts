@@ -32,6 +32,41 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.43.0 — feature: the Targets preview is square, so a face fills
+        //          the width — and the ring numerals appear at last.
+        //
+        //   THE NUMERALS WERE ALREADY BEING DRAWN. They were being dropped,
+        //   by the readability gate that refuses a glyph too small to read.
+        //   At the 180 dp preview an ISSF air pistol ring annulus is 24.8 px
+        //   on a typical phone, which asks for a 15.4 px glyph against a
+        //   17.9 px floor — so every ISSF face lost its numbers at every
+        //   screen density. At the size a square box gives, the same annulus
+        //   is 41 px and the glyph 26, and they simply appear. The gate was
+        //   right; the box was too small. Nothing about the gate changed.
+        //
+        //   The ring margin went from 2.15x the outer radius to 2.05x as
+        //   well: five per cent either side was visible slack once the box
+        //   stopped being the constraint.
+        //
+        //   AND THE LIST SURVIVES, which was the condition attached. A share
+        //   of the screen is a guess about everything else on the page — the
+        //   parameter table is longer for some faces, and a long name wraps —
+        //   so the preview is sized, and then the LIST IS MEASURED and the
+        //   preview gives height back if the catalogue came out under 96 dp.
+        //   Guessing once and hoping is how the list disappears on somebody
+        //   else's phone, and for the silhouette faces the list is the only
+        //   way to tell an IPSC target from an IDPA one in a thumbnail.
+        //
+        // 1.43.0 — correction: the offline stub had View.layoutParams as a
+        //          read-only Any?.
+        //
+        //   So it compiled every caller that READ it and rejected the first
+        //   one that resized a view — which is the case the stub exists to
+        //   check. A stub weaker than the thing it stands in for hides the
+        //   errors it was written to catch; this is the fourth time that has
+        //   been true in this project and the note is here to make it the
+        //   last.
+        //
         // 1.42.0 — correction: the settings screen explained itself instead
         //          of describing itself.
         //
@@ -1897,8 +1932,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 60
-        versionName = "1.42.0"
+        versionCode = 61
+        versionName = "1.43.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

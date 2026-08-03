@@ -27,6 +27,13 @@ import com.rfsat.sts.ui.TargetThumbnail
  * old sessions keep pointing at the old geometry, which is the only version
  * of events that is true.
  */
+private const val PREVIEW_MAX_SCREEN_FRACTION = 0.42f
+
+/** How much catalogue must remain visible under the preview. Two rows and a
+ *  little: enough to see that a list exists and that it scrolls, which for
+ *  the silhouette faces is the only way to tell one from another. */
+private const val LIST_FLOOR_DP = 96f
+
 class TargetActivity : BaseActivity() {
 
     private lateinit var binding: ActivityTargetsBinding
@@ -71,6 +78,55 @@ class TargetActivity : BaseActivity() {
         setupBottomNav(R.id.nav_targets)
     }
 
+
+    /**
+     * Makes the preview square, so a face fills the width of its box — but
+     * only as far as the catalogue underneath can spare.
+     *
+     * A round face drawn in a box wider than it is tall wastes the width and
+     * shrinks the ring numerals until they are dropped as unreadable, which
+     * is why they were rarely seen here. Square fixes that.
+     *
+     * Square unconditionally does not work: on a short phone it leaves no
+     * list at all, and for the silhouette faces the list is the only way to
+     * tell an IPSC target from an IDPA one — they look much alike in a
+     * thumbnail. So the box takes the smaller of its own width and a share of
+     * the screen, and the list keeps a floor of its own in the layout.
+     */
+    private fun sizePreview() {
+        binding.plot.post {
+            val w = binding.plot.width
+            if (w <= 0) return@post
+            val d = resources.displayMetrics
+            val cap = (d.heightPixels * PREVIEW_MAX_SCREEN_FRACTION).toInt()
+            val want = minOf(w, cap).coerceAtLeast((140 * d.density).toInt())
+            if (binding.plot.height != want) {
+                binding.plot.layoutParams = binding.plot.layoutParams.also { it.height = want }
+                binding.plot.requestLayout()
+            }
+
+            // THEN CHECK WHAT IS LEFT, and give it back if the list went
+            // short. A share of the screen is a guess about everything else
+            // on the page — the parameter table is longer for some faces than
+            // others, and a long name wraps to two lines. Guessing once and
+            // hoping is how the catalogue disappears on somebody's phone.
+            // Measuring the list after the pass costs one more frame and
+            // cannot be wrong about it.
+            binding.plot.post {
+                val floor = (LIST_FLOOR_DP * d.density).toInt()
+                val short = floor - binding.list.height
+                if (short > 0) {
+                    val h = (binding.plot.height - short).coerceAtLeast((140 * d.density).toInt())
+                    if (h != binding.plot.height) {
+                        binding.plot.layoutParams =
+                            binding.plot.layoutParams.also { it.height = h }
+                        binding.plot.requestLayout()
+                    }
+                }
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         setupBottomNav(R.id.nav_targets)
@@ -90,6 +146,7 @@ class TargetActivity : BaseActivity() {
     private fun select(face: TargetFace?) {
         selected = face
         binding.plot.face = face
+        sizePreview()
         binding.plot.shots = emptyList()
         binding.btnDelete.isEnabled = face?.custom == true
         val f = face

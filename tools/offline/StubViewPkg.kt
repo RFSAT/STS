@@ -32,7 +32,12 @@ open class View(
     val paddingBottom: Int = 0
     val context: android.content.Context = context ?: android.content.Context()
     fun <T : View> findViewById(id: Int): T = @Suppress("UNCHECKED_CAST") (View() as T)
-    val layoutParams: Any? = null
+    // A real View.layoutParams is a settable property whose value carries a
+    // height. The stub had it as a read-only Any?, which compiled anything
+    // that only READ it and rejected the first code that resized a view —
+    // exactly the case it exists to check.
+    open class LayoutParams(var width: Int = 0, var height: Int = 0)
+    var layoutParams: LayoutParams = LayoutParams()
     val resources: android.content.Resources = android.content.Resources()
     val parent: ViewParent? = null
     val suggestedMinimumWidth: Int = 0

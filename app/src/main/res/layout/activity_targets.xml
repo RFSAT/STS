@@ -25,13 +25,17 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <!-- 230dp -> 180dp. The preview is there to say WHICH face this is,
-             not to be scored on, and a fifty-dp saving is a whole extra row
-             of the catalogue on a short phone. -->
+        <!-- Height is set in code, not here: see TargetActivity.sizePreview.
+             A face should fill the WIDTH of its box, which means the box wants
+             to be square — but a square box on a short phone leaves no
+             catalogue underneath, and on a silhouette face the list is how you
+             tell an IPSC target from an IDPA one. So it is square where there
+             is room and capped where there is not. This value is only the
+             starting point before the first layout pass. -->
         <com.rfsat.sts.ui.TargetPlotView
             android:id="@+id/plot"
             android:layout_width="match_parent"
-            android:layout_height="180dp"
+            android:layout_height="200dp"
             android:layout_marginTop="5dp"
             android:background="@drawable/bg_card" />
 
@@ -88,6 +92,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:minHeight="96dp"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="12dp" />
 
