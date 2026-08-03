@@ -37,7 +37,22 @@ object SecondOpinion {
     private const val ENDPOINT = "https://api.anthropic.com/v1/messages"
     private const val VERSION = "2023-06-01"
     private const val TIMEOUT_MS = 45_000
-    private const val MAX_TOKENS = 1500
+    /** 4000, not 1500. A card with a dozen holes and a note on each ran the
+     *  older budget out mid-object, and a truncated reply has no closing
+     *  brace — which is what "the reply was not in the expected form" was
+     *  actually reporting. */
+    private const val MAX_TOKENS = 4000
+
+    /** The model is made to answer THROUGH a tool rather than in prose.
+     *
+     *  Asking for "JSON and nothing else" is a request, not a guarantee: a
+     *  model may add a sentence before it, wrap it in a fence, or — the case
+     *  reported on Opus 5 — run out of tokens part way through and leave an
+     *  object that never closes. A forced tool call cannot do any of those.
+     *  The API assembles the arguments itself and hands back a structured
+     *  object, so there is no prose to parse and nothing to go wrong in the
+     *  parsing. The old text path is kept only as a fallback. */
+    private const val TOOL_NAME = "report_shots"
 
     data class Spot(
         /** 0..1 across the image, left to right and top to bottom. */
@@ -101,9 +116,39 @@ object SecondOpinion {
      */
     fun ask(apiKey: String, model: String, jpegBase64: String, scoreToo: Boolean = false): Result {
         if (apiKey.isBlank()) return Result.Failed("No API key is set.")
+        val holeProps = JSONObject()
+            .put("x", JSONObject().put("type", "number")
+                .put("description", "0..1 across the image, left to right"))
+            .put("y", JSONObject().put("type", "number")
+                .put("description", "0..1 down the image, top to bottom"))
+            .put("note", JSONObject().put("type", "string")
+                .put("description", "where it is, in a few words"))
+        if (scoreToo) {
+            holeProps.put("ring", JSONObject().put("type", "integer")
+                .put("description", "ring value scored, 10 at the centre, 0 for a shot outside them all"))
+        }
+        val schema = JSONObject()
+            .put("type", "object")
+            .put("properties", JSONObject()
+                .put("face", JSONObject().put("type", "string"))
+                .put("usable", JSONObject().put("type", "boolean"))
+                .put("comment", JSONObject().put("type", "string"))
+                .put("holes", JSONObject()
+                    .put("type", "array")
+                    .put("items", JSONObject()
+                        .put("type", "object")
+                        .put("properties", holeProps)
+                        .put("required", JSONArray().put("x").put("y")))))
+            .put("required", JSONArray().put("face").put("usable").put("holes"))
+
         val body = JSONObject().apply {
             put("model", model)
             put("max_tokens", MAX_TOKENS)
+            put("tools", JSONArray().put(JSONObject()
+                .put("name", TOOL_NAME)
+                .put("description", "Report every bullet or pellet hole visible on this target.")
+                .put("input_schema", schema)))
+            put("tool_choice", JSONObject().put("type", "tool").put("name", TOOL_NAME))
             put("messages", JSONArray().put(JSONObject().apply {
                 put("role", "user")
                 put("content", JSONArray()
@@ -166,16 +211,33 @@ object SecondOpinion {
     private fun parse(response: String): Result {
         val root = JSONObject(response)
         val usage = root.optJSONObject("usage")
-        val text = root.optJSONArray("content")?.let { arr ->
-            (0 until arr.length()).map { arr.getJSONObject(it) }
-                .firstOrNull { it.optString("type") == "text" }?.optString("text")
-        }.orEmpty()
-        // The model is asked for bare JSON, but a stray fence or sentence
-        // should not lose the whole answer.
-        val a = text.indexOf('{'); val b = text.lastIndexOf('}')
-        if (a < 0 || b <= a) return Result.Failed("The reply was not in the expected form.")
-        val obj = runCatching { JSONObject(text.substring(a, b + 1)) }
-            .getOrElse { return Result.Failed("The reply was not valid JSON.") }
+        val stop = root.optString("stop_reason")
+        val content = root.optJSONArray("content")
+        val blocks = (0 until (content?.length() ?: 0)).map { content!!.getJSONObject(it) }
+
+        // The forced tool call: arguments assembled by the API, already an
+        // object, nothing to parse out of prose.
+        val obj: JSONObject = blocks.firstOrNull {
+            it.optString("type") == "tool_use" && it.optString("name") == TOOL_NAME
+        }?.optJSONObject("input")
+            ?: run {
+                // Fallback for a model or an account where the tool call did
+                // not come back: pull the first {...} out of the text.
+                val text = blocks.firstOrNull { it.optString("type") == "text" }
+                    ?.optString("text").orEmpty()
+                val a = text.indexOf('{'); val b = text.lastIndexOf('}')
+                if (a < 0 || b <= a) {
+                    return Result.Failed(
+                        if (stop == "max_tokens")
+                            "The reply was cut off before it finished — the model ran out of " +
+                                "room. Try a smaller image or a different model."
+                        else "The reply came back in a form this app could not read" +
+                            (if (stop.isNotBlank()) " (stopped: $stop)." else ".")
+                    )
+                }
+                runCatching { JSONObject(text.substring(a, b + 1)) }
+                    .getOrElse { return Result.Failed("The reply was not valid JSON.") }
+            }
 
         val spots = ArrayList<Spot>()
         obj.optJSONArray("holes")?.let { arr ->

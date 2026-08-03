@@ -32,6 +32,33 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.41.0 — correction: "the reply was not in the expected form",
+        //          reported on Opus 5. The fault was the parsing, not the
+        //          model.
+        //
+        //   The prompt asked for "JSON and nothing else", and a request is
+        //   not a guarantee. A model may put a sentence in front of it, wrap
+        //   it in a code fence, or — the likeliest cause here — run out of
+        //   room part way through and leave an object that never closes. The
+        //   parser looked for the first { and the last }, so a truncated
+        //   reply failed with a message that said nothing useful about why.
+        //
+        //   The model now answers THROUGH A FORCED TOOL CALL. The API
+        //   assembles the arguments against a schema and hands back a
+        //   structured object, so there is no prose to parse and nothing to
+        //   go wrong in the parsing. The old text path stays as a fallback
+        //   for an account or model where the tool call does not come back.
+        //
+        //   The budget went from 1500 tokens to 4000 as well: a card with a
+        //   dozen holes and a note on each ran the old one out, which is what
+        //   made a longer-answering model the one that failed.
+        //
+        //   And the error now says WHICH failure it was — a reply cut off for
+        //   want of room reads differently from one that came back in a shape
+        //   the app could not read, and stop_reason is quoted either way.
+        //   "Not in the expected form" told the user nothing they could act
+        //   on, which is its own defect.
+        //
         // 1.40.0 — feature: ONE choice of what scores a card, made on import.
         //
         //   Settings -> "On import, score with:" — Embedded, or Cloud AI.
@@ -1846,8 +1873,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 58
-        versionName = "1.40.0"
+        versionCode = 59
+        versionName = "1.41.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
