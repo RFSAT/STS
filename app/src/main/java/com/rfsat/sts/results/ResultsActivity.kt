@@ -276,7 +276,7 @@ class ResultsActivity : BaseActivity() {
      * so refusing to offer removal at all left the second opinion able only
      * to make an over-detected card worse.
      */
-    private fun offerRemoval(unsupported: List<DetectedHole>, claudeCount: Int) {
+    private fun offerRemoval(unsupported: List<DetectedHole>) {
         val face = ScoringSession.face(this)
         val outer = face.outerRadiusMm
         // EVERYTHING OUTSIDE THE RINGS IS A CANDIDATE, not only what Claude
@@ -290,28 +290,22 @@ class ResultsActivity : BaseActivity() {
         // the scoring rings cannot score whatever else is true of it, and if
         // Claude has counted fewer shots than the app has marked, those are
         // the ones to put in front of the shooter.
-        val fewerSeen = ScoringSession.state.shots.size > claudeCount
+        // Exactly the set the reconciler decided and the button counted.
         val victims = ScoringSession.state.shots.filter { shot ->
-            unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 } ||
-                (fewerSeen && Math.hypot(shot.xMm, shot.yMm) > outer)
+            unsupported.any { Math.hypot(it.xMm - shot.xMm, it.yMm - shot.yMm) < 0.01 }
         }
         if (victims.isEmpty()) { notifyUser("Nothing left to remove."); return }
         val outside = victims.count { Math.hypot(it.xMm, it.yMm) > outer }
         val msg = buildString {
-            append("Remove ${victims.size} shot(s) that Claude did not see?")
-            if (outside > 0) {
-                append("\n\n$outside of them lie outside the scoring rings. Every false mark ")
-                append("this app has produced on a test card has been out there, so those are ")
-                append("the likeliest to be wrong.")
-            }
-            append("\n\nThis cannot tell a shot Claude missed from one the app invented. ")
-            append("Check them on the plot with My photo selected before agreeing.")
+            append("Remove ${victims.size} mark(s) Claude does not see?")
+            if (outside > 0) append("\n\n$outside lie outside the scoring rings.")
+            append("\n\nA shot Claude missed looks the same as one the app invented — check the plot first.")
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Remove unsupported marks")
             .setMessage(msg)
             .setPositiveButton("Remove all ${victims.size}") { _, _ ->
-                for (v in victims) ScoringSession.removeShot(v)
+                ScoringSession.removeShots(victims)
                 refresh()
                 notifyUser("Removed ${victims.size}. Undo by adding them back from the plot.")
             }
@@ -320,7 +314,7 @@ class ResultsActivity : BaseActivity() {
             ) { _, _ ->
                 if (outside > 0) {
                     val out = victims.filter { Math.hypot(it.xMm, it.yMm) > outer }
-                    for (v in out) ScoringSession.removeShot(v)
+                    ScoringSession.removeShots(out)
                     refresh()
                     notifyUser("Removed $outside outside the scoring rings.")
                 }
@@ -490,10 +484,7 @@ class ResultsActivity : BaseActivity() {
         val msg = buildString {
             append(rec.summary)
             append("\n\n")
-            append("This is a second pair of eyes, not a second scorer: the app measures every " +
-                "shot it counts to under two millimetres, while a position read off a picture " +
-                "carries several. Nothing above has changed your score.")
-            if (inTok > 0) append("\n\n%,d input and %,d output tokens.".format(inTok, outTok))
+            append("Nothing here has changed your score yet.")
         }
         val b = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Second opinion")
@@ -504,7 +495,7 @@ class ResultsActivity : BaseActivity() {
         // first is how the second opinion made such a card worse.
         if (rec.overDetected) {
             b.setPositiveButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
-                offerRemoval(rec.unsupported, rec.claimed)
+                offerRemoval(rec.unsupported)
             }
             if (rec.unconfirmed.isNotEmpty()) {
                 b.setNeutralButton("Add %d missed".format(rec.unconfirmed.size)) { _, _ ->
@@ -519,7 +510,7 @@ class ResultsActivity : BaseActivity() {
             }
             if (rec.unsupported.isNotEmpty()) {
                 b.setNeutralButton("Review %d to remove".format(rec.unsupported.size)) { _, _ ->
-                    offerRemoval(rec.unsupported, rec.claimed)
+                    offerRemoval(rec.unsupported)
                 }
             }
         }

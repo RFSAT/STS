@@ -68,8 +68,18 @@ object OpinionReconciler {
             measured.none { hypot(it.xMm - u, it.yMm - v) <= SAME_SHOT_MM }
         }.map { (u, v, note) -> Suggestion(u, v, note) }
 
-        val unsupported = measured.filter { m ->
+        // THE REMOVABLE SET IS DECIDED HERE, ONCE.
+        //
+        // It used to be computed in two places — the button counted the marks
+        // Claude had not mentioned, and the dialog then counted those PLUS
+        // everything beyond the rings. The two numbers differed, so the button
+        // offered to review seven and the dialog asked to remove nine.
+        val unmentioned = measured.filter { m ->
             spotsMm.none { (u, v, _) -> hypot(m.xMm - u, m.yMm - v) <= SAME_SHOT_MM }
+        }
+        val fewerSeen = measured.size > opinion.holeCount
+        val unsupported = measured.filter { m ->
+            m in unmentioned || (fewerSeen && hypot(m.xMm, m.yMm) > outerRadiusMm)
         }
 
         val faceAgrees = opinion.faceName.isBlank() ||
@@ -89,40 +99,28 @@ object OpinionReconciler {
         // is an aid pointed the wrong way.
         val overDetected = measured.size > opinion.holeCount && unsupported.isNotEmpty()
 
+        val outside = unsupported.count { hypot(it.xMm, it.yMm) > outerRadiusMm }
         val summary = buildString {
-            append("Claude counted ${opinion.holeCount}; the app measured ${measured.size}.")
-            if (overDetected) {
-                append(" The app has found MORE than Claude can see, which usually means it has ")
-                append("marked something printed as a shot — start by looking at what to remove, ")
-                append("not at what to add.")
-            }
-            if (!opinion.usable) {
-                append(" It also says this photograph is not really good enough to score — ")
-                append("that is worth acting on before anything else.")
-            }
+            append("Claude sees ${opinion.holeCount} shots. The app has marked ${measured.size}.")
+            if (!opinion.usable) append("\n\nIt also says this photograph is not good enough to score.")
             if (!faceAgrees) {
-                append(" It reads the card as \"${opinion.faceName}\" where the app is scoring ")
-                append("against $faceName; check the face before the shots.")
+                append("\n\nIt reads the card as \"${opinion.faceName}\", not $faceName. ")
+                append("Check the face before the shots.")
             }
-            when {
-                unconfirmed.isEmpty() && unsupported.isEmpty() ->
-                    append(" The two agree on every shot.")
-                unconfirmed.isNotEmpty() ->
-                    append(" ${unconfirmed.size} place(s) it saw a hole and the app did not — " +
-                        "these are offered as suggestions to accept or reject, not scored.")
-            }
-            if (unsupported.isNotEmpty()) {
-                append(" ${unsupported.size} shot(s) the app found were not mentioned. Claude " +
-                    "missing a real shot looks exactly the same as the app inventing one, so " +
-                    "these are offered for removal rather than removed.")
-                val outside = unsupported.count { hypot(it.xMm, it.yMm) > outerRadiusMm }
-                if (outside > 0) {
-                    append(" ${outside} of them lie outside the scoring rings, where every ")
-                    append("false mark this app has ever produced has been found.")
+            if (unsupported.isEmpty() && unconfirmed.isEmpty()) {
+                append("\n\nThe two agree.")
+            } else {
+                if (unsupported.isNotEmpty()) {
+                    append("\n\n${unsupported.size} marked that Claude does not see")
+                    if (outside > 0) append(", ${outside} of them outside the scoring rings")
+                    append(".")
+                }
+                if (unconfirmed.isNotEmpty()) {
+                    append("\n${unconfirmed.size} seen that the app has not marked.")
                 }
             }
-            if (opinion.comment.isNotBlank()) append(" It notes: ${opinion.comment}")
         }
+
         return Reconciliation(measured.size, opinion.holeCount, unconfirmed, unsupported,
             faceAgrees, overDetected, summary)
     }

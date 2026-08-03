@@ -32,6 +32,40 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.37.0 — correction: removal removed ONE. Reported from real use.
+        //
+        //   Asked to delete nine marks, the app deleted one and said nothing.
+        //   [ScoringSession.reindex] renumbers every survivor by REPLACING it
+        //   with a copy carrying a new index, so the moment the first shot was
+        //   gone every other Shot the caller still held had stopped being
+        //   equal to anything in the list — and MutableList.remove is
+        //   equality-based, so each later call quietly removed nothing.
+        //
+        //   [ScoringSession.removeShots] now takes them all at once and
+        //   matches by IDENTITY, not equality: two genuinely distinct shots
+        //   can compare equal after a reindex, and the caller means these
+        //   objects and no others.
+        //
+        //   AND THE TWO COUNTS DISAGREED. The button counted the marks Claude
+        //   had not mentioned; the dialog counted those PLUS everything beyond
+        //   the rings. So it offered to review seven and then asked to remove
+        //   nine. The removable set is now decided once, in the reconciler,
+        //   and the button and the dialog both read it.
+        //
+        // 1.37.0 — correction: the second-opinion dialog said far too much.
+        //
+        //   It explained the method, the millimetre accuracy of each path and
+        //   the token count. None of that helps at the moment of deciding. It
+        //   now says what differs and what the choices are:
+        //
+        //       Claude sees 7 shots. The app has marked 14.
+        //       9 marked that Claude does not see, 9 of them outside the
+        //       scoring rings.
+        //
+        //   with the caveat kept only where it changes a decision — on the
+        //   removal confirmation, where a shot Claude missed and a shot the
+        //   app invented genuinely do look the same.
+        //
         // 1.36.0 — correction: "off" now means off. Three faults, all
         //          reported from real use on T0002.
         //
@@ -1715,8 +1749,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 54
-        versionName = "1.36.0"
+        versionCode = 55
+        versionName = "1.37.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

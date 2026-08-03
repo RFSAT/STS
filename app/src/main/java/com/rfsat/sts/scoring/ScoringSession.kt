@@ -184,6 +184,29 @@ object ScoringSession {
         persist()
     }
 
+    /**
+     * Removes several shots at once, and it must be used whenever more than
+     * one goes.
+     *
+     * REMOVING THEM ONE BY ONE DOES NOT WORK, and does not say so. [reindex]
+     * renumbers every survivor by REPLACING it with a copy carrying a new
+     * index, so the moment the first shot is gone every other Shot the caller
+     * is holding has stopped being equal to anything in the list — and
+     * MutableList.remove is equality-based, so each subsequent call quietly
+     * removes nothing. Asked to delete nine, the app deleted one and reported
+     * success.
+     *
+     * Matched by IDENTITY rather than equality for the same reason: two
+     * genuinely distinct shots could compare equal after a reindex, and the
+     * caller means these objects and no others.
+     */
+    fun removeShots(shots: List<Shot>) {
+        if (shots.isEmpty()) return
+        state.shots.removeAll { candidate -> shots.any { it === candidate } }
+        reindex()
+        persist()
+    }
+
     fun replaceShot(old: Shot, new: Shot) {
         val i = state.shots.indexOf(old)
         if (i >= 0) {
