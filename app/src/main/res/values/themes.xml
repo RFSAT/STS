@@ -223,6 +223,29 @@
         <item name="android:textColor">?android:attr/textColorPrimary</item>
     </style>
 
+    <!-- Check boxes.
+
+         Same trap as the borderless buttons above, one widget along. The
+         platform's CompoundButton takes its label colour from the PLATFORM
+         theme's text appearance, not from anything this app sets on its own
+         theme — so under the two night modes and dark the labels rendered in
+         the framework's default grey rather than the theme's text colour,
+         while every TextView beside them followed the theme correctly. It is
+         most obvious on the settings screen, where a check box label sits
+         directly above the one-line note explaining it and the two are
+         visibly different colours.
+
+         Stated on a style applied to the view, which is the one place the
+         platform cannot override. buttonTint is set for the same reason:
+         the box itself was drawn in the framework's default accent rather
+         than the theme's, which under Night Red put a blue-grey tick on a
+         monochrome red screen. -->
+    <style name="Sts.CheckBox" parent="Widget.AppCompat.CompoundButton.CheckBox">
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:buttonTint">?attr/colorAccent</item>
+    </style>
+
     <style name="Sts.Value" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

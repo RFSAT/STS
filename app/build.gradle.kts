@@ -32,6 +32,22 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.47.1 — correction: check box labels ignored the theme.
+        //
+        //   Exactly the trap the borderless buttons fell into, one widget
+        //   along: a CompoundButton takes its label colour from the PLATFORM
+        //   theme's text appearance, not from the text colours this app sets
+        //   on its own theme. So under Dark and both night modes every check
+        //   box label was drawn in the framework's default grey while the
+        //   one-line note directly beneath it followed the theme — two
+        //   colours, one paragraph.
+        //
+        //   Stated now on a style applied to the view, which is the one place
+        //   the platform cannot override, and applied to all 16 of them. The
+        //   box itself is tinted with the theme accent for the same reason:
+        //   the framework's default blue tick had no business on a
+        //   monochrome red screen.
+        //
         // 1.47.0 — feature: which AI service is used is now three separate,
         //          stated choices, and the app no longer names one it is not
         //          calling.
@@ -2078,8 +2094,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 65
-        versionName = "1.47.0"
+        versionCode = 66
+        versionName = "1.47.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

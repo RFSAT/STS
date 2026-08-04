@@ -114,7 +114,7 @@
                 android:text="The app finds the black centre and draws a square box around the scoring area. Check it, then drag the top-left or bottom-right handle to adjust, or drag the middle to move it. The dashed circle is what the box actually measures."
                 android:justificationMode="inter_word" />
 
-            <CheckBox android:id="@+id/cbCornerMode"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCornerMode"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Photo taken at an angle — register by tapping the four card corners instead" />
@@ -174,7 +174,7 @@
 
             <TextView style="@style/Sts.SectionHeading" android:text="4. Score" />
 
-            <CheckBox android:id="@+id/cbReplace"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbReplace"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:checked="true"
                 android:text="Replace the shots already in this session" />

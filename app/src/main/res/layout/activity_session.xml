@@ -115,7 +115,7 @@
                 android:text="The app finds the black centre and draws a square box around the scoring area. Drag a handle to adjust it, or the middle to move it. Registration ties image pixels to millimetres; without it nothing can be scored."
                 android:justificationMode="inter_word" />
 
-            <CheckBox android:id="@+id/cbCornerMode"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCornerMode"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Target viewed at an angle — register by tapping the four card corners instead" />
@@ -265,11 +265,11 @@
                 style="@style/Sts.ActionButton" />
             </LinearLayout>
 
-            <CheckBox android:id="@+id/cbSighter"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbSighter"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Record the next shots as sighters" />
 
-            <CheckBox android:id="@+id/cbAcoustic"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbAcoustic"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:checked="false"
                 android:text="Use the microphone to time shots (helps outdoors; turn off on a busy indoor range)" />

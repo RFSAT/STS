@@ -26,11 +26,11 @@
             <Spinner android:id="@+id/spUnits"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
 
-            <CheckBox android:id="@+id/cbShowLog"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbShowLog"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Show the diagnostic log on the Home screen" />
 
-            <CheckBox android:id="@+id/cbFullScreen"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbFullScreen"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Full screen (hide the system bars)" />
 
@@ -58,7 +58,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbWedge"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbWedge"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Measure ring spacing only along the tilt axis" />
 
@@ -75,7 +75,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbSourceDetect"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbSourceDetect"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Find shots in the photograph itself" />
 
@@ -92,7 +92,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbPuncture"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbPuncture"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Require a shot to have the profile of a puncture" />
 
@@ -109,7 +109,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbOutside"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbOutside"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Also find shots that missed the rings" />
 
@@ -126,7 +126,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbFamily"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbFamily"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Scale from circles fitted to each printed ring" />
 
@@ -181,7 +181,7 @@
                 android:textColor="?attr/colorAccent"
                 android:text="More info" />
 
-            <CheckBox android:id="@+id/cbCloud"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCloud"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Enable the second opinion button" />
 
@@ -194,7 +194,7 @@
             <Spinner android:id="@+id/spOpinion"
                 android:layout_width="match_parent" android:layout_height="wrap_content" />
 
-            <CheckBox android:id="@+id/cbCloudOverride"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCloudOverride"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Let the AI answer override the app" />
 
@@ -390,10 +390,10 @@
             <EditText android:id="@+id/etWindTravel" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:inputType="numberDecimal" android:autofillHints="" />
 
-            <CheckBox android:id="@+id/cbInvertElev"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbInvertElev"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Elevation drum is marked the opposite way round" />
-            <CheckBox android:id="@+id/cbInvertWind"
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbInvertWind"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Windage drum is marked the opposite way round" />
 
