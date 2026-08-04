@@ -37,7 +37,7 @@ object OpinionReconciler {
          *  because it is also what a false positive looks like. */
         val unsupported: List<DetectedHole>,
         val faceAgrees: Boolean,
-        /** True when the app found more than Claude did AND some of its finds
+        /** True when the app found more than the service did AND some of its finds
          *  are unsupported — the case where the useful action is removal. */
         val overDetected: Boolean,
         val summary: String
@@ -58,7 +58,11 @@ object OpinionReconciler {
         /** Outermost scoring ring, millimetres. Used only to say WHERE the
          *  disputed marks are, because that is where the false ones live. */
         outerRadiusMm: Double,
-        uMin: Double, uMax: Double, vMin: Double, vMax: Double
+        uMin: Double, uMax: Double, vMin: Double, vMax: Double,
+        /** Named in the summary so the shooter can see WHICH service
+         *  answered — the app supports more than one, and a report that says
+         *  only "the AI" is a report nobody can check. */
+        service: String = "The AI service"
     ): Reconciliation {
         val spotsMm = opinion.spots.map { s ->
             Triple(uMin + s.xFrac * (uMax - uMin), vMax - s.yFrac * (vMax - vMin), s.note)
@@ -71,7 +75,7 @@ object OpinionReconciler {
         // THE REMOVABLE SET IS DECIDED HERE, ONCE.
         //
         // It used to be computed in two places — the button counted the marks
-        // Claude had not mentioned, and the dialog then counted those PLUS
+        // the service had not mentioned, and the dialog then counted those PLUS
         // everything beyond the rings. The two numbers differed, so the button
         // offered to review seven and the dialog asked to remove nine.
         val unmentioned = measured.filter { m ->
@@ -90,7 +94,7 @@ object OpinionReconciler {
 
         // WHICH WAY THE DISAGREEMENT RUNS DECIDES WHAT TO OFFER.
         //
-        // The first version of this only ever offered to ADD what Claude saw
+        // The first version of this only ever offered to ADD what the service saw
         // and the app missed. On a card where the app had over-detected —
         // fourteen marks, several of them printing outside the scoring area,
         // against seven real shots — that made the plot worse, not better:
@@ -101,7 +105,7 @@ object OpinionReconciler {
 
         val outside = unsupported.count { hypot(it.xMm, it.yMm) > outerRadiusMm }
         val summary = buildString {
-            append("Claude sees ${opinion.holeCount} shots. The app has marked ${measured.size}.")
+            append("$service sees ${opinion.holeCount} shots. The app has marked ${measured.size}.")
             if (!opinion.usable) append("\n\nIt also says this photograph is not good enough to score.")
             if (!faceAgrees) {
                 append("\n\nIt reads the card as \"${opinion.faceName}\", not $faceName. ")
@@ -111,7 +115,7 @@ object OpinionReconciler {
                 append("\n\nThe two agree.")
             } else {
                 if (unsupported.isNotEmpty()) {
-                    append("\n\n${unsupported.size} marked that Claude does not see")
+                    append("\n\n${unsupported.size} marked that $service does not see")
                     if (outside > 0) append(", ${outside} of them outside the scoring rings")
                     append(".")
                 }

@@ -9,7 +9,8 @@ import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
 /**
- * Asks Claude what it sees on the card, and asks it NOTHING it cannot answer
+ * Asks the chosen AI service what it sees on the card, and asks it NOTHING
+ * it cannot answer
  * well.
  *
  * WHAT THIS IS NOT. It is not a scorer. A vision model estimates positions to
@@ -59,8 +60,8 @@ object SecondOpinion {
         val xFrac: Double,
         val yFrac: Double,
         val note: String,
-        /** Ring value Claude gives this shot, or -1 when it was not asked.
-         *  Only requested when Claude is scoring the card outright. */
+        /** Ring value the service gives this shot, or -1 when it was not
+         *  asked. Only requested when it is scoring the card outright. */
         val ring: Int = -1
     )
 

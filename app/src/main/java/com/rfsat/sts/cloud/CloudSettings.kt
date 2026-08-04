@@ -7,13 +7,23 @@ import androidx.security.crypto.MasterKey
 import com.rfsat.sts.log.Logger
 
 /**
- * Where the shooter's Claude API key lives, and what it is allowed to do.
+ * Where the shooter's AI service keys live, and what they are allowed to do.
  *
- * THE KEY IS NOT A LOGIN. It is issued from the Anthropic Console, bills the
- * account it belongs to, and is not the same thing as a Claude.ai password —
- * consumer credentials do not work against the API at all. That distinction
- * is stated in the UI, because getting it wrong is the first thing anyone
- * will do.
+ * A KEY IS NOT A LOGIN. It is issued from that service's developer console,
+ * bills the account it belongs to, and is not the same thing as the password
+ * used to sign in to the service's chat product — consumer credentials do not
+ * work against the API at all. That distinction is stated in the UI, because
+ * getting it wrong is the first thing anyone will do.
+ *
+ * THREE SEPARATE CHOICES OF SERVICE, because they are separate questions and
+ * one shared setting made the app appear to ignore what was picked:
+ *
+ *   [importProvider]  which service scores a card on import, when the import
+ *                     engine is not the app's own.
+ *   [opinionProvider] which service the Results screen's second opinion asks.
+ *   [setupProvider]   which service the key and model controls in Settings
+ *                     are currently editing. Nothing is sent on its account
+ *                     unless one of the other two names it.
  *
  * Stored through EncryptedSharedPreferences rather than the ordinary kind: a
  * credential that can spend the user's money should not sit in a plain XML
@@ -28,7 +38,7 @@ import com.rfsat.sts.log.Logger
  *  in the same file is a bug waiting to be written. */
 enum class ScoringSource(val label: String) {
     EMBEDDED("Embedded — the app's own algorithms"),
-    CLOUD("Cloud AI — Claude finds and scores")
+    CLOUD("AI service — it finds and scores")
 }
 
 object CloudSettings {
@@ -39,7 +49,11 @@ object CloudSettings {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_OVERRIDE = "override_app"
     private const val KEY_ENGINE = "engine"
+    /** The service the Settings key/model controls are editing. Also the
+     *  migration source for the two below, which did not exist before. */
     private const val KEY_PROVIDER = "provider"
+    private const val KEY_IMPORT_PROVIDER = "provider_import"
+    private const val KEY_OPINION_PROVIDER = "provider_opinion"
 
     /** Offered in the picker. Vision-capable models only.
      *
@@ -116,26 +130,50 @@ object CloudSettings {
 
     fun clearResetFlag() { keysWereReset = false }
 
-    fun provider(context: Context): AiProvider =
-        store(context)?.getString(KEY_PROVIDER, null)
+    private fun read(context: Context, key: String, fallback: AiProvider): AiProvider =
+        store(context)?.getString(key, null)
             ?.let { n -> AiProvider.values().firstOrNull { it.name == n } }
-            ?: AiProvider.ANTHROPIC
+            ?: fallback
 
-    fun setProvider(context: Context, value: AiProvider) {
+    /** The service being edited by the key and model controls in Settings.
+     *  A display choice only — it sends nothing on its own. */
+    fun setupProvider(context: Context): AiProvider =
+        read(context, KEY_PROVIDER, AiProvider.ANTHROPIC)
+
+    fun setSetupProvider(context: Context, value: AiProvider) {
         store(context)?.edit()?.putString(KEY_PROVIDER, value.name)?.apply()
     }
 
-    /** The key for whichever provider is chosen. Each is kept separately, so
-     *  switching back and forth does not mean pasting a key in again. */
-    fun apiKey(context: Context): String = apiKey(context, provider(context))
+    /** The service that scores a card on import when [engine] is CLOUD.
+     *
+     *  Falls back to whatever the single old setting held, so an existing
+     *  installation keeps the service it was already using. */
+    fun importProvider(context: Context): AiProvider =
+        read(context, KEY_IMPORT_PROVIDER, setupProvider(context))
+
+    fun setImportProvider(context: Context, value: AiProvider) {
+        store(context)?.edit()?.putString(KEY_IMPORT_PROVIDER, value.name)?.apply()
+    }
+
+    /** The service the second opinion button asks. Independent of
+     *  [importProvider] on purpose: comparing one service's answer against
+     *  another's is exactly what a second opinion is for. */
+    fun opinionProvider(context: Context): AiProvider =
+        read(context, KEY_OPINION_PROVIDER, setupProvider(context))
+
+    fun setOpinionProvider(context: Context, value: AiProvider) {
+        store(context)?.edit()?.putString(KEY_OPINION_PROVIDER, value.name)?.apply()
+    }
+
+    /** Each service's key is kept separately, so switching back and forth
+     *  does not mean pasting a key in again. There is deliberately no
+     *  "current key": every caller says which service it means. */
 
     fun apiKey(context: Context, p: AiProvider): String =
         sanitise(store(context)?.getString(KEY_API + "_" + p.name, "").orEmpty())
 
     /** False when the key could not be stored SAFELY, which the caller must
      *  report rather than pretend succeeded. */
-    fun setApiKey(context: Context, value: String): Boolean =
-        setApiKey(context, provider(context), value)
 
     fun setApiKey(context: Context, p: AiProvider, value: String): Boolean {
         val st = store(context) ?: return false
@@ -159,19 +197,16 @@ object CloudSettings {
      */
     private fun sanitise(v: String): String = v.filterNot { it.isWhitespace() }
 
-    fun model(context: Context): String {
-        val p = provider(context)
+    fun model(context: Context, p: AiProvider): String {
         val fallback = DEFAULT_MODEL[p].orEmpty()
         return store(context)?.getString(KEY_MODEL + "_" + p.name, fallback) ?: fallback
     }
 
-    fun setModel(context: Context, value: String) {
-        store(context)?.edit()
-            ?.putString(KEY_MODEL + "_" + provider(context).name, value)?.apply()
+    fun setModel(context: Context, p: AiProvider, value: String) {
+        store(context)?.edit()?.putString(KEY_MODEL + "_" + p.name, value)?.apply()
     }
 
-    fun models(context: Context): List<Pair<String, String>> =
-        MODELS[provider(context)].orEmpty()
+    fun models(p: AiProvider): List<Pair<String, String>> = MODELS[p].orEmpty()
 
     fun enabled(context: Context): Boolean =
         store(context)?.getBoolean(KEY_ENABLED, false) ?: false
@@ -181,7 +216,7 @@ object CloudSettings {
     }
 
     /**
-     * Let Claude's answer win outright — both WHETHER there is a shot and
+     * Let the AI answer win outright — both WHETHER there is a shot and
      * WHERE it is.
      *
      * OFF by default, and the cost is worth stating plainly rather than
@@ -214,8 +249,9 @@ object CloudSettings {
      * such as overriding an engine that was not running. There is one choice
      * now, and [overrideApp] is what it means under EMBEDDED only.
      *
-     *   EMBEDDED runs the app's own detection. Claude is available on the
-     *   Results screen as a second opinion, advisory unless [overrideApp].
+     *   EMBEDDED runs the app's own detection. The AI service chosen for the
+     *   second opinion is available on the Results screen, advisory unless
+     *   [overrideApp].
      *
      *   CLOUD does not run the app's hole finding at all. Registration is
      *   still the app's, because without knowing where the card is and how
@@ -227,21 +263,30 @@ object CloudSettings {
      * photograph and scoring nothing.
      */
     fun engine(context: Context): ScoringSource {
-        val want = store(context)?.getString(KEY_ENGINE, null)
-            ?.let { name -> ScoringSource.values().firstOrNull { it.name == name } }
-            ?: ScoringSource.EMBEDDED
-        return if (want == ScoringSource.CLOUD && apiKey(context).isBlank())
+        val want = engineChoice(context)
+        return if (want == ScoringSource.CLOUD &&
+            apiKey(context, importProvider(context)).isBlank())
             ScoringSource.EMBEDDED else want
     }
+
+    /** What the shooter actually chose, key or no key. Settings shows this,
+     *  so a picker cannot silently spring back to Embedded and leave someone
+     *  wondering whether their choice was taken. */
+    fun engineChoice(context: Context): ScoringSource =
+        store(context)?.getString(KEY_ENGINE, null)
+            ?.let { name -> ScoringSource.values().firstOrNull { it.name == name } }
+            ?: ScoringSource.EMBEDDED
 
     fun setEngine(context: Context, value: ScoringSource) {
         store(context)?.edit()?.putString(KEY_ENGINE, value.name)?.apply()
     }
 
-    fun configured(context: Context): Boolean = enabled(context) && apiKey(context).isNotBlank()
+    /** The second opinion button can run: it is switched on and the service
+     *  it would ask has a key. */
+    fun configured(context: Context): Boolean =
+        enabled(context) && apiKey(context, opinionProvider(context)).isNotBlank()
 
     /** For display. The key itself is never shown or logged. */
-    fun maskedKey(context: Context): String = maskedKey(context, provider(context))
 
     fun maskedKey(context: Context, p: AiProvider): String {
         val k = apiKey(context, p)

@@ -184,7 +184,7 @@ class ResultsActivity : BaseActivity() {
      * Takes each suggestion as a PLACE TO LOOK and measures what is actually
      * there, so a score never carries a position that came off a picture.
      *
-     * Claude places a hole to within a few per cent of the image — several
+     * A vision model places a hole to within a few per cent of the image — several
      * millimetres on a 170 mm card, up to a whole ring. The app measures a
      * hole it can see to between 0.2 and 1.7 mm. So the suggestion decides
      * WHERE TO MEASURE and the measurement decides where the shot goes.
@@ -216,7 +216,7 @@ class ResultsActivity : BaseActivity() {
             when {
                 found != null -> {
                     // ALREADY THERE? A measured position is the right thing to
-                    // compare, not the model's. Claude places a hole several
+                    // compare, not the model's. A model places a hole several
                     // millimetres out, so a suggestion for a shot the app HAD
                     // already found can miss it on raw coordinates and be
                     // added a second time — which is how a card with seven
@@ -269,9 +269,9 @@ class ResultsActivity : BaseActivity() {
 
 
     /**
-     * Offers to remove the marks Claude did not see.
+     * Offers to remove the marks the service did not see.
      *
-     * NOT automatic, and the wording says why: Claude missing a real shot and
+     * NOT automatic, and the wording says why: a service missing a real shot and
      * the app inventing one look identical from here. But over-detection is
      * this app's measured failure — printing outside the rings read as shots —
      * so refusing to offer removal at all left the second opinion able only
@@ -280,16 +280,16 @@ class ResultsActivity : BaseActivity() {
     private fun offerRemoval(unsupported: List<DetectedHole>) {
         val face = ScoringSession.face(this)
         val outer = face.outerRadiusMm
-        // EVERYTHING OUTSIDE THE RINGS IS A CANDIDATE, not only what Claude
-        // failed to mention.
+        // EVERYTHING OUTSIDE THE RINGS IS A CANDIDATE, not only what the
+        // service failed to mention.
         //
-        // The first version offered only the marks with no Claude spot within
+        // The first version offered only the marks with no reported spot within
         // twelve millimetres. On a card with fourteen marks and seven real
         // shots, a false mark that happened to sit near a real one counted as
         // "supported" and was never offered — so accepting every removal
         // still left most of them, which is what was reported. A mark beyond
         // the scoring rings cannot score whatever else is true of it, and if
-        // Claude has counted fewer shots than the app has marked, those are
+        // the service has counted fewer shots than the app has marked, those are
         // the ones to put in front of the shooter.
         // Exactly the set the reconciler decided and the button counted.
         val victims = ScoringSession.state.shots.filter { shot ->
@@ -298,9 +298,9 @@ class ResultsActivity : BaseActivity() {
         if (victims.isEmpty()) { notifyUser("Nothing left to remove."); return }
         val outside = victims.count { Math.hypot(it.xMm, it.yMm) > outer }
         val msg = buildString {
-            append("Remove ${victims.size} mark(s) Claude does not see?")
+            append("Remove ${victims.size} mark(s) the AI service does not see?")
             if (outside > 0) append("\n\n$outside lie outside the scoring rings.")
-            append("\n\nA shot Claude missed looks the same as one the app invented — check the plot first.")
+            append("\n\nA shot it missed looks the same as one the app invented — check the plot first.")
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Remove unsupported marks")
@@ -413,7 +413,8 @@ class ResultsActivity : BaseActivity() {
 
 
     /**
-     * Asks Claude what it sees, then puts that beside what was measured.
+     * Asks the chosen AI service what it sees, then puts that beside what
+     * was measured.
      *
      * NOTHING HERE CHANGES A SCORE BY ITSELF. The model's positions are used
      * only to point at somewhere the detector may have missed, and each one
@@ -423,7 +424,10 @@ class ResultsActivity : BaseActivity() {
      */
     private fun askSecondOpinion() {
         if (!CloudSettings.configured(this)) {
-            notifyUser("Set a Claude API key in Settings and switch the second opinion on.")
+            notifyUser(
+                "Set an API key for the service the second opinion asks, in Settings, and " +
+                    "switch the second opinion on."
+            )
             return
         }
         val bmp = ScoredPhoto.bitmap
@@ -435,9 +439,11 @@ class ResultsActivity : BaseActivity() {
             return
         }
         val fullDelegation = CloudSettings.engine(this) == ScoringSource.CLOUD
-        val provider = CloudSettings.provider(this)
-        val key = CloudSettings.apiKey(this)
-        val model = CloudSettings.model(this)
+        // The SECOND OPINION's service, which is a separate setting from the
+        // one that scores an import: asking the other service is the point.
+        val provider = CloudSettings.opinionProvider(this)
+        val key = CloudSettings.apiKey(this, provider)
+        val model = CloudSettings.model(this, provider)
         val measured = ScoringSession.state.shots.map {
             DetectedHole(xMm = it.xMm, yMm = it.yMm, diameterMm = 0.0, contrast = 0.0,
                 confidence = it.confidence, elongation = 1.0)
@@ -448,7 +454,7 @@ class ResultsActivity : BaseActivity() {
         val vMin = ScoredPhoto.vMinMm; val vMax = ScoredPhoto.vMaxMm
 
         binding.btnSecondOpinion.isEnabled = false
-        notifyUser("Asking Claude…")
+        notifyUser("Asking ${provider.label}…")
         Thread {
             // Re-encoded rather than sent at full size: a phone photograph can
             // run to several megabytes, the model gains nothing past a couple
@@ -463,10 +469,12 @@ class ResultsActivity : BaseActivity() {
                 when (result) {
                     is SecondOpinion.Result.Failed -> notifyUser(result.message)
                     is SecondOpinion.Result.Ok -> {
-                        if (fullDelegation) scoreFromClaude(result.opinion, uMin, uMax, vMin, vMax)
+                        if (fullDelegation)
+                            scoreFromService(result.opinion, provider.label, uMin, uMax, vMin, vMax)
                         else {
                             val rec = OpinionReconciler.reconcile(
-                                result.opinion, measured, faceName, outerMm, uMin, uMax, vMin, vMax
+                                result.opinion, measured, faceName, outerMm,
+                                uMin, uMax, vMin, vMax, provider.label
                             )
                             showOpinion(rec, result.inputTokens, result.outputTokens)
                         }
@@ -488,9 +496,9 @@ class ResultsActivity : BaseActivity() {
 
 
     /**
-     * Replaces the app's answer with Claude's, existence AND position.
+     * Replaces the app's answer with the service's, existence AND position.
      *
-     * The position is taken as Claude gives it, which is what the setting
+     * The position is taken as the service gives it, which is what the setting
      * asks for and which costs accuracy: several millimetres against the
      * 0.2 to 1.7 mm the app measures for a hole it can see. Every shot placed
      * here is therefore marked hand-placed, so the Results list and any
@@ -498,7 +506,7 @@ class ResultsActivity : BaseActivity() {
      */
 
     /**
-     * Throws away the app's shots and takes Claude's, positions and all.
+     * Throws away the app's shots and takes the service's, positions and all.
      *
      * The picture sent is the RECTIFIED card, which is already on the
      * millimetre grid the plot draws in — so a fraction of that image maps
@@ -507,12 +515,13 @@ class ResultsActivity : BaseActivity() {
      * rectified copy rather than the original.
      *
      * The app still scores each position from the ring geometry, and reports
-     * where that disagrees with the ring Claude gave. It does not silently
+     * where that disagrees with the ring the service gave. It does not silently
      * pick a winner: a disagreement means the position or the ring is wrong,
      * and which shots those are is the useful thing to know.
      */
-    private fun scoreFromClaude(
+    private fun scoreFromService(
         opinion: SecondOpinion.Opinion,
+        service: String,
         uMin: Double, uMax: Double, vMin: Double, vMax: Double
     ) {
         val face = ScoringSession.face(this)
@@ -530,7 +539,7 @@ class ResultsActivity : BaseActivity() {
         }
         refresh()
         notifyUser(buildString {
-            append("Scored by Claude: ${opinion.spots.size} shots. ")
+            append("Scored by $service: ${opinion.spots.size} shots. ")
             if (disagreed > 0) {
                 append("$disagreed disagree with the ring the geometry gives at that position — ")
                 append("check those on the plot. ")
@@ -555,8 +564,8 @@ class ResultsActivity : BaseActivity() {
         }
         refresh()
         notifyUser(buildString {
-            append("Claude's answer applied: ${victims.size} removed, $added added. ")
-            append("Added shots use Claude's positions, which carry several millimetres — ")
+            append("The AI answer applied: ${victims.size} removed, $added added. ")
+            append("Added shots use its positions, which carry several millimetres — ")
             append("they are marked hand-placed and are worth checking on the plot.")
         })
     }
@@ -567,7 +576,7 @@ class ResultsActivity : BaseActivity() {
             append("\n\n")
             append("Nothing here has changed your score yet.")
         }
-        // ---- Claude wins, if that is what the shooter asked for ----
+        // ---- the service wins, if that is what the shooter asked for ----
         //
         // Applied without a prompt, because a setting that then asks every
         // time is not a setting. What it is NOT allowed to do is pretend the

@@ -76,7 +76,14 @@ class ProfileActivity : BaseActivity() {
             UnitsManager.setSystem(this, UnitSystem.values()[i])
         }
 
-        // ---- second opinion ----
+        // ---- AI assistance: THREE separate choices of service ----
+        //
+        // There used to be one. It was labelled "AI service" and it decided
+        // both what scored an import and what the second opinion asked, while
+        // every message in the app said "Claude" whichever was picked — so
+        // choosing OpenAI looked as though it had been ignored. Each question
+        // now has its own picker, each picker says what it governs, and no
+        // message names a service the app is not about to call.
         fun refreshCloud() {
             binding.cbCloud.isChecked = CloudSettings.enabled(this)
             // EVERY service's key, not just the selected one. Each is stored
@@ -86,70 +93,44 @@ class ProfileActivity : BaseActivity() {
                 "${p.label}: ${CloudSettings.maskedKey(this, p)}"
             }
             binding.tvCloudKey.text =
-                "Set key applies to: ${CloudSettings.provider(this).label}"
-        }
-        refreshCloud()
-        // ---- provider, then the models that provider offers ----
-        //
-        // The model list is rebuilt when the provider changes, because a
-        // Claude model identifier means nothing to OpenAI and the other way
-        // round. Keys and model choices are remembered per provider, so
-        // switching to compare the two and back does not mean pasting a key
-        // in again.
-        fun refreshModels() {
-            val opts = CloudSettings.models(this).map { it.second } + OTHER_MODEL
-            binding.spCloudModel.adapter = android.widget.ArrayAdapter(
-                this, R.layout.spinner_item, opts
-            ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
-            val current = CloudSettings.model(this)
-            val idx = CloudSettings.models(this).indexOfFirst { it.first == current }
-            binding.spCloudModel.setSelection(if (idx >= 0) idx else opts.size - 1)
+                "Set key applies to: ${CloudSettings.setupProvider(this).label}"
+            binding.tvModelLabel.text =
+                "Model for ${CloudSettings.setupProvider(this).label}:"
         }
 
-        binding.spProvider.adapter = android.widget.ArrayAdapter(
-            this, R.layout.spinner_item, AiProvider.values().map { it.label }
+        // ---- what scores a card on import: the app, or a named service ----
+        val engineOptions = listOf(ScoringSource.EMBEDDED.label) +
+            AiProvider.values().map { it.label }
+        binding.spEngine.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, engineOptions
         ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
-        binding.spProvider.setSelection(AiProvider.values().indexOf(CloudSettings.provider(this)))
-        binding.spProvider.onItemSelectedListener = onSelectedIndex { i ->
-            val chosen = AiProvider.values().getOrNull(i) ?: return@onSelectedIndex
-            CloudSettings.setProvider(this, chosen)
-            refreshModels()
-            refreshCloud()
+        binding.spEngine.setSelection(
+            if (CloudSettings.engineChoice(this) == ScoringSource.EMBEDDED) 0
+            else 1 + AiProvider.values().indexOf(CloudSettings.importProvider(this))
+        )
+        binding.spEngine.onItemSelectedListener = onSelectedIndex { i ->
+            if (i == 0) {
+                CloudSettings.setEngine(this, ScoringSource.EMBEDDED)
+                notifyUser("Imports will be scored by the app's own algorithms.")
+                return@onSelectedIndex
+            }
+            val p = AiProvider.values().getOrNull(i - 1) ?: return@onSelectedIndex
+            CloudSettings.setImportProvider(this, p)
+            CloudSettings.setEngine(this, ScoringSource.CLOUD)
             notifyUser(
-                if (CloudSettings.apiKey(this).isBlank())
-                    "${chosen.label} selected. It needs its own key, from ${chosen.console}."
-                else "${chosen.label} selected."
+                if (CloudSettings.apiKey(this, p).isBlank())
+                    "${p.label} needs its own key, from ${p.console}. Until one is set, " +
+                        "imports use the embedded algorithms."
+                else "Imports will be scored by ${p.label}."
             )
         }
-        refreshModels()
-        binding.spCloudModel.onItemSelectedListener = onSelectedIndex { i ->
-            val list = CloudSettings.models(this)
-            val picked = list.getOrNull(i)
-            if (picked != null) { CloudSettings.setModel(this, picked.first); return@onSelectedIndex }
-            // "Other": a list of model names goes stale the week it is
-            // written, and being unable to type a newer one would strand
-            // anyone whose account has moved on.
-            val input = EditText(this).apply { hint = "model identifier" }
-            AlertDialog.Builder(this)
-                .setTitle("Other model")
-                .setMessage("Type the model identifier exactly as the service publishes it. " +
-                    "It must be able to read images and to answer against a schema.")
-                .setView(input)
-                .setPositiveButton("Use") { _, _ ->
-                    val v = input.text.toString().trim()
-                    if (v.isNotBlank()) {
-                        CloudSettings.setModel(this, v)
-                        notifyUser("Using $v.")
-                    } else refreshModels()
-                }
-                .setNegativeButton("Cancel") { _, _ -> refreshModels() }
-                .show()
-        }
+
         binding.cbCloud.setOnClickListener {
             val want = binding.cbCloud.isChecked
-            if (want && CloudSettings.apiKey(this).isBlank()) {
+            val p = CloudSettings.opinionProvider(this)
+            if (want && CloudSettings.apiKey(this, p).isBlank()) {
                 binding.cbCloud.isChecked = false
-                notifyUser("Set an API key first — the button has nothing to call without one.")
+                notifyUser("${p.label} has no key — the button would have nothing to call.")
             } else {
                 CloudSettings.setEnabled(this, want)
                 notifyUser(
@@ -158,6 +139,28 @@ class ProfileActivity : BaseActivity() {
                 )
             }
         }
+
+        // ---- which service the second opinion asks ----
+        //
+        // Independent of the import choice on purpose: asking the other
+        // service is exactly what makes a second opinion worth having.
+        binding.spOpinion.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, AiProvider.values().map { it.label }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+        binding.spOpinion.setSelection(
+            AiProvider.values().indexOf(CloudSettings.opinionProvider(this)))
+        binding.spOpinion.onItemSelectedListener = onSelectedIndex { i ->
+            val p = AiProvider.values().getOrNull(i) ?: return@onSelectedIndex
+            CloudSettings.setOpinionProvider(this, p)
+            refreshCloud()
+            notifyUser(
+                if (CloudSettings.apiKey(this, p).isBlank())
+                    "The second opinion will ask ${p.label}, which needs its own key from " +
+                        "${p.console}."
+                else "The second opinion will ask ${p.label}."
+            )
+        }
+
         binding.cbCloudOverride.isChecked = CloudSettings.overrideApp(this)
         binding.cbCloudOverride.setOnClickListener {
             val on = binding.cbCloudOverride.isChecked
@@ -169,28 +172,73 @@ class ProfileActivity : BaseActivity() {
             )
         }
         wireMoreInfo()
-        binding.spEngine.adapter = android.widget.ArrayAdapter(
-            this, R.layout.spinner_item, ScoringSource.values().map { it.label }
+
+        // ---- keys and models, one service at a time ----
+        //
+        // The model list is rebuilt when the service changes, because an
+        // identifier from one means nothing to the other. Keys and model
+        // choices are kept per service, so switching to compare the two and
+        // back does not mean pasting a key in again.
+        fun refreshModels() {
+            val p = CloudSettings.setupProvider(this)
+            val opts = CloudSettings.models(p).map { it.second } + OTHER_MODEL
+            binding.spCloudModel.adapter = android.widget.ArrayAdapter(
+                this, R.layout.spinner_item, opts
+            ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+            val current = CloudSettings.model(this, p)
+            val idx = CloudSettings.models(p).indexOfFirst { it.first == current }
+            binding.spCloudModel.setSelection(if (idx >= 0) idx else opts.size - 1)
+        }
+
+        binding.spProvider.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, AiProvider.values().map { it.label }
         ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
-        binding.spEngine.setSelection(ScoringSource.values().indexOf(CloudSettings.engine(this)))
-        binding.spEngine.onItemSelectedListener = onSelectedIndex { i ->
-            val chosen = ScoringSource.values().getOrNull(i) ?: return@onSelectedIndex
-            CloudSettings.setEngine(this, chosen)
-            if (chosen == ScoringSource.CLOUD && CloudSettings.apiKey(this).isBlank()) {
-                notifyUser("Cloud AI needs an API key. Until one is set, imports use the embedded algorithms.")
-            } else notifyUser("Imports will be scored by: ${chosen.label}")
+        binding.spProvider.setSelection(
+            AiProvider.values().indexOf(CloudSettings.setupProvider(this)))
+        binding.spProvider.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = AiProvider.values().getOrNull(i) ?: return@onSelectedIndex
+            CloudSettings.setSetupProvider(this, chosen)
+            refreshModels()
+            refreshCloud()
+        }
+        refreshModels()
+        refreshCloud()
+        binding.spCloudModel.onItemSelectedListener = onSelectedIndex { i ->
+            val p = CloudSettings.setupProvider(this)
+            val list = CloudSettings.models(p)
+            val picked = list.getOrNull(i)
+            if (picked != null) { CloudSettings.setModel(this, p, picked.first); return@onSelectedIndex }
+            // "Other": a list of model names goes stale the week it is
+            // written, and being unable to type a newer one would strand
+            // anyone whose account has moved on.
+            val input = EditText(this).apply { hint = "model identifier" }
+            AlertDialog.Builder(this)
+                .setTitle("Other ${p.label} model")
+                .setMessage("Type the model identifier exactly as the service publishes it. " +
+                    "It must be able to read images and to answer against a schema.")
+                .setView(input)
+                .setPositiveButton("Use") { _, _ ->
+                    val v = input.text.toString().trim()
+                    if (v.isNotBlank()) {
+                        CloudSettings.setModel(this, p, v)
+                        notifyUser("${p.label} will use $v.")
+                    } else refreshModels()
+                }
+                .setNegativeButton("Cancel") { _, _ -> refreshModels() }
+                .show()
         }
         binding.btnCloudKey.setOnClickListener {
+            val target = CloudSettings.setupProvider(this)
             val input = android.widget.EditText(this).apply {
-                hint = CloudSettings.provider(this@ProfileActivity).keyHint
+                hint = target.keyHint
                 // Visible, not masked: a key pasted blind is a key typed
                 // wrong, and the dialog is dismissed the moment it is saved.
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
             }
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("${CloudSettings.provider(this).label} API key")
+                .setTitle("${target.label} API key")
                 .setMessage(
-                    "From ${CloudSettings.provider(this).console}, not the password you sign in " +
+                    "From ${target.console}, not the password you sign in " +
                         "to the chat service with \u2014 they are different and the password will " +
                         "not work. It is stored encrypted on this device and never written to " +
                         "the log."
@@ -201,10 +249,10 @@ class ProfileActivity : BaseActivity() {
                     val v = raw.filterNot { it.isWhitespace() }
                     if (v.isBlank()) { notifyUser("Nothing entered."); return@setPositiveButton }
                     val stripped = raw.length - v.length
-                    if (CloudSettings.setApiKey(this, v)) {
+                    if (CloudSettings.setApiKey(this, target, v)) {
                         refreshCloud()
                         notifyUser(buildString {
-                            append("${CloudSettings.provider(this@ProfileActivity).label} key stored")
+                            append("${target.label} key stored")
                             if (stripped > 0) {
                                 // A key pasted from a wrapped display carries
                                 // a line break, which cannot go in an HTTP
@@ -229,8 +277,8 @@ class ProfileActivity : BaseActivity() {
         binding.btnCloudClear.setOnClickListener {
             // Only the selected service's key. Forgetting one should not
             // silently lose the other.
-            val p = CloudSettings.provider(this)
-            CloudSettings.setApiKey(this, "")
+            val p = CloudSettings.setupProvider(this)
+            CloudSettings.setApiKey(this, p, "")
             if (AiProvider.values().none { CloudSettings.apiKey(this, it).isNotBlank() }) {
                 CloudSettings.setEnabled(this, false)
             }
@@ -803,15 +851,17 @@ class ProfileActivity : BaseActivity() {
             "the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots " +
             "are marked hand-placed for that reason.")
         moreInfo(binding.infoEngine, "What scores a card",
-            "Embedded runs the app's own detection, with the AI service available afterwards " +
-            "as a second opinion. Cloud AI does not run it at all — the service finds and " +
-            "scores the " +
-            "shots, and the app only works out where the card is, because without that nothing " +
-            "can be drawn in the right place. The picture sent is the flattened card, so the " +
-            "marks land exactly where you see them. Falls back to Embedded if no key is set.")
+            "Embedded runs the app's own detection, with a service available afterwards as a " +
+            "second opinion. Naming a service instead skips the app's detection entirely — that " +
+            "service finds and scores the shots, and the app only works out where the card is, " +
+            "because without that nothing can be drawn in the right place. The picture sent is " +
+            "the flattened card, so the marks land exactly where you see them. This choice and " +
+            "the second opinion's are separate: they can name different services, and asking " +
+            "the other one is what makes a second opinion worth having. Falls back to Embedded " +
+            "if the named service has no key.")
         moreInfo(binding.infoKey, "API key",
-            "The key comes from the chosen service's own console — console.anthropic.com for " +
-            "Claude, platform.openai.com for OpenAI — and bills that account. It is not the " +
+            "The key comes from that service's own console — console.anthropic.com for Claude, " +
+            "platform.openai.com for OpenAI — and bills that account. It is not the " +
             "password you sign in to the chat service with; those will not work here. A key is " +
             "kept for each service separately and encrypted on this device, and is never " +
             "written to the log. A card costs a fraction of a penny to check, and needs a " +

@@ -32,6 +32,42 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.47.0 — feature: which AI service is used is now three separate,
+        //          stated choices, and the app no longer names one it is not
+        //          calling.
+        //
+        //   There was ONE service setting. It decided both what scored a card
+        //   on import and what the second opinion asked — and every message
+        //   in the app was written when there was only Claude, so picking
+        //   OpenAI changed the request but not a word on screen: "Asking
+        //   Claude…", "Scored by Claude", "Claude sees 7 shots". The app was
+        //   in fact calling the service that was picked. It just said the
+        //   other one's name throughout, which is indistinguishable from
+        //   ignoring the setting and was reported as exactly that.
+        //
+        //   Wording that names a component it is not using is not cosmetic.
+        //   It is the app lying about what it did, and the shooter has no way
+        //   to tell the lie from the bug.
+        //
+        //   Settings now asks three questions, each saying what it governs:
+        //
+        //     On import, score with:  Embedded / Claude / OpenAI
+        //     Second opinion asks:    Claude / OpenAI
+        //     Service to set up:      Claude / OpenAI  (key and model only)
+        //
+        //   The first two are INDEPENDENT on purpose: asking the other
+        //   service is what makes a second opinion worth having, and one
+        //   shared setting made that impossible to express.
+        //
+        //   Every message now carries the label of the service about to be
+        //   called, or none at all. An existing installation keeps the
+        //   service it was already using for both.
+        //
+        //   The import picker also shows what was CHOSEN rather than what
+        //   will run: naming a service with no key still falls back to the
+        //   embedded algorithms, but silently springing the picker back to
+        //   Embedded looked like the choice had been thrown away.
+        //
         // 1.46.0 — feature: API keys survive an upgrade, and cannot be
         //          silently lost for ever.
         //
@@ -2042,8 +2078,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 64
-        versionName = "1.46.0"
+        versionCode = 65
+        versionName = "1.47.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

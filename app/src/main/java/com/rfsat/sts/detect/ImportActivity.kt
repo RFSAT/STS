@@ -510,7 +510,8 @@ class ImportActivity : BaseActivity() {
 
 
     /**
-     * Sends the rectified card to Claude and takes its answer whole.
+     * Sends the rectified card to the chosen AI service and takes its answer
+     * whole. WHICH service is the import setting's, not the second opinion's.
      *
      * The RECTIFIED copy, not the original, and that is what makes the marks
      * land where the shooter sees them: it is already on the millimetre grid
@@ -526,13 +527,13 @@ class ImportActivity : BaseActivity() {
         ScoredPhoto.set(rect, reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm)
         val face = currentFace()
         val rules = currentRules()
-        val provider = CloudSettings.provider(this)
-        val key = CloudSettings.apiKey(this)
-        val model = CloudSettings.model(this)
+        val provider = CloudSettings.importProvider(this)
+        val key = CloudSettings.apiKey(this, provider)
+        val model = CloudSettings.model(this, provider)
         val gauge = rules.gaugeDiameterMm
         val uMin = reg.uMinMm; val uMax = reg.uMaxMm
         val vMin = reg.vMinMm; val vMax = reg.vMaxMm
-        notifyUser("Scoring with Claude…")
+        notifyUser("Scoring with ${provider.label}…")
         Thread {
             val out = java.io.ByteArrayOutputStream()
             val longest = maxOf(rect.width, rect.height)
@@ -571,7 +572,7 @@ class ImportActivity : BaseActivity() {
                         }
                         refreshStatus()
                         notifyUser(buildString {
-                            append("Claude scored ${result.opinion.spots.size} shots. ")
+                            append("${provider.label} scored ${result.opinion.spots.size} shots. ")
                             if (disagreed > 0) {
                                 append("$disagreed disagree with the ring the geometry gives at ")
                                 append("that position — check those on the plot. ")

@@ -8,7 +8,7 @@ import kotlin.math.roundToInt
  * Measures a hole where something else says one is, rather than searching for
  * it.
  *
- * WHAT THIS IS FOR. Claude's second opinion is good at COUNTING holes and bad
+ * WHAT THIS IS FOR. An AI second opinion is good at COUNTING holes and bad
  * at placing them: a vision model's positions carry a few per cent of the
  * image, several millimetres on a 170 mm card, where the app's own detector
  * places a hole it has found to between 0.2 and 1.7 mm. Accepting a suggested
