@@ -32,6 +32,44 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.45.0 — correction: OpenAI would not connect at all. Reported
+        //          with the exact error, which named the fault precisely:
+        //          "unexpected char 0x0a at 83 in header value".
+        //
+        //   0x0a is a newline, and index 83 of "Bearer sk-proj-..." is 76
+        //   characters into the key. A key pasted from a wrapped display
+        //   carries a line break in the MIDDLE of it, and trim() — which is
+        //   what the store used — only takes them off the ends. An HTTP
+        //   header may not contain a newline, so the request failed before
+        //   anything was sent, with an IllegalArgumentException that reached
+        //   the user as though the service had refused.
+        //
+        //   Keys now have ALL whitespace removed, not just the ends, on the
+        //   way in and on the way OUT — so a key stored by 1.44.0 is repaired
+        //   rather than failing for ever. The dialog says how many characters
+        //   it stripped, and a request is refused outright if a key somehow
+        //   still carries any, with a message saying to paste it as one line.
+        //
+        //   Anthropic had the same hazard and had simply not been given a
+        //   wrapped key yet.
+        //
+        // 1.45.0 — feature: a key for EACH service, visible at once.
+        //
+        //   They were already stored separately in 1.44.0, but the screen
+        //   showed only the selected one, so setting a second key looked as
+        //   though it had replaced the first. Both are now listed, the button
+        //   says which service it will act on, and forgetting one leaves the
+        //   other alone.
+        //
+        // 1.45.0 — correction: the settings screen named Claude throughout.
+        //
+        //   Reasonable when there was one service and wrong the moment there
+        //   were two: a heading reading "Second opinion (Claude)" above a
+        //   picker set to OpenAI is a contradiction on its face. The section
+        //   is "AI assistance" and every option describes the service in
+        //   general. Where a specific console has to be named — where the key
+        //   comes from — it is named from the selection, not hard-coded.
+        //
         // 1.44.0 — feature: OpenAI alongside Claude. Settings -> AI service.
         //
         //   Both are sent the SAME rectified picture, the same question and
@@ -1974,8 +2012,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 62
-        versionName = "1.44.0"
+        versionCode = 63
+        versionName = "1.45.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

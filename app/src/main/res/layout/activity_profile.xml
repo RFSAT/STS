@@ -144,14 +144,14 @@
                 android:text="More info" />
 
             <!-- ===== Second opinion ===== -->
-            <TextView style="@style/Sts.SectionHeading" android:text="Second opinion (Claude)" />
+            <TextView style="@style/Sts.SectionHeading" android:text="AI assistance" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Ask Claude to check a card. Needs a connection and costs a fraction of a penny each time." />
+                android:text="Ask an AI service to check a card. Needs a connection and costs a fraction of a penny each time." />
 
             <TextView android:id="@+id/infoCloud"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -172,6 +172,9 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="Enable the second opinion button" />
 
+            <TextView android:id="@+id/tvCloudKeys"
+                style="@style/Sts.Value" android:layout_marginTop="2dp" android:textSize="12sp" />
+
             <TextView android:id="@+id/tvCloudKey"
                 style="@style/Sts.Value" android:layout_marginTop="2dp" android:textSize="12sp" />
 
@@ -190,14 +193,14 @@
 
             <CheckBox android:id="@+id/cbCloudOverride"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Let Claude&apos;s answer override the app" />
+                android:text="Let the AI answer override the app" />
 
             <TextView
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Applies Claude's answer without asking. Useful when the app marks things that are not shots; positions are less precise than the app's." />
+                android:text="Applies the AI answer without asking. Useful when the app marks things that are not shots; positions are less precise than the app's." />
 
             <TextView android:id="@+id/infoOverride"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -219,7 +222,7 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="Embedded uses the app's own detection. Cloud AI hands the whole job to Claude — needs a connection, and positions are less precise." />
+                android:text="Embedded uses the app's own detection. Cloud AI hands the whole job to the AI service — needs a connection, and positions are less precise." />
 
             <TextView android:id="@+id/infoEngine"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -236,7 +239,7 @@
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:justificationMode="inter_word"
-                android:text="From console.anthropic.com — not your Claude.ai password. Kept encrypted on this device." />
+                android:text="Each service needs its own key, from its own console. Not the password you sign in to the chat service with. Kept encrypted on this device." />
 
             <TextView android:id="@+id/infoKey"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"

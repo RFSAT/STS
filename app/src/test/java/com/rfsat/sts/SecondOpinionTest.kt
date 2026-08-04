@@ -47,6 +47,23 @@ class SecondOpinionTest {
     }
 
     @Test
+    fun `a key carrying a line break is refused before a request is built`() {
+        // A key pasted from a wrapped display has a newline in the MIDDLE of
+        // it, which trim() leaves alone. It then goes into an HTTP header,
+        // where a newline is illegal, and the request dies before it is sent
+        // — reported as "unexpected char 0x0a at 83 in header value", which
+        // reads to the user as though the service refused.
+        val wrapped = "sk-proj-" + "A".repeat(68) + "\n" + "B".repeat(20)
+        assertEquals(83, "Bearer ".length + wrapped.indexOf('\n'))
+        for (p in AiProvider.values()) {
+            val r = SecondOpinion.ask(p, wrapped, "any-model", "", scoreToo = false)
+            assertTrue(r is SecondOpinion.Result.Failed)
+            assertTrue("said: ${(r as SecondOpinion.Result.Failed).message}",
+                r.message.contains("line break"))
+        }
+    }
+
+    @Test
     fun `each provider names its own console, so a key is looked for in the right place`() {
         assertTrue(AiProvider.ANTHROPIC.console.contains("anthropic"))
         assertTrue(AiProvider.OPENAI.console.contains("openai"))

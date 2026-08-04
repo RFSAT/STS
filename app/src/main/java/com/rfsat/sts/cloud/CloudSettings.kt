@@ -96,15 +96,34 @@ object CloudSettings {
     fun apiKey(context: Context): String = apiKey(context, provider(context))
 
     fun apiKey(context: Context, p: AiProvider): String =
-        store(context)?.getString(KEY_API + "_" + p.name, "").orEmpty()
+        sanitise(store(context)?.getString(KEY_API + "_" + p.name, "").orEmpty())
 
     /** False when the key could not be stored SAFELY, which the caller must
      *  report rather than pretend succeeded. */
-    fun setApiKey(context: Context, value: String): Boolean {
+    fun setApiKey(context: Context, value: String): Boolean =
+        setApiKey(context, provider(context), value)
+
+    fun setApiKey(context: Context, p: AiProvider, value: String): Boolean {
         val st = store(context) ?: return false
-        st.edit().putString(KEY_API + "_" + provider(context).name, value.trim()).apply()
+        st.edit().putString(KEY_API + "_" + p.name, sanitise(value)).apply()
         return true
     }
+
+    /**
+     * Strips EVERY whitespace character, not just the ends.
+     *
+     * A key pasted from a wrapped display carries a line break in the MIDDLE
+     * of it, and trim() leaves that where it is. It then goes into an HTTP
+     * header, where a newline is illegal, and the request dies before it is
+     * sent — "unexpected char 0x0a at 83 in header value", the 83rd character
+     * of "Bearer sk-proj-...", which is a newline 76 characters into the key.
+     * No API key of either service contains whitespace, so removing all of it
+     * can only help.
+     *
+     * Applied on the way OUT as well as in, so a key stored by an earlier
+     * version is repaired rather than failing for ever.
+     */
+    private fun sanitise(v: String): String = v.filterNot { it.isWhitespace() }
 
     fun model(context: Context): String {
         val p = provider(context)
@@ -188,8 +207,10 @@ object CloudSettings {
     fun configured(context: Context): Boolean = enabled(context) && apiKey(context).isNotBlank()
 
     /** For display. The key itself is never shown or logged. */
-    fun maskedKey(context: Context): String {
-        val k = apiKey(context)
+    fun maskedKey(context: Context): String = maskedKey(context, provider(context))
+
+    fun maskedKey(context: Context, p: AiProvider): String {
+        val k = apiKey(context, p)
         return when {
             k.isBlank() -> "not set"
             k.length < 12 -> "set"

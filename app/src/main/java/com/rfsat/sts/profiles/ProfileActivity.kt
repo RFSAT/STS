@@ -79,7 +79,14 @@ class ProfileActivity : BaseActivity() {
         // ---- second opinion ----
         fun refreshCloud() {
             binding.cbCloud.isChecked = CloudSettings.enabled(this)
-            binding.tvCloudKey.text = "API key: ${CloudSettings.maskedKey(this)}"
+            // EVERY service's key, not just the selected one. Each is stored
+            // separately, and seeing only the current one made it look as
+            // though setting a second key had replaced the first.
+            binding.tvCloudKeys.text = AiProvider.values().joinToString("\n") { p ->
+                "${p.label}: ${CloudSettings.maskedKey(this, p)}"
+            }
+            binding.tvCloudKey.text =
+                "Set key applies to: ${CloudSettings.provider(this).label}"
         }
         refreshCloud()
         // ---- provider, then the models that provider offers ----
@@ -156,7 +163,7 @@ class ProfileActivity : BaseActivity() {
             val on = binding.cbCloudOverride.isChecked
             CloudSettings.setOverrideApp(this, on)
             notifyUser(
-                if (on) "Claude's answer will be applied without asking. Its positions carry " +
+                if (on) "The AI answer will be applied without asking. Its positions carry " +
                     "several millimetres, so added shots are marked hand-placed \u2014 check them."
                 else "The second opinion will offer changes rather than make them."
             )
@@ -190,11 +197,23 @@ class ProfileActivity : BaseActivity() {
                 )
                 .setView(input)
                 .setPositiveButton("Save") { _, _ ->
-                    val v = input.text.toString().trim()
+                    val raw = input.text.toString()
+                    val v = raw.filterNot { it.isWhitespace() }
                     if (v.isBlank()) { notifyUser("Nothing entered."); return@setPositiveButton }
+                    val stripped = raw.length - v.length
                     if (CloudSettings.setApiKey(this, v)) {
                         refreshCloud()
-                        notifyUser("Key stored. Tick the box above to switch the feature on.")
+                        notifyUser(buildString {
+                            append("${CloudSettings.provider(this@ProfileActivity).label} key stored")
+                            if (stripped > 0) {
+                                // A key pasted from a wrapped display carries
+                                // a line break, which cannot go in an HTTP
+                                // header and used to fail the request before
+                                // it was sent.
+                                append(" ($stripped space or line break removed)")
+                            }
+                            append(". Tick the box above to switch the feature on.")
+                        })
                     } else {
                         // Not stored anywhere else: a credential that can spend
                         // money does not go into a plain file as a fallback.
@@ -208,10 +227,15 @@ class ProfileActivity : BaseActivity() {
                 .show()
         }
         binding.btnCloudClear.setOnClickListener {
+            // Only the selected service's key. Forgetting one should not
+            // silently lose the other.
+            val p = CloudSettings.provider(this)
             CloudSettings.setApiKey(this, "")
-            CloudSettings.setEnabled(this, false)
+            if (AiProvider.values().none { CloudSettings.apiKey(this, it).isNotBlank() }) {
+                CloudSettings.setEnabled(this, false)
+            }
             refreshCloud()
-            notifyUser("Key forgotten and the feature switched off.")
+            notifyUser("${p.label} key forgotten.")
         }
 
         binding.cbSourceDetect.isChecked = ScaleSettings.sourceDetector()
@@ -772,15 +796,16 @@ class ProfileActivity : BaseActivity() {
             "millimetres, while the app measures a hole it has found to under two. Anything it " +
             "sees that the app did not is offered as a suggestion, and the app measures the " +
             "position before any shot is placed.")
-        moreInfo(binding.infoOverride, "Claude overrides the app",
-            "Marks Claude does not see are removed and shots it sees that the app missed are " +
-            "added, without asking. It uses Claude's positions, which carry several millimetres " +
+        moreInfo(binding.infoOverride, "The AI answer overrides the app",
+            "Marks the service does not see are removed and shots it sees that the app missed " +
+            "are added, without asking. It uses the AI positions, which carry several millimetres " +
             "against the 0.2 to 1.7 mm the app measures for a hole it can see — on a 10 m face " +
             "the rings are 8 mm apart, so a shot placed this way can be a ring out. Added shots " +
             "are marked hand-placed for that reason.")
         moreInfo(binding.infoEngine, "What scores a card",
-            "Embedded runs the app's own detection, with Claude available afterwards as a " +
-            "second opinion. Cloud AI does not run it at all — Claude finds and scores the " +
+            "Embedded runs the app's own detection, with the AI service available afterwards " +
+            "as a second opinion. Cloud AI does not run it at all — the service finds and " +
+            "scores the " +
             "shots, and the app only works out where the card is, because without that nothing " +
             "can be drawn in the right place. The picture sent is the flattened card, so the " +
             "marks land exactly where you see them. Falls back to Embedded if no key is set.")

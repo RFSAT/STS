@@ -127,6 +127,17 @@ object SecondOpinion {
         scoreToo: Boolean = false
     ): Result {
         if (apiKey.isBlank()) return Result.Failed("No API key is set for ${provider.label}.")
+        // An HTTP header may not contain a newline, and a key pasted from a
+        // wrapped display does. The store strips whitespace now, but a
+        // request must not be attempted on a key that somehow still has any:
+        // the failure is an IllegalArgumentException raised before anything
+        // is sent, which reads to the user as though the service refused.
+        if (apiKey.any { it.isWhitespace() }) {
+            return Result.Failed(
+                "The stored ${provider.label} key contains a space or a line break, which cannot " +
+                    "go in a request header. Set the key again, pasting it as a single line."
+            )
+        }
         return when (provider) {
             AiProvider.ANTHROPIC -> askAnthropic(apiKey, model, jpegBase64, scoreToo)
             AiProvider.OPENAI -> askOpenAi(apiKey, model, jpegBase64, scoreToo)
