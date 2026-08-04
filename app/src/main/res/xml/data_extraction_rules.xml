@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and later. Same reasoning as backup_rules.xml: the encrypted
+     API-key file cannot outlive the Keystore entry that unlocks it, so it is
+     excluded from both cloud backup and device-to-device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="sts_cloud.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="sts_cloud.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Everything is backed up EXCEPT the encrypted API-key file.
+
+  Not an oversight — the opposite. The keys are encrypted with a master key
+  that lives in the Android Keystore, and the Keystore does NOT travel with a
+  backup. Restore sts_cloud.xml onto a new phone and it is a file nobody can
+  ever decrypt: EncryptedSharedPreferences refuses to open it, and the app is
+  left with no AI features and no way to explain why.
+
+  Leaving it out means a restored phone simply has no key yet and asks for
+  one, which takes ten seconds and always works. An ordinary in-place upgrade
+  does not involve backup at all, so keys survive that untouched.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="sts_cloud.xml" />
+</full-backup-content>

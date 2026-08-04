@@ -66,21 +66,55 @@ object CloudSettings {
 
     private var prefs: SharedPreferences? = null
 
+    /**
+     * True when the stored keys were found unreadable and thrown away. The
+     * caller shows this once so the shooter knows to enter a key again rather
+     * than assuming the feature is broken.
+     */
+    var keysWereReset: Boolean = false
+        private set
+
     private fun store(context: Context): SharedPreferences? {
         prefs?.let { return it }
-        return runCatching {
-            val master = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
-            EncryptedSharedPreferences.create(
-                context, FILE, master,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            ).also { prefs = it }
-        }.onFailure {
-            Logger.e("CloudSettings", "encrypted storage unavailable, so no key will be kept: ${it.message}")
-        }.getOrNull()
+        open(context)?.let { prefs = it; return it }
+
+        // ---- IT COULD NOT BE OPENED, so it is thrown away and remade ----
+        //
+        // The file is encrypted with a master key in the Android Keystore, and
+        // the Keystore does not survive a restore onto another phone, a
+        // factory reset of credentials, or certain OS upgrades. When it goes,
+        // the file becomes ciphertext nobody can read — and every later
+        // attempt fails the same way, so the AI features would be dead for
+        // good with no explanation.
+        //
+        // Deleting it costs the user re-entering a key, which takes ten
+        // seconds. Not deleting it costs them the feature permanently. The
+        // file is excluded from backup precisely so this should not happen,
+        // but "should not" is not a recovery plan.
+        Logger.w("CloudSettings", "the stored keys could not be decrypted; discarding them")
+        runCatching {
+            context.getSharedPreferences(FILE, Context.MODE_PRIVATE).edit().clear().commit()
+            context.deleteSharedPreferences(FILE)
+        }
+        val fresh = open(context)
+        if (fresh != null) { prefs = fresh; keysWereReset = true }
+        return fresh
     }
+
+    private fun open(context: Context): SharedPreferences? = runCatching {
+        val master = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context, FILE, master,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }.onFailure {
+        Logger.e("CloudSettings", "encrypted storage unavailable: ${it.message}")
+    }.getOrNull()
+
+    fun clearResetFlag() { keysWereReset = false }
 
     fun provider(context: Context): AiProvider =
         store(context)?.getString(KEY_PROVIDER, null)

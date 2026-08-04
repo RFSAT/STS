@@ -32,6 +32,36 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.46.0 — feature: API keys survive an upgrade, and cannot be
+        //          silently lost for ever.
+        //
+        //   An ordinary in-place upgrade never touched them. What did was a
+        //   RESTORE ONTO ANOTHER PHONE. The keys are encrypted with a master
+        //   key in the Android Keystore, and the Keystore does not travel
+        //   with a backup — so the restored file was ciphertext nobody could
+        //   read, EncryptedSharedPreferences refused to open it, and the AI
+        //   features were dead with no explanation and no way back.
+        //
+        //   The file is now EXCLUDED from cloud backup and device transfer,
+        //   so a restored phone simply has no key yet and asks for one, which
+        //   takes ten seconds and always works.
+        //
+        //   And if it is unreadable anyway — a credential reset, an OS
+        //   upgrade — it is discarded and remade rather than failing for
+        //   ever, and the shooter is told once why they must re-enter it.
+        //   "Should not happen" is not a recovery plan.
+        //
+        // 1.46.0 — correction: the User Guide named Claude throughout.
+        //
+        //   Its chapter is now "Scoring with an AI service" and every
+        //   description is of the service in general. The only place either
+        //   is named is the table saying where each key comes from, which is
+        //   the one place the reader actually needs the name.
+        //
+        //   The guide also gained what this week's bugs taught: paste a key
+        //   as a single line, keys are kept per service, and keys are left
+        //   out of backup on purpose.
+        //
         // 1.45.0 — correction: OpenAI would not connect at all. Reported
         //          with the exact error, which named the fault precisely:
         //          "unexpected char 0x0a at 83 in header value".
@@ -2012,8 +2042,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 63
-        versionName = "1.45.0"
+        versionCode = 64
+        versionName = "1.46.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

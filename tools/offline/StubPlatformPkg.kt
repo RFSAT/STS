@@ -9,6 +9,7 @@ open class Context {
     val filesDir: java.io.File = java.io.File(".")
     val cacheDir: java.io.File = java.io.File(".")
     fun getSharedPreferences(name: String, mode: Int): SharedPreferences = SharedPreferences()
+    fun deleteSharedPreferences(name: String): Boolean = true
     fun getString(res: Int): String = ""
     fun getString(res: Int, vararg args: Any?): String = ""
     fun startActivity(i: Intent) {}
