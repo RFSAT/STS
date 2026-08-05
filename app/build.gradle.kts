@@ -32,6 +32,47 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.48.0 — feature: the photograph now survives a restart, and
+        //          three things on Results that read badly were fixed.
+        //
+        //   THE SCREEN CONTRADICTED ITSELF. The box said "No adjustment — the
+        //   sight is already centred" and the line directly beneath it said
+        //   "Move the point of impact 1.4 mm up and 0.3 mm right". Both were
+        //   computed correctly and both described the same state — a residual
+        //   smaller than one click — but two places were deciding the same
+        //   question independently, and only one of them had noticed there
+        //   was nothing to do. SightCorrection.needsAdjustment is now that
+        //   answer, decided once, from the same quantities the instruction is
+        //   built from and NOT by reading the instruction back. The detail
+        //   line says what the residual is and why it is being left alone.
+        //
+        //   THE PHOTOGRAPH WAS THROWN AWAY ON EXIT. The session survives a
+        //   restart, so the shooter came back to their score with "My photo"
+        //   greyed out — and that view is the only one in which a MISSED shot
+        //   is visible: on the template an undetected hole leaves nothing
+        //   behind to notice. The old comment defended this, saying the loss
+        //   cost the background of a plot and no score. It was answering the
+        //   wrong question. The rectified card is now kept as a JPEG in the
+        //   app's own files, capped at 2048 px on its longest side, written
+        //   off the main thread, and reloaded on demand. It is deleted when
+        //   the session it belongs to ends, because the alternative is the
+        //   previous card sitting under the next session's shots.
+        //
+        //   NUMBERS THAT DID NOT LINE UP. The angular figures were four
+        //   numbers inside two sentences padded with spaces, in a
+        //   proportional font, which aligns nothing. They are now a
+        //   right-aligned monospaced table: elevation and windage down the
+        //   side, MRAD and MOA across.
+        //
+        //   BULLET LISTS WITH NO HANGING INDENT. Every list was a plain
+        //   string starting "• ", and a plain string does not know a bullet
+        //   is there: the second line of any item that wrapped ran back to
+        //   the left margin, under the dot, so four warnings read as eight
+        //   items of which four began with a dot. A hanging indent cannot be
+        //   done with spaces — they do not survive word wrap — so it is a
+        //   paragraph span, sized from the text so it stays right when the
+        //   shooter changes the font scale.
+        //
         // 1.47.1 — correction: check box labels ignored the theme.
         //
         //   Exactly the trap the borderless buttons fell into, one widget
@@ -2094,8 +2135,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 66
-        versionName = "1.47.1"
+        versionCode = 67
+        versionName = "1.48.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

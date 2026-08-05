@@ -524,7 +524,7 @@ class ImportActivity : BaseActivity() {
             notifyUser("The card could not be flattened for scoring; falling back to the app's own detection.")
             return
         }
-        ScoredPhoto.set(rect, reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm)
+        ScoredPhoto.set(this, rect, reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm)
         val face = currentFace()
         val rules = currentRules()
         val provider = CloudSettings.importProvider(this)
@@ -639,12 +639,12 @@ class ImportActivity : BaseActivity() {
         // hole that was never detected leaves nothing behind to notice.
         runCatching {
             ScoredPhoto.set(
-                reg.rectifyColour(shot),
+                this, reg.rectifyColour(shot),
                 reg.uMinMm, reg.uMaxMm, reg.vMinMm, reg.vMaxMm
             )
         }.onFailure {
             Logger.w("ImportActivity", "could not rectify the photo for display: ${it.message}")
-            ScoredPhoto.clear()
+            ScoredPhoto.clear(this)
         }
 
         // Replace FIRST, before knowing whether anything was found. Doing it
@@ -665,7 +665,12 @@ class ImportActivity : BaseActivity() {
         if (holes.isEmpty()) {
             binding.hdrDistribution.visibility = View.GONE
             binding.histogram.distribution = com.rfsat.sts.scoring.ShotDistribution.EMPTY
-            binding.tvResult.text = buildString {
+            // Assembled as spanned text rather than a plain string so the
+            // three causes get a hanging indent: each of them wraps, and a
+            // wrapped line running back under the bullet made a three-item
+            // list read as six.
+            val why = android.text.SpannableStringBuilder()
+            why.append(buildString {
                 appendLine("No holes were found, and any previously recorded shots have been cleared.")
                 appendLine()
                 appendLine("Scored against: ${face.name}")
@@ -674,15 +679,16 @@ class ImportActivity : BaseActivity() {
                     "gauge ${rules.gaugeDiameterMm} mm")
                 appendLine()
                 appendLine("The commonest causes, in order:")
-                appendLine("• the wrong target face — its ring spacing and its scoring gauge " +
-                    "(${rules.gaugeDiameterMm} mm) have to match the card you actually shot")
-                appendLine("• the box not on the outermost ring")
-                appendLine("• a photograph too small or too soft to resolve a " +
-                    "${rules.gaugeDiameterMm} mm hole")
-                appendLine()
-                append("The diagnostic log on the Home screen records what the detector saw; " +
-                    "its Full report button shares that together with the face and gauge in use.")
-            }
+            })
+            why.append(com.rfsat.sts.ui.Bullets.list(listOf(
+                "the wrong target face — its ring spacing and its scoring gauge " +
+                    "(${rules.gaugeDiameterMm} mm) have to match the card you actually shot",
+                "the box not on the outermost ring",
+                "a photograph too small or too soft to resolve a ${rules.gaugeDiameterMm} mm hole"
+            ), binding.tvResult.textSize, gap = "\n"))
+            why.append("\n\nThe diagnostic log on the Home screen records what the detector saw; " +
+                "its Full report button shares that together with the face and gauge in use.")
+            binding.tvResult.text = why
             Logger.w("ImportActivity", "Detection found nothing; session cleared to avoid stale results")
             return
         }

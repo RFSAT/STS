@@ -103,6 +103,11 @@ class ResultsActivity : BaseActivity() {
         // simply no marker where one should be, and nothing to notice. Over
         // the shooter's own card the hole is plainly there with no marker on
         // it, which is what makes adding it by hand practical.
+        // Brought back from disk if this is a fresh start. The session
+        // itself survives a restart, so coming back to your score with the
+        // photograph greyed out — the one view a MISSED shot shows up in —
+        // was the app losing half of what it had kept.
+        ScoredPhoto.restore(this)
         binding.btnShowPhoto.setOnClickListener {
             if (!ScoredPhoto.available) {
                 notifyUser(
@@ -132,6 +137,9 @@ class ResultsActivity : BaseActivity() {
         binding.btnNewSession.setOnClickListener {
             ScoringSession.finish()
             ScoringSession.clear()
+            // The kept photograph belongs to the session being ended. Leaving
+            // it would put the previous card under the next session's shots.
+            ScoredPhoto.clear(this)
             startActivity(Intent(this, SessionActivity::class.java).putExtra(SessionActivity.EXTRA_NEW, true))
             finish()
         }
@@ -147,6 +155,7 @@ class ResultsActivity : BaseActivity() {
 
     override fun onResume() {
         super.onResume()
+        ScoredPhoto.restore(this)
         runCatching { refresh() }
         setupBottomNav(R.id.nav_results)
     }
@@ -649,19 +658,48 @@ class ResultsActivity : BaseActivity() {
             if (res.lowerIsBetter) append("   (lower is better)")
         }
 
+        binding.btnShowPhoto.isEnabled = ScoredPhoto.available
+        if (!ScoredPhoto.available && binding.plot.showPhoto) {
+            binding.plot.showPhoto = false
+            binding.btnShowPhoto.text = "My photo"
+        }
+
         // ---- correction ----
+        //
+        // THE DETAIL LINE MUST AGREE WITH THE BOX ABOVE IT. It used to say
+        // "Move the point of impact 1.4 mm up" underneath a box reading "No
+        // adjustment — the sight is already centred", which is the screen
+        // arguing with itself in front of the shooter. When the calculator
+        // has concluded there is nothing to do, the line says what the
+        // residual is and why it is being left alone.
         binding.tvCorrection.text = corr.instruction
-        binding.tvCorrectionDetail.text = if (!corr.valid) "" else buildString {
-            appendLine("Move the point of impact %.1f mm %s and %.1f mm %s.".format(
-                Math.abs(corr.moveImpactYMm), if (corr.moveImpactYMm > 0) "up" else "down",
-                Math.abs(corr.moveImpactXMm), if (corr.moveImpactXMm > 0) "right" else "left"
-            ))
-            appendLine("Angular: %.2f MRAD elevation, %.2f MRAD windage".format(
-                corr.elevationMrad, corr.windageMrad
-            ))
-            append("         %.2f MOA elevation, %.2f MOA windage".format(
-                corr.elevationMoa, corr.windageMoa
-            ))
+        binding.tvCorrectionDetail.text = when {
+            !corr.valid -> ""
+            corr.needsAdjustment ->
+                "Move the point of impact %.1f mm %s and %.1f mm %s.".format(
+                    Math.abs(corr.moveImpactYMm), if (corr.moveImpactYMm > 0) "up" else "down",
+                    Math.abs(corr.moveImpactXMm), if (corr.moveImpactXMm > 0) "right" else "left"
+                )
+            Math.abs(corr.moveImpactXMm) < 0.05 && Math.abs(corr.moveImpactYMm) < 0.05 ->
+                "The group centre is on the point of aim."
+            else -> {
+                val template = "The group centre is %.1f mm %s and %.1f mm %s of the point of " +
+                    "aim — less than this sight can be adjusted by, so it is left alone."
+                template.format(
+                    Math.abs(corr.moveImpactYMm),
+                    if (corr.moveImpactYMm > 0) "below" else "above",
+                    Math.abs(corr.moveImpactXMm),
+                    if (corr.moveImpactXMm > 0) "left" else "right"
+                )
+            }
+        }
+        // Right-aligned in fixed columns: a column of numbers is read by
+        // comparing digits in the same place, which a proportional font and
+        // a run of spaces cannot deliver.
+        binding.tvCorrectionNumbers.text = if (!corr.valid) "" else buildString {
+            appendLine("%-10s %9s %9s".format("", "MRAD", "MOA"))
+            appendLine("%-10s %9.2f %9.2f".format("Elevation", corr.elevationMrad, corr.elevationMoa))
+            append("%-10s %9.2f %9.2f".format("Windage", corr.windageMrad, corr.windageMoa))
         }
 
         // ---- group ----
@@ -706,7 +744,10 @@ class ResultsActivity : BaseActivity() {
         } else {
             binding.hdrWarnings.visibility = View.VISIBLE
             binding.tvWarnings.visibility = View.VISIBLE
-            binding.tvWarnings.text = allWarnings.joinToString("\n\n") { "• $it" }
+            // Hanging indent: a warning that wraps used to run its second
+            // line back under the bullet, so four warnings read as eight.
+            binding.tvWarnings.text =
+                com.rfsat.sts.ui.Bullets.list(allWarnings, binding.tvWarnings.textSize)
         }
 
         // ---- shot list ----

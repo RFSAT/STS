@@ -62,6 +62,17 @@ data class SightCorrection(
     val hasRearSightAdvice: Boolean = false,
     /** One-line instruction ready to display. */
     val instruction: String,
+    /**
+     * True when [instruction] asks for something to be DONE.
+     *
+     * Exists because the Results screen contradicted itself: the box said
+     * "No adjustment — the sight is already centred" while the line directly
+     * beneath it said "Move the point of impact 1.4 mm up and 0.3 mm right".
+     * Both were computed correctly and they described the same state — a
+     * residual smaller than one click — but nothing told the second line that
+     * the first had already concluded there was nothing to do. Now it knows.
+     */
+    val needsAdjustment: Boolean = true,
     val warnings: List<String> = emptyList(),
     /** False when the inputs could not support a correction at all. */
     val valid: Boolean = true
@@ -217,6 +228,15 @@ object CorrectionCalculator {
             scope, windClicks, elevClicks, windDir, elevDir,
             moveX, moveY, rearX, rearY, hasRear
         )
+        // Decided from the SAME quantities the instruction was built from,
+        // and deliberately not by reading the instruction back: two places
+        // deciding the same thing is how the screen came to disagree with
+        // itself in the first place.
+        val needsAdjustment = when {
+            scope.hasClicks -> windClicks != 0 || elevClicks != 0
+            hasRear -> abs(rearX) >= 0.01 || abs(rearY) >= 0.01
+            else -> abs(moveX) >= 0.05 || abs(moveY) >= 0.05
+        }
 
         return SightCorrection(
             moveImpactXMm = moveX, moveImpactYMm = moveY,
@@ -228,6 +248,7 @@ object CorrectionCalculator {
             rearSightMoveXMm = rearX, rearSightMoveYMm = rearY,
             hasRearSightAdvice = hasRear,
             instruction = instruction,
+            needsAdjustment = needsAdjustment,
             warnings = warnings,
             valid = true
         )
@@ -278,6 +299,7 @@ object CorrectionCalculator {
         windageMrad = 0.0, elevationMrad = 0.0, windageMoa = 0.0, elevationMoa = 0.0,
         windageClicks = 0, elevationClicks = 0,
         windageDirection = "", elevationDirection = "",
-        instruction = reason, warnings = listOf(reason), valid = false
+        instruction = reason, needsAdjustment = false,
+        warnings = listOf(reason), valid = false
     )
 }

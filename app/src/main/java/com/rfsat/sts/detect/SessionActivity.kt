@@ -346,6 +346,10 @@ class SessionActivity : BaseActivity() {
         val f = currentFace()
         val r = currentRules()
         ScoringSession.startNew(f, r, r.distanceM)
+        // The kept photograph belonged to the session just replaced. A new
+        // session showing the previous card underneath its shots would be
+        // worse than showing no photograph at all.
+        com.rfsat.sts.scoring.ScoredPhoto.clear(this)
     }
 
     // ------------------------------------------------------------------

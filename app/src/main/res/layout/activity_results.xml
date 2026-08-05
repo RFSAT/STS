@@ -90,6 +90,15 @@
                 android:layout_marginTop="6dp"
                 android:textSize="13sp" />
 
+            <!-- The angular figures, monospaced so the columns line up.
+                 They were four numbers inside two sentences padded with
+                 spaces, in a proportional font, which lines nothing up. -->
+            <TextView android:id="@+id/tvCorrectionNumbers"
+                style="@style/Sts.Value"
+                android:layout_marginTop="4dp"
+                android:typeface="monospace"
+                android:textSize="12sp" />
+
             <TextView style="@style/Sts.SectionHeading" android:text="Group" />
             <TextView android:id="@+id/tvGroup"
                 style="@style/Sts.Value"

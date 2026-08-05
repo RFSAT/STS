@@ -23,6 +23,7 @@ object BitmapFactory {
     @JvmStatic fun decodeByteArray(b: ByteArray, o: Int, l: Int): Bitmap? = Bitmap()
     @JvmStatic fun decodeStream(s: java.io.InputStream?): Bitmap? = Bitmap()
     @JvmStatic fun decodeStream(s: java.io.InputStream?, r: Rect?, o: Options?): Bitmap? = Bitmap()
+    @JvmStatic fun decodeFile(path: String): Bitmap? = Bitmap()
 }
 
 class SurfaceTexture(id: Int)
