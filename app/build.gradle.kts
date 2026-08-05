@@ -32,6 +32,32 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.49.1 — documentation: the changelog reads to one standard from
+        //          end to end, and the pre-publication checklist is gone.
+        //
+        //   Reported: far more detail for releases up to 1.9.0 than for the
+        //   forty since. True, and it was worse than uneven — the old entries
+        //   were full prose carrying measured results, the new ones were a
+        //   single line each, so the file changed character half way down and
+        //   the recent work looked slighter than it was.
+        //
+        //   All 71 releases now get the same treatment: a summary sentence,
+        //   then what was wrong or what was added and the figure that settled
+        //   it where there is one. Roughly 4,800 words, against 4,900 for the
+        //   eighteen oldest releases alone before this. Everything checked
+        //   mechanically — no duplicate versions, strictly descending, and
+        //   every version in this file's changelog present in the README's.
+        //
+        //   The full entry stays here, which the README now says plainly.
+        //   This is where it is written while the work is being done; a
+        //   summary reconstructed afterwards is a summary of what was
+        //   remembered.
+        //
+        //   "Before release" is deleted, as asked. Two of its four items were
+        //   already dead — the keystore and secrets are configured and the
+        //   listing is written — and the other two are ongoing work rather
+        //   than gates before publishing.
+        //
         // 1.49.0 — feature: the picture can be stretched back to square, the
         //          two registration routes agree, and Home stops showing the
         //          rule book's distance instead of yours.
@@ -2267,8 +2293,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 71
-        versionName = "1.49.0"
+        versionCode = 72
+        versionName = "1.49.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

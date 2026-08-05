@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.49.0.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.49.1.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,41 +42,8 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.48.3", "Version 1.49.0"),
+    ("Version 1.49.0", "Version 1.49.1"),
 
-    # 1.49.0 — the second registration button now fits the rings too, so the
-    # sentence calling it "the black aiming mark only" was describing the
-    # release before last.
-    ("The fallback. Finds the black aiming mark only. Less accurate, because one "
-     "circle carries less information than the whole ring family.",
-     "Use it when you have already chosen the right face and want it taken as given. "
-     "It finds the black aiming mark, fits the printed rings for the selected face and "
-     "draws them, exactly as the first button does — what it does not do is search the "
-     "catalogue for a face that fits better."),
-
-    # 1.49.0 — the aspect controls, appended to the paragraph that already
-    # covers the other picture-shape corrections. A sentence added to an
-    # existing paragraph changes no structure and no style.
-    ("If the card is at an angle, the Tilt and rotation controls let you correct it. "
-     "Apply estimated tilt fills them in from what the app measured; Reset tilt clears "
-     "them. Leave these alone unless the registration is visibly wrong.",
-     "If the card is at an angle, the Tilt and rotation controls let you correct it. "
-     "Apply estimated tilt fills them in from what the app measured; Reset tilt clears "
-     "them. Leave these alone unless the registration is visibly wrong. "
-     "If the drawn circles line up with the printing across the card but not down it — "
-     "or the other way round — that is not tilt but a stretched picture, and the Image "
-     "aspect controls correct it: the app fills in the width and height percentages that "
-     "would make the rings round, you press Apply and re-register, and the picture itself "
-     "is stretched so the scoring geometry stays circular. Original picture puts it back."),
-
-    # 1.49.0 — Home showed the rule book's distance rather than the session's.
-    ("On the Home screen, set the Target, the Rules and the Distance for what you are "
-     "about to shoot.",
-     "On the Home screen, set the Target, the Rules and the Distance for what you are "
-     "about to shoot. The distance shown is the one this session is being scored at, "
-     "which is not always the rule book's: a competition face shot at another distance "
-     "in training is ordinary, and where the two differ the rule book's figure is shown "
-     "in brackets beside it."),
 ]
 
 

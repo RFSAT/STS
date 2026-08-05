@@ -257,8 +257,6 @@ rejection, group statistics, and the click conversions for mil, MOA and
 mm-at-distance sights. `gradle testDebugUnitTest` runs them; CI runs them on
 every push.
 
----
-
 ## Play Store listing
 
 Everything the console asks for lives in `play/`:
@@ -306,566 +304,476 @@ Each release ships as a **single ZIP** holding the whole project —
 
 ### Changelog
 
-One line per release, newest first. The FULL entry for each — what was
-wrong, what was measured, and what was rejected — is the header comment of
-`app/build.gradle.kts`, which is where the changelog is written as the work
-is done rather than reconstructed afterwards. Releases before 1.10.0 are
-kept in long form further down.
-
-* **1.49.0** — feature. The picture can be stretched back to square before
-  scoring, both registration routes fit and draw the rings, and Home shows
-  the session's distance rather than the rule book's.
-* **1.48.3** — correction. The guide is edited inside the author's own
-  document; the generator that kept destroying its formatting is gone.
-* **1.48.2** — documentation. The proof-read guide is the baseline the
-  generator is held to, and the generator now lives in `docs/guide/`.
-* **1.48.1** — documentation. The guide has a permanent address on the RFSAT
-  portal, and the README changelog is no longer thirty-nine releases behind.
-* **1.48.0** — feature. The photograph now survives a restart, and three things on Results that read badly were fixed.
-* **1.47.1** — correction. Check box labels ignored the theme.
-* **1.47.0** — feature. Which AI service is used is now three separate, stated choices, and the app no longer names one it is not calling.
-* **1.46.0** — feature. API keys survive an upgrade, and cannot be silently lost for ever.
-* **1.46.0** — correction. The User Guide named Claude throughout.
-* **1.45.0** — correction. OpenAI would not connect at all. Reported with the exact error, which named the fault precisely: "unexpected char 0x0a at 83 in header value".
-* **1.45.0** — feature. A key for EACH service, visible at once.
-* **1.45.0** — correction. The settings screen named Claude throughout.
-* **1.44.0** — feature. OpenAI alongside Claude. Settings -> AI service.
-* **1.43.0** — feature. The Targets preview is square, so a face fills the width — and the ring numerals appear at last.
-* **1.43.0** — correction. The offline stub had View.layoutParams as a read-only Any?.
-* **1.42.0** — correction. The settings screen explained itself instead of describing itself.
-* **1.41.0** — correction. "the reply was not in the expected form", reported on Opus 5. The fault was the parsing, not the model.
-* **1.40.0** — feature. ONE choice of what scores a card, made on import.
-* **1.39.0** — feature. Claude can find AND score the card outright.
-* **1.38.0** — feature. The second opinion can be set to WIN.
-* **1.37.0** — correction. Removal removed ONE. Reported from real use.
-* **1.37.0** — correction. The second-opinion dialog said far too much.
-* **1.36.0** — correction. "off" now means off. Three faults, all reported from real use on T0002.
-* **1.35.0** — correction. The second opinion could only make an OVER-DETECTED card worse. Reported from real use.
-* **1.34.0** — correction. A shot in the TEN RING was being dropped, and the reason was a threshold doing the wrong job.
-* **1.33.0** — feature. A region holding more than one shot is SPLIT instead of thrown away.
-* **1.33.0** — measurement. The two-photograph difference method does NOT work on hand-held re-photographs, and the splitter is therefore necessary rather than a fallback.
-* **1.32.0** — feature. A suggestion from Claude is now MEASURED before it becomes a shot.
-* **1.32.0** — feature. The shooter's photograph is rectified four times finer than the detection grid.
-* **1.32.0** — correction. The release build still would not link.
-* **1.31.0** — feature. The background is estimated LOCALLY, and card A now scores exactly right.
-* **1.31.0** — correction. The RELEASE build would not link.
-* **1.30.0** — feature. A SECOND OPINION from Claude, on demand, that is not allowed to score.
-* **1.30.0** — correction. Two failures found on the punched test card.
-* **1.29.0** — feature. Two sights that cannot be clicked, and more of a catalogue window given over to the catalogue.
-* **1.29.0** — correction. Catalogue screens gave too much room to their furniture and not enough to the list.
-* **1.28.0** — feature. The test card is now PART OF THE APP, and every build is scored against it.
-* **1.28.0** — correction. `continue` inside an inline lambda, which needs Kotlin 2.2 while this project builds on 2.1.
-* **1.27.0** — feature. Shots are found in the PHOTOGRAPH, and the shot inside the aiming mark is found at last. 10 -> 19 on the user's card, which is the hand-scored truth exactly.
-* **1.26.0** — feature. The detector can be asked whether a candidate has the PROFILE of a puncture, and to look for the shots that missed the rings.
-* **1.25.0** — feature. The camera ADOPTS the face it identifies, and the plot no longer loses your zoom when you nudge a shot.
-* **1.24.0** — feature. The guide says continuously whether the card matches the selected face.
-* **1.23.1** — correction. The app now WARNS when the card in front of the camera is not the face that is selected.
-* **1.23.0** — feature. The selected face's rings as an alignment guide.
-* **1.22.1** — correction. The WEAKER registration was the automatic one.
-* **1.22.0** — feature. Results markers, photo/template swap, a brighter crosshair, and the rings that were found but not used.
-* **1.21.0** — feature. Merged shots, the shot-count check, hole-centre precision as its own metric, and stage timings.
-* **1.20.0** — feature. Resolution discipline, a bound on the ladder search, and the tilt-axis wedge behind a switch.
-* **1.19.2** — toolchain. The activities can finally be compiled offline, closing the gap that let three failures reach CI.
-* **1.19.1** — correction. Two compile errors that have been in the tree since 1.18.0, through two releases.
-* **1.19.0** — feature. 9x19 service pistols and factory loads.
-* **1.18.1** — correction. In-app capture actually exists now, and it is guarded.
-* **1.18.0** — feature. The camera is held still, and its resolution can be chosen.
-* **1.17.0** — feature. Face identification stabilised, and the two largest costs in registration removed.
-* **1.16.0** — feature. The scale is now measured two independent ways and cross-checked. Accuracy, not speed.
-* **1.15.0** — feature. The interface follows the theme, and buttons are consistent.
-* **1.14.1** — correction. Two presentation fixes, and a third static gate that found a real error while being written.
-* **1.14.0** — feature. Justified description text, and an aligned parameter table on the rules screen.
-* **1.13.0** — feature. Interface changes across Home, Session, Results, Targets, Settings and Import.
-* **1.12.2** — correction. NameWrapTest asserted nothing and said so only in CI.
-* **1.12.1** — correction. Seven interface changes, all reported.
-* **1.12.0** — feature. The real reason hole detection "generally fails", plus the photo overlay and real buttons.
-* **1.11.0** — feature. The ring-pitch ladder now returns the same scale for the same target photographed at different angles.
-* **1.10.1** — correction. The unit test source set had never once been compiled, and failed the moment it could be.
-* **1.10.0** — feature. Direct least-squares ellipse fitting on the ring edges, and an evidence-based choice between it and a circle.
-
-#### Before 1.10.0
-
-**1.9.1** — correction. Four compile errors, from four releases that had not
-been through a compiler.
-
-* `SessionActivity` had **two companion objects**. Kotlin allows one, and the
-  effect is that constants in the first become unresolvable — so the reported
-  error was an unresolved reference sixty lines away from the cause.
-* `ProfileActivity` kept a `return@onSelected` after the function it labelled
-  was renamed to `onSelectedIndex`. The old name still existed elsewhere in
-  the file, which is why it looked fine.
-* The ported VTB `ScopeCatalog` has a `when` over `ClickUnit` covering VTB's
-  three values. This app has six, because match diopters and target-pistol
-  sights are quoted in millimetres at a stated distance rather than as an
-  angle. Filled in rather than given an `else`, so a seventh unit is a compile
-  error here instead of a sight that silently labels itself wrongly.
-
-`tools/kotlin_checks.py` now catches all three classes — a second companion
-object in one class, a `return@` naming no enclosing lambda, and a `when` over
-an enum that is missing members and has no `else`. It was verified by putting
-each bug back and confirming it was caught. CI runs it **before** the
-compiler: it needs no toolchain and it names the file and line, where the
-compiler reports the consequences somewhere else.
-
-The project's other gates check resources, binding ids, layout attributes,
-imports and brace balance. They were blind to all three of these, which is
-worth knowing about what they are and are not for.
-
-**1.9.0** — the two gaps from 1.8.0, and Hough centre voting.
-
-*Thumbnails where they matter.* 1.8.0 drew a face beside each name in the
-Targets tab. That is where a face is browsed; the SPINNER on the detection
-screens is where one is chosen, moments before registering and scoring
-against it, and choosing wrongly has silently rescaled whole score sheets.
-Both spinners now show the picture, in the closed state and the dropdown, with
-ring pitch and black diameter in the dropdown — which is what actually
-separates two faces that are both black circles with rings on them.
-
-*Colour on the live path.* 1.8.0 left live camera detection on luminance. The
-reasoning was that differencing against a reference cancels the paper anyway,
-which is true but was a decision taken silently against a request with no
-such qualification. Live frames now use the same distance-from-paper channel,
-computed in YUV from the frame's own median, with chroma weighted above
-luminance: paper varies in brightness across a frame as corners fall into
-shadow, but it barely varies in hue.
-
-*Hough centre voting.* Every edge on a printed ring has a normal pointing at
-the common centre, so each edge votes along its own normal and the centre is
-where the votes pile up. On the four test targets it landed within 2 to 4
-pixels every time, and because it works from edges it survives a thumb across
-a corner, a club logo, or a target filling only part of the frame — all of
-which mislead a symmetry search that assumes the target dominates the picture.
-It now seeds `RingFinder`, which still measures the pitch from the radial
-profile because it does that better: 0.0–1.5% against 0.9–3.8% for a radius
-histogram off the same edges.
-
-**On Hough and angled targets, which is what it was asked for.** It does not
-solve that by itself, and it is worth being plain about why. Under perspective
-a ring projects to an ELLIPSE, and a circle accumulator has no parameter for
-one; a full ellipse Hough needs a five-dimensional accumulator and is not a
-phone computation. What IS affordable is measuring the ellipticity directly.
-All the rings on a card share one projection, so `r(θ,k) = R_k·g(θ)` — take
-logs, subtract each ring's own mean, and every edge point on every ring
-becomes a sample of the same `g(θ)`, thousands of samples for two parameters.
-Fitting each ring separately was tried first and sat at 5–8 degrees of error
-on targets that were perfect circles.
-
-Pooling brought that to about 4 degrees, and that is still the floor: the two
-synthetic targets, which are exactly circular, measured 3.1 and 3.9 degrees,
-while the genuinely angled photograph measured 5.1. The measurement therefore
-cannot separate a real 5-degree tilt from a perfect circle. It is reported,
-and above 8 degrees it seeds the tilt sliders, and it is never applied on its
-own — the same policy as the aiming mark's ellipticity, for the same reason.
-For a target angled enough to matter, corner registration remains exact where
-all of this is approximate.
-
-**1.8.0** — colour, ring fitting, hole editing, the full VTB catalogues, and
-target thumbnails.
-
-*Colour.* Hole detection now reads how far each pixel is from **the paper's
-own colour** rather than how dark it is. A pellet hole is brown, not merely
-dark: measured on a club target, holes came through at 115 luma levels of
-separation and 242 in this channel. The paper colour is MEASURED — the
-per-channel median, which on any target is the card — because assuming it is
-neutral is wrong in a way that destroys the image: an ISSF 10 m card is
-yellow, chroma 121, so the obvious "brightness minus chroma" channel sends the
-paper itself to black and takes every hole down with it. That was caught by
-testing the four targets before shipping it, not after.
-
-*Ring fitting, which is the bigger change.* Every registration failure this
-app has had came from deriving the scale from ONE feature — the aiming mark —
-multiplied by a ratio taken from whichever face was selected in a menu. A
-competition target is a family of concentric, evenly spaced rings, and that
-spacing IS the scale. `RingFinder` locates the centre by rotational symmetry,
-reads the ring radii off a radial profile, fits `r_k = r0 + k·pitch` and
-refits by least squares over the whole ladder.
-
-Measured on the four test targets: pitch recovered to within **0.0–1.5%**,
-against 6% for the aiming-mark ratio. And because the pitch is a property of
-the card rather than of the menu, it also says WHICH card: the correct face
-agreed to 0.3–1.3% while the runner-up was 8% or worse, a margin wide enough
-to act on. *Identify target and register* does both in one step.
-
-Two things worth keeping if this is revised. The ladder fitter prefers the
-LARGEST pitch that explains the data densely — each printed line has two
-edges, so a half-pitch ladder fits every real ring plus every spurious edge
-and wins on inlier count alone; an earlier version returned exactly half the
-true pitch on two of four targets. And the method assumes the rings are
-circles, which a scan or a square-on photograph satisfies and an angled one
-does not; the confidence figure falls when the ladder fits badly and the app
-falls back to the aiming mark.
-
-*Editing.* Shots can be added by tapping, deleted, and now DRAGGED. A moved
-shot is put back through the scoring engine at its new position, so the plot
-and the total cannot disagree.
-
-*Catalogues.* Every VTB rifle, ammunition and sight entry ported verbatim
-with VTB's filter dialogs — brand and type for a firearm; manufacturer,
-calibre, velocity class, weight and bullet type for a load; brand, click
-value, magnification class and family for a sight — plus the match diopters,
-target-pistol sights and competition pistols STS needs and VTB has no reason
-to carry. 41 firearms, 68 loads, 51 sights. The ported blocks are kept
-verbatim and the additions appended below them, so the next VTB revision can
-be dropped in by replacing the entry list alone.
-
-*Thumbnails.* Each face in the picker is drawn beside its name. "ISSF 25/50 m
-Precision Pistol" and "ISSF 10 m Air Pistol" are both black circles with
-rings, both plausible, and picking the wrong one silently rescales every
-score — a picture settles it at the point the mistake is cheapest to catch.
-Drawn from the face geometry rather than shipped as assets, so a custom
-target the user adds gets one too.
-
-**1.7.1** — three corrections, and two of them had a single cause.
-
-*The black text was not the spinners.* 1.7.0 fixed those, and they did need
-fixing, but the controls still unreadable were the **35 borderless buttons** —
-the log and resume actions on Home, everything under Elsewhere in Settings,
-every undo, reset and clear elsewhere. `?android:attr/borderlessButtonStyle`
-selects the PLATFORM style, whose text colour comes from platform attributes
-that nothing in this app's themes can reach. Replaced with `Sts.TextButton`,
-which sets `textColor` on the style applied directly to the view — the one
-place the platform cannot override — and uses `colorAccent`, so a text button
-reads as an action in all four themes.
-
-*One bug behind "selections are not remembered", "Results ignores the
-selected target", and "still no shots detected".* A `Spinner` delivers its
-first `onItemSelected` on the layout pass AFTER `onCreate` — that is, after
-the listener has been attached. So merely OPENING the Session or Import
-screen ran the rules listener, which forces the target face to the rule set's
-default face. Choose a custom target, leave, come back, and it had silently
-reverted to ISSF 10 m Air Rifle. The Results screen then named that face, and
-detection ran against its geometry, which is why a card that scores correctly
-in offline testing produced no hits at all on the phone. The position set
-programmatically is now remembered and its callback recognised as ours rather
-than treated as a user choice.
-
-*An empty session now follows the current selection.* A session records the
-face it was scored against, and must: a result cannot change because a menu
-changed afterwards. But before anything has been shot there is nothing to
-protect, and the stale id was what the Results screen was reporting. Once
-there are shots, the recorded face and rules stand, and the screen says so.
-
-**1.7.0** — clearing, legibility, and the other half of the wrong-face
-problem.
-
-*Every spinner in the app was drawing black text on the dark background.*
-`android.R.layout.simple_spinner_item` applies `textAppearanceMediumInverse`
-— a text appearance coloured for the INVERSE of the current theme — so under
-any of the three dark themes it resolved to black. No style in this app could
-override it, because the colour comes from the platform's text appearance
-rather than from `textColor`. Replaced with our own item layouts, which fixes
-the theme, units, rules, target, firearm, sight, click-unit and log-level
-pickers at once.
-
-*Clearing.* The log's Clear button existed, but four controls in one row
-pushed it off the right-hand edge of a phone; the toolbar is now two rows and
-the actions are evenly spread. Recorded shots can be cleared from Results,
-Import and Session, keeping the target, rules and distance so the same card
-can be re-scored without rebuilding the session.
-
-*Stale results.* A photograph that detected nothing left the previous session
-untouched, so the Results screen went on showing an older target's shots as
-though they belonged to the new photo. The session is now replaced BEFORE
-detection runs, so an empty result is visibly empty, and the message says
-what to check.
-
-*The other half of the wrong-face problem.* 1.6.0 added a check for a
-registration box that is too small. It cannot catch a box placed perfectly on
-the outermost circle of a target whose RING SPACING does not match the
-selected face — a six-ring 5-to-10 card registered as a ten-ring ISSF face
-has its box in exactly the right place and every ring boundary in the wrong
-one. `verifyRings` now walks out along the radius after registration and
-checks that each ring the face claims is actually printed there; fewer than
-half present means the face does not describe this target, and it says so.
-Rings too close together for the image to resolve are skipped rather than
-counted absent, so a dense air-rifle face at modest resolution does not cry
-wolf.
-
-**1.6.0** — a diagnostic log, and the check that would have explained why it
-was needed.
-
-*The log.* Reachable from the Home screen, hideable in Settings > Display.
-Its **Report** button shares the log together with the state needed to read
-it: app build, device, and the active target face with its black-to-outer
-ratio, rule set, scoring gauge, distance and equipment. A log alone would not
-have diagnosed the failure that prompted this — the cause was a target face
-picked in a menu, which no amount of detection logging reveals unless you
-also know what was picked. Detection itself now logs its parameters
-(rectified size, mm/px, gauge in pixels, scoring limit, fraction of the frame
-in view, noise sigma, threshold) and every candidate it accepted or rejected,
-with the reason.
-
-*Why the app was silent when it should not have been.* Auto-detection finds
-the black aiming mark and expands the box to the outer ring using the
-SELECTED face's published ratio. That ratio varies enormously — 2.61 on the
-ISSF air pistol face, 1.49 on the air rifle one — so the wrong face does not
-fail, it registers the wrong circle. An air-pistol-proportioned card scored
-with the air rifle face put the box at 188 px when the FIVE ring sits at
-194 px: every distance came out half its true size, the centre shot read as a
-10, and everything past the misplaced outer ring was not looked at and came
-back as a miss.
-
-`TargetGeometryCheck` now reads the evidence already in the picture. If the
-box really is around the outermost ring, there should be no printed rings
-outside it; when there are, the face is wrong — and the black-to-outer ratio
-the image actually shows says which face would have been right. The app says
-so before anything is scored.
-
-*Also:* the scoring-area limit moved from 1.02x to 1.10x the outer ring, so a
-shot just past the last ring is reported as the miss it is rather than
-ignored. Card furniture sits much further out — the club logo that prompted
-the limit was at 1.21x.
-
-**1.5.3** — corrections from testing the detector against two real uploaded
-targets: a synthetic face with five shots, and a photograph of a club card
-with five pellet holes.
-
-*Printed ring numerals were being scored as shots.* Radial normalisation
-removes ring lines because they are rotationally symmetric, but a numeral
-occupies four angles out of 360 and barely moves a median taken around the
-circumference. On the synthetic face the detector returned 22 candidates for
-5 real shots; 17 were printed digits. Each candidate is now tested for
-rotational twins — the same feature a quarter, half and three-quarters of a
-turn away — and discarded if two of the three partners look alike.
-
-A four-fold median over the whole image was tried first. It is perfect on
-synthetic data and **lost two of five real shots on the photograph**, because
-the rotated samples only correspond when registration is exact and the
-lighting is flat, and on a hand-held photo of a card on a range neither
-holds. The per-candidate form is far more forgiving. The result is
-insensitive to its threshold: anything from 0.35 to 0.65 gave identical
-answers on both targets.
-
-*Absolute detection now looks only inside the outermost ring.* Everything
-beyond it is card furniture — a club logo, a score box, the shooter's name, a
-thumb holding the card down — and none of it is scoreable anyway. The
-association's logo on the real target was being reported as a shot.
-Excluding that region also dropped the robust sigma from 4.4 to 3.0 on that
-photograph, and the lower threshold that followed found a faint fifth hole
-that had been missed. This is deliberately NOT done in differential mode,
-where the reference already cancels static features and a mark outside the
-rings really is a shot that should be reported as a miss.
-
-Result on the two targets: **5 of 5 shots found on both**, no false positives
-on the synthetic one, and one low-confidence false positive on the photograph
-(a thumb at the card edge, flagged as doubtful by the existing confidence
-warning).
-
-*On the remaining scoring differences, which are registration and not
-detection.* On the synthetic target the centre shot scored 9 against a true
-10, because the scoring gauge was set to 5 mm while those holes measure 6.4
-to 8.0 mm across; at any gauge of 6 mm or more it scores 10. On the
-photograph the outer three shots each came out one ring generous, and all
-five match the true scores exactly once the registration scale is corrected
-by about 6%. Marginal calls near a ring boundary need the box set to within
-one or two percent — which is precisely what dragging the handles onto the
-outermost ring is for, and why the black-derived expansion is a starting
-point to be checked rather than an answer.
-
-**1.5.2** — corrections for three failures found in the field. Every one of
-them produced a complete, plausible, wrong answer rather than an error, which
-is the class of bug this project keeps having to guard against.
-
-*The box came out skewed on a square-on target.* Auto-detect was APPLYING a
-tilt inferred from the ellipticity of the aiming mark. A shot-up mark
-measures a few percent elliptical from segmentation noise alone, and
-`acos(1/1.05)` is 18 degrees — so noise became a visible skew, and since the
-sign is a guess, half of them skewed the wrong way. The estimate is now
-offered on an *Apply estimated tilt* button and never applied on its own.
-Mark detection additionally weights candidates by how central they are and
-retries on the middle 60% of the frame, because a white card on a dark bench
-puts the bench in charge of the Otsu split.
-
-*Ring numerals never appeared in the targets database.* The gate wanted the
-annulus to exceed 1.7x a fixed 12 dp of text — about 60 px — while the 230 dp
-preview gives roughly 33 px on every face at every screen density, so they
-were skipped universally. The glyph now scales to the annulus and drops out
-only when it would genuinely be unreadable.
-
-*Hit detection bore no resemblance to the real shots,* in both count and
-position. Two independent causes:
-
-* **Out-of-frame pixels were averaged into the contrast windows.** Rectifying
-  fills whatever the camera did not cover with a near-black marker; a window
-  25% outside the photograph read 150 instead of 200, which is 50 levels of
-  apparent contrast against a threshold of 8. That invented a rim of holes
-  wherever the photo did not cover the whole card. Sums and counts are now
-  taken over valid pixels only, and a window without enough of them reports
-  nothing rather than a confident wrong number.
-* **Nothing suppressed the printed target.** On a synthetic ISSF face the
-  ring lines carry 170 levels of contrast against a real hole's 39 — the
-  printing was four times stronger than the signal. Absolute detection now
-  subtracts the RADIAL MEDIAN first: everything printed on a ringed face is
-  rotationally symmetric, so taking the median brightness around each radius
-  and removing it deletes every ring exactly, at every radius, with no
-  threshold to tune, while a handful of holes cannot shift a median taken
-  over a whole circumference. Measured on the synthetic face, ring contrast
-  goes to zero and hole contrast survives.
-
-Note the third fix is verified against synthetic targets, not photographs.
-It removes two definite causes; whether it is now good enough on real cards
-needs range testing.
-
-**1.5.1** — correction. The first CI run to get past resource merging
-compiled the whole project and passed 75 of 76 tests. The one failure was in
-the test, not the app: it asserted that a 10 degree tilt is recovered from
-the aiming mark, while `suggestedTransform` deliberately ignores anything
-under about 11.4 degrees.
-
-The gate was right and is now explicit. Ignoring an 11 degree tilt misplaces
-a shot on the *outermost* ring of a 50 m face by 1.5 mm — under a fifth of a
-ring pitch, and less nearer the centre where the shots are. Against that, the
-sign of a suggested tilt is a guess, so acting on an ellipticity that is
-really segmentation noise buys a correction as likely to go backwards as
-forwards. The bare `1.02` is now `MIN_ELLIPTICITY_TO_SUGGEST`, documented
-with that reasoning, and a test pins the angle it corresponds to so moving it
-has to be a decision rather than an accident.
-
-**1.5.0** — feature. Individual **tilt and rotation** controls on the
-registration box: an in-plane rotation and a tilt about each image axis, the
-three controls a phone camera app already teaches everyone. A square box
-carries four degrees of freedom and a homography has eight; these take it to
-seven, and the eighth is shear, which cannot arise with square pixels and a
-flat target. Corner registration remains for anything beyond that.
-
-The tilt model is deliberately not a bare projective term. Tilting a plane
-does two things at once, and modelling one of them looks convincing and
-scores wrong:
-
-* **foreshortening** by `cos(alpha)` — this is what turns the aiming mark
-  from a circle into an ellipse, and a transform with only a perspective term
-  makes the outline *wider* whatever sign you give it, so it can never match
-  a target leaning away;
-* **keystoning** — the near edge magnified, which is the projective term
-  proper.
-
-Keystone strength is fixed at a quarter (target half-size over camera
-distance, near enough at any normal framing) rather than being a fourth
-slider whose effect nobody could judge by eye. It is second order next to the
-foreshortening.
-
-The starting tilt is inferred from the detected mark: a circle tilted by
-`alpha` projects to an ellipse with minor/major = `cos(alpha)`, so
-`alpha = acos(ratio)`, split between the two axes by the direction of the
-minor axis. The axis ratio comes from the blob's **second moments**, not its
-bounding box, because a bounding box cannot tell a rotated ellipse from a
-larger circle — while the SIZE still comes from the bounding box, which is
-unaffected by the shot holes that inflate a second moment.
-
-**The sign of the tilt is a guess, knowingly.** An ellipse is symmetric: it
-says the target leans and by how much, but not which way. Only the keystone
-asymmetry distinguishes leaning toward from leaning away, and that is far too
-weak a signal to read off a shot-up aiming mark. So the app picks a side,
-draws the outline, and says to flip the slider if it went the wrong way —
-which with a live preview is a one-second fix.
-
-**1.4.0** — feature. Registration is now a **square bounding box** with
-draggable top-left and bottom-right handles, placed for you: the app finds
-the black aiming mark by Otsu threshold plus a largest-circular-component
-search, then expands the box to the whole scoring area using the face's own
-published black-to-outer ratio. Ring values are printed on the target plot at
-four cardinal points, so the targets database shows scores on the circles.
-
-Three decisions worth keeping if this is revised.
-
-*The box cannot model perspective.* Four tapped corners give a full
-projective transform — eight degrees of freedom, enough to undo keystoning.
-An axis-aligned square gives four, translation and one scale, and registering
-an oblique target that way yields a plausible score that is wrong by a
-smoothly varying amount across the face. The box is still the right default
-because most people photograph a card square-on and two handles beat four
-accurate taps, so the detector measures the aiming mark's **ellipticity** and
-says plainly when the assumption has broken. Corner registration remains one
-checkbox away and is unchanged.
-
-*The outer ring is reached by arithmetic, not detection.* The outermost ring
-is a thin line on white paper and finding it directly is unreliable; the
-black mark is the easiest feature in the picture. So the mark locates the
-target and the published ratio expands to the outer ring — 1.5x on the ISSF
-air rifle face, 2.61x on air pistol — giving a much longer scale baseline
-than the black alone. It falls back to the mark when the expansion would run
-off the picture.
-
-*The mark's radius comes from its bounding box, not its area.* A shot-up
-aiming mark has holes in it, so `sqrt(area/pi)` under-reads the radius by
-more the better the shooter is — a bias that would tighten registration and
-inflate every score, worst for exactly the people most likely to notice.
-
-**1.3.1** — correction. The photo-upload scoring entry points have existed
-since 1.2.0, but both were styled `borderlessButtonStyle` — flat text with no
-background, sitting directly under a filled button — and read as captions
-rather than controls. Users could not find the feature at all. Both are now
-ordinary buttons labelled "Upload a target photo to score", the Home one
-comes first (scoring a card after the relay is the commoner job and needs no
-camera downrange), and the Session screen separates it from the live-capture
-workflow with an explicit "Or score live, as you shoot:".
-
-The static gate now also flags the reverse of a missing view: a button
-present in a layout that no code listens to. It would not have caught this
-one — the listener was wired correctly, the button was just invisible as a
-button — which is worth remembering about what a build check can and cannot
-tell you.
-
-**1.3.0** — feature. Google Play listing material in `play/`: short and full
-descriptions, and a 1024x500 feature graphic generated from the same drawing
-as the launcher icon.
-
-**1.2.1** — correction. `applicationId` is now `com.STS`. CI builds release
-artefacts only: unit tests run against the release variant and the workflow
-assembles the release APK and the Play bundle, with no debug build anywhere
-in the pipeline.
-
-Signing was also made to degrade rather than break. CI sets the keystore
-environment variables unconditionally, so an unconfigured secret arrives as
-an empty string and not as null — and `file("")` resolves to the project
-directory, which the old build script would have accepted as a keystore path
-and then failed on deep inside the signing task. Blank, and present-but-
-missing-on-disk, are now both treated as "no keystore", and the build
-produces unsigned artefacts instead of stopping.
-
-**1.2.0** — feature. Score a target from a photograph taken after the session
-(`ImportActivity`), with an optional clean "before" photograph that turns
-detection into a difference. Shot distribution and histogram
-(`ShotDistribution`, `ScoreHistogramView`) on Results, live on Session, on
-the import screen and in the shared report.
-
-Also a correction found while writing the tests rather than by running them:
-`ImageLoader.sampleSizeFor` used the sample-code idiom that tests
-`width / (sample * 2) >= max` and therefore stops one step early, deliberately
-returning an image at least as large as requested. That is right for a
-thumbnail and wrong for a memory bound — a 50 MP photograph came back at
-4080 px against a documented 3000 px cap. The function now genuinely caps.
-
-**1.1.0** — feature. Launcher and Play Store icon: a target with a three-shot
-group and the score `10.9` — the ISSF decimal maximum, which reads to a
-target shooter as a perfect shot and is the figure this app exists to
-produce. Palette sampled from the VTB icon (`#2E4034` field, `#CAA24B` gold,
-`#F4F3EE` cream) so the two apps sit together on a home screen as a family.
-
-`tools/generate_icons.py` is the single source: it emits `play/play_store_icon.png`
-(512×512, full bleed — Play rounds the corners itself), the adaptive
-foreground at five densities, and the Android 13+ monochrome layer, all from
-one parameterised drawing. Regenerate with `python3 tools/generate_icons.py`
-rather than editing the PNGs, or the store listing and the home screen will
-drift apart.
-
-Two details worth keeping if the artwork is revised. The bullet holes are
-knocked out to *transparency* at a slightly larger radius than the hole
-itself, so whatever they land on is visibly broken by them — that gap is what
-makes a mark read as a hole punched through paper rather than a dot printed
-on it, and being transparent it works unchanged in the store icon, the
-adaptive icon and the themed monochrome layer. And the artwork is sized to
-the 66dp adaptive safe zone, not the 108dp canvas: a launcher scales the
-canvas so its *72dp visible area* fills the display size, which is easy to
-get wrong in a preview and produces an icon that looks correct in the mockup
-and undersized on a real home screen.
-
-**1.0.1** — correction. Removed `res/mipmap-hdpi/README.txt`. Android's
-resource merger accepts only `.xml` and `.png` under `res/`, so any other
-file fails `mergeDebugResources` before compilation is attempted. The file
-was a placeholder for a directory that is not needed at all: minSdk is 26,
-so the adaptive icon in `mipmap-anydpi-v26` covers every supported device
-and no density-specific PNG fallback exists.
+One entry per release, newest first, each a short paragraph: what was wrong or
+what was added, and the figure that settled it where there is one. The FULL
+entry — everything measured, everything tried and rejected — is the header
+comment of `app/build.gradle.kts`, which is where it is written as the work is
+done rather than reconstructed afterwards.
+
+**1.49.1** — documentation. The changelog reads to one standard from end to
+end: every release gets a summary sentence and the reason or the figure behind
+it, where the entries up to 1.9.0 had been full prose and everything after
+them a single line. The pre-publication checklist is deleted — two of its four
+items were done and the other two are ongoing work.
+
+**1.49.0** — feature. The picture can be stretched back to square, the two
+registration routes agree, and Home stops showing the rule book's distance
+instead of the session's. Reshaping the drawn circles would have left an
+elliptical geometry in a pipeline whose scale, gauge, ring radii and hole-size
+gates are all written in terms of one millimetres-per-pixel number, so the
+image is stretched instead and the rings are round before any of that runs.
+The stretch is measured from the fitted ring family and offered, never
+applied: a good photograph of a flat card measures 1–2% out of round on
+segmentation noise alone. Auto-detect now fits and draws the rings from the
+same shared code the identify route uses — it still does not identify the
+face, which is the whole difference between the two buttons.
+
+**1.48.3** — correction. The guide is edited inside the author's own document
+now; the generator that kept destroying its formatting is gone. Rebuilding a
+document from scratch works exactly once — after that it is laid out in Word,
+and the next regeneration replaces the template, the heading styles, the logo
+and the page breaks with the script's own. `docs/guide/edit_guide.py`
+substitutes strings inside the document and writes nothing else, verified part
+by part against the author's copy.
+
+**1.48.2** — documentation. The proof-read guide is the baseline the tooling
+is held to. Six edits came back in a returned document and the generator knew
+about none of them, so the next reissue would have reverted every one with
+nothing to show it had happened. All six were folded in and the generator
+moved out of a temporary directory into the repository.
+
+**1.48.1** — documentation. The guide has a permanent address on the RFSAT
+portal, linked from the top of this file, and the changelog here stopped
+being thirty-nine releases out of date. The PDF filename carries no version so
+the link survives each reissue; the version is on the title page.
+
+**1.48.0** — feature. The photograph survives a restart, and three things on
+Results that read badly were fixed. The screen had been contradicting itself —
+"no adjustment needed" above an instruction to move the point of impact —
+because two places were deciding that question independently; it is decided
+once now. The rectified card is kept as a JPEG so coming back to a score does
+not mean losing the one view a missed shot is visible in, the angular figures
+are a right-aligned monospaced table, and bullet lists have a hanging indent
+instead of wrapping back under the dot.
+
+**1.47.1** — correction. Check box labels ignored the theme. A CompoundButton
+takes its label colour from the platform theme's text appearance, not from the
+colours this app sets, so under Dark and both night modes a label was
+framework grey while the note directly beneath it followed the theme. Fixed on
+a style applied to the view, which is the one place the platform cannot
+override, across all 16 of them.
+
+**1.47.0** — feature. Which AI service is used is three separate, stated
+choices, and the app no longer names one it is not calling. One setting had
+governed both import scoring and the second opinion, and every message on
+screen still said "Claude" whichever service was picked — indistinguishable
+from ignoring the setting. Settings now asks what scores an import, what the
+second opinion asks, and which service the key and model controls are editing;
+the first two are independent, because asking the other service is what makes
+a second opinion worth having.
+
+**1.46.0** — feature. API keys survive an upgrade and cannot be silently lost
+for ever. An in-place upgrade never touched them; a restore onto another phone
+did, because the Keystore master key does not travel with a backup and the
+restored file was ciphertext nobody could read. The file is excluded from
+backup and device transfer, and an unreadable one is discarded and remade with
+the shooter told why rather than failing for ever. The guide lost the name
+"Claude" throughout at the same time, keeping it only in the table saying
+where each key comes from.
+
+**1.45.0** — correction. OpenAI would not connect at all: "unexpected char
+0x0a at 83 in header value" is a newline 76 characters into a key pasted from
+a wrapped display, and `trim()` only takes them off the ends. All whitespace
+is now stripped on the way in AND on the way out, so a key stored by an
+earlier version repairs itself. Both services' keys are listed at once, since
+showing only the selected one made setting a second look as though it had
+replaced the first, and the settings screen stopped naming Claude above a
+picker set to OpenAI.
+
+**1.44.0** — feature. OpenAI alongside Claude. Both are sent the same
+rectified picture, the same question and the same schema, each held to it by
+its own API's mechanism — a forced tool call for Anthropic, a strict
+`json_schema` response format for OpenAI — so nothing downstream knows which
+replied. Keys and model choices are kept per service, and the model list is
+rebuilt on a change because an identifier from one means nothing to the other.
+
+**1.43.0** — feature. The Targets preview is square, so a face fills the
+width, and the ring numerals appear at last. They were always being drawn and
+always being dropped by the gate that refuses a glyph too small to read: at
+the old 180 dp preview an ISSF air pistol annulus asks for a 15.4 px glyph
+against a 17.9 px floor. Nothing about the gate changed — the box was too
+small. The offline stub that had `View.layoutParams` as a read-only `Any?` was
+fixed too; a stub weaker than the thing it stands in for hides the errors it
+exists to catch.
+
+**1.42.0** — correction. The settings screen explained itself instead of
+describing itself. Ten options had grown ten paragraphs of mechanism and
+evidence, all true and none of it what someone deciding whether to tick a box
+reads at that moment. Each option now carries one line, with the paragraph one
+tap away under More info; nothing was deleted.
+
+**1.41.0** — correction. "The reply was not in the expected form", reported on
+Opus 5, was the parsing rather than the model. Asking for "JSON and nothing
+else" is a request, not a guarantee, and the parser took everything between
+the first brace and the last — which fails silently on a reply that ran out of
+room part way through. The model now answers through a forced tool call, where
+the API assembles the arguments against a schema, with the token budget raised
+from 1,500 to 4,000.
+
+**1.40.0** — feature. One choice of what scores a card, made on import:
+Embedded, or the AI service. It replaced three overlapping checkboxes that had
+accumulated one request at a time and between them described states nobody
+wanted, such as overriding an engine that was not running. It also now runs
+where it says it does — from the Import screen, on the picture being imported.
+
+**1.39.0** — feature. The AI service can find and score a card outright, off
+by default. Registration stays the app's own work, and that is not a half
+measure: without knowing where the card is and how big it is there is no
+millimetre grid and nothing can be drawn in the right place. The picture sent
+is the rectified card, already on that grid, which is what makes the returned
+positions land where the shooter sees them.
+
+**1.38.0** — feature. The second opinion can be set to win outright, off by
+default. The request was to send the app's own hit list and have the model
+judge without being biased by it; those two cannot both happen, because
+anything in the prompt anchors the answer. So the model is asked cold, and the
+comparison is done afterwards in the app, where it can be done honestly.
+
+**1.37.0** — correction. Asked to delete nine marks, the app deleted one and
+said nothing: reindexing replaces every survivor with a copy carrying a new
+index, and `MutableList.remove` is equality-based, so each later call quietly
+removed nothing. Removal now takes them all at once and matches by identity.
+The second-opinion dialog also stopped explaining its method, its millimetre
+accuracy and its token count at the moment of deciding.
+
+**1.36.0** — correction. "Off" now means off. With "also find shots that
+missed the rings" switched off, the limit was still the outer radius times
+1.10 — 85.5 mm on a 10 m air pistol face, eight millimetres beyond the
+outermost ring, and the two false marks on the test card sit at 81.2 and
+82.8 mm. The limit is now the furthest a hole's centre can be with its edge
+still touching the outer ring: 80.0 mm on that face.
+
+**1.35.0** — correction. The second opinion could only make an over-detected
+card worse. On T0002 the app marked fourteen, the model counted seven — the
+right answer — and the reconciler offered to add three more and nothing else,
+taking the plot from fourteen wrong to seventeen. The asymmetry was the fault:
+over-detection is this app's measured failure mode, so removal is now offered
+first when the app has marked more than the model sees.
+
+**1.34.0** — correction. A shot in the ten ring was being dropped because a
+threshold was doing the wrong job. Core pixels were those more than a fixed 30
+levels from the local background; inside the aiming mark a hole stands a
+hundred levels above the ink, so the shot at (−1.8, 12.7) failed at every
+offset it was pointed with while the one at dead centre survived. The
+threshold is now half of each hole's own maximum, with the fixed figure kept
+only as a floor.
+
+**1.33.0** — feature. A region holding more than one shot is split instead of
+thrown away. On card B the pairs at 4.5 and 3.1 mm now separate: frames that
+scored 0 from 0 shots score 11 from 2 and 16 from 3, both exact. The cluster
+was always found and then rejected by whichever single-shot gate happened to
+catch it, so the split is asked for before those gates run. The
+two-photograph difference method was measured first and does not work
+hand-held — two photographs of the same unpunched card differ by 3 and 10
+phantom holes — so the splitter is necessary rather than a fallback.
+
+**1.32.0** — feature. A suggestion from the AI service is measured before it
+becomes a shot. This closed a gap of my own making: 1.30.0 was described as
+re-searching where the model pointed and did not, planting a shot at the
+model's coordinate instead — several millimetres on a 170 mm card against 0.2
+to 1.7 mm for a hole the app finds itself. The suggestion now says only where
+to look. The shooter's photograph is also rectified four times finer than the
+detection grid, since nothing is allocated per pixel for a picture.
+
+**1.31.0** — feature. The background is estimated locally, and card A scores
+exactly right: 6 of 6 found and 33 against a truth of 33, where a single level
+per zone found 5 and scored 26. A global level cannot work on a card
+photographed unretouched — the paper reads 28 to 40 levels darker at the foot
+of the sheet than at the head. The shot it had never found is 3.5 mm inside
+the black edge; its error went from 26.3 mm to 0.9 mm.
+
+**1.30.0** — feature. A second opinion from an AI service, on demand, that is
+not allowed to score. The premise it was proposed on does not hold: the card
+scored correctly by hand was not read by eye but measured, and the 6 on it
+turns on 0.8 mm, which nothing looking at a JPEG resolves. So the model counts
+and the app measures. Two failures found on the punched test card were fixed
+with it — a harmonic lock that fitted a ring pitch exactly a third of the
+truth and scored 9 instead of 19, and a scale-free check that was blind to it.
+
+**1.29.0** — feature. Two sights that cannot be clicked — "Built-in iron
+sight" and "No sight" — which needed three changes before either could give an
+honest answer, starting with stating the absence of a click rather than
+inferring it from a missing number. The catalogue screens also gave too much
+room to their furniture: closed spinners 48→34 dp, dropdown rows 48→42 dp
+(shortened rather than squeezed, because those are tap targets), the face
+preview 230→180 dp.
+
+**1.28.0** — feature. The test card is part of the app, and every build is
+scored against it: an ISSF 10 m Air Pistol card hand-scored at 9, 6, 2, 1, 1
+and two misses — 19 points from 7 shots — with the centre from circles fitted
+to the printed rings and the pitch recovered as 7.999 mm against a truth of
+8.000. Six tests hold it, two of them for the shots that have already caught
+real bugs. A seventh static gate now catches `break`/`continue` inside an
+inline lambda, which needs Kotlin 2.2 while this project builds on 2.1 —
+the worst kind of error, since it compiles locally and fails in CI.
+
+**1.27.0** — feature. Shots are found in the photograph itself, and the shot
+inside the aiming mark is found at last: 10 → 19 on the user's card, the
+hand-scored truth exactly. The cause took three wrong guesses. It was not
+resolution — measured at 8, 12, 16, 24 and 32 rectified pixels per gauge the
+answer is identical — and not the ring-pitch scale, a claim made and retracted
+in 1.26.0. It was the colour channel, in which the printed ring lines are as
+far from the paper as a hole is.
+
+**1.26.0** — feature. The detector can be asked whether a candidate has the
+profile of a puncture, and to look for the shots that missed the rings. Both
+came from scoring the user's card by hand and running the shipped pipeline on
+the same image: by hand 19 points from 7 shots, shipped 4 real hits, one false
+positive from the maker's footer at 82.77 mm, and the 9 in the black missed
+entirely.
+
+**1.25.0** — feature. The camera adopts the face it identifies, and the plot
+no longer loses your zoom when you nudge a shot. The same image scored from a
+photograph and failed from the camera because Import had been identifying and
+adopting the face since 1.22.0 while Session only complained: T0002's black
+measures 3.723 ring pitches across against the 3.719 its face expects, and 39%
+against the air rifle face that was selected.
+
+**1.24.0** — feature. The alignment guide says continuously whether the card
+matches the selected face — "Match OK", "Wrong target face", "Checking", "Aim
+at the target" — because a message that fires once is the wrong shape for
+someone watching a preview. Encoded three ways at once and deliberately not by
+colour alone, since green breaks the night-red theme whose entire purpose is
+preserving dark adaptation.
+
+**1.23.1** — correction. The app warns when the card in front of the camera is
+not the selected face. The ring guide makes a mismatch visible only to someone
+who knows to look, and the natural response — walking until the circles line
+up — cannot work, because the rings are drawn at the face's own proportions
+and distance resizes them all together.
+
+**1.23.0** — feature. The selected face's rings as an alignment guide, in four
+options and at an adjustable size. The strongest argument for them is not
+framing but verification: drawn at the face's own ratios, a card whose rings
+sit at different proportions will not line up however far the shooter moves.
+
+**1.22.1** — correction. The weaker registration was the automatic one. On
+loading a photograph the app ran the aiming-mark path, which takes the scale
+from the black mark times the ratio of whichever face is selected — so it is
+only ever as right as that selection, and a wrong selection is the single
+largest cause of nothing being detected at all. It identifies instead now.
+
+**1.22.0** — feature. Results markers, the photo/template swap, a brighter
+crosshair, and the rings that were found but not used. Markers are hollow and
+half as large again as the hole, because a filled disc at true size covers the
+very hole it marks and defeats the photo view. Photograph and template are
+alternatives rather than layers, since two sets of ring lines a few pixels
+apart is worse than either alone.
+
+**1.21.0** — feature. Merged shots, the shot-count check, hole-centre
+precision as its own metric, and stage timings. A connected-component detector
+sees two shots through one place as a single region and the size and roundness
+gates then rejected it — losing both shots rather than one — which at 10 m is
+the app's own use case failing.
+
+**1.20.0** — feature. Resolution discipline, a bound on the ladder search, and
+the tilt-axis wedge behind a switch. `MarkOutline` was running at full
+resolution while everything around it worked at 700 px or less: on a 3000 px
+phone photograph that meant five threshold passes over nine megapixels each.
+Measured at four sizes from 460 to 3000 px, the answer does not change.
+
+**1.19.2** — toolchain. The activities can be compiled offline at last,
+closing the gap that let three failures reach CI. Every source file is
+type-checked against view-binding classes generated from the real layouts, an
+R generated from the real resources, and a hand-written slice of the Android
+framework — so a field that is not in the layout is not in the stub either.
+
+**1.19.1** — correction. Two compile errors that had been in the tree since
+1.18.0, through two releases, both from copying the resolution spinner between
+activities and keeping the original's helper names. The offline harness could
+not see them: the activities were excluded from it, which is what 1.19.2 fixed.
+
+**1.19.0** — feature. 9×19 service pistols and factory loads — the Beretta 92X
+family and the 92FS, eleven Glocks, and Fiocchi, Federal and CCI ammunition in
+115, 124 and 147 grains. Barrel lengths and twist are the makers' published
+figures; zeroed at 25 m rather than the 10 m used for air or 50 m for rimfire.
+
+**1.18.1** — correction and feature. The answer to "do you capture at full
+resolution" was no, because the app did not capture at all: there was no
+`ImageCapture` use case, and "Score the target now" was reading a frame from
+the analysis stream. Capture is now bound at the highest available resolution
+and guarded.
+
+**1.18.0** — feature. The camera is held still and its resolution can be
+chosen. Nothing in the app had touched `CameraControl`, so exposure, white
+balance and focus ran free — close to fatal for the differential path, which
+assumes two frames of one card differ only where a shot arrived, while a
+camera that re-meters between them changes every pixel by more than the 40
+levels a hole is worth.
+
+**1.17.0** — feature. Face identification stabilised, and the two largest
+costs in registration removed. Across six tilt angles of the same card the
+identified face had changed up to four times, and not from noise: black radius
+over ring pitch cannot separate this catalogue at any precision — 4.00, 4.00
+and 4.01 for three quite different faces.
+
+**1.16.0** — feature. The scale is measured two independent ways and
+cross-checked. Every scoring error is proportional to millimetres-per-pixel,
+so it is the most consequential number the app measures; the ring ladder is
+precise when the rings are found — 0 to 1.5% on a square-on card — and
+degrades badly when they are not, where the aiming mark gives a separate
+reading.
+
+**1.15.0** — feature. The interface follows the theme and buttons are
+consistent. Eighteen buttons had no style at all and were rendering at the
+platform's size and in capitals beside styled ones; the status text over the
+viewfinder and the whole registration overlay were hardcoded white and gold,
+which the night themes exist to avoid.
+
+**1.14.1** — correction. Two presentation fixes and a third static gate that
+found a real error while it was being written. The Stage time and Notes fields
+were on the platform's default EditText size, several points larger than the
+body text around them, so they read as headings.
+
+**1.14.0** — feature. Justified description text and an aligned parameter
+table on the rules screen. Sixteen descriptive paragraphs across five screens
+are fully justified — prose only, since justification stretches inter-word
+spacing and on a two-word heading that reads as a mistake.
+
+**1.13.0** — feature. Interface changes across Home, Session, Results,
+Targets, Settings and Import. Home lost the duplicate upload and live-session
+buttons, which lifted the active setup — the one thing worth confirming before
+firing — back above the fold on a small phone, and that setup is a real
+two-column table rather than one TextView padded out with spaces.
+
+**1.12.2** — correction. `NameWrapTest` asserted nothing and said so only in
+CI: under stubbed unit tests `Paint.measureText` returns 0.0f, so every string
+"fitted" and the logic under test never ran. The wrap decision now takes a
+predicate, with the Paint form a thin overload over it.
+
+**1.12.1** — correction. Seven interface changes, all reported. The shot
+controls became two rows of identically sized buttons — weighted with
+wrap_content heights, a label that wrapped made its own button taller than its
+neighbours — and Delete acts on the selected shot rather than the last one,
+because detection order has nothing to do with shooting order.
+
+**1.12.0** — feature and correction. The real reason hole detection "generally
+fails" is the face, not the detector. The face sets millimetres per pixel, the
+radius of the scoring area and which region counts as black, so registering
+against the wrong one puts every hole outside the detector's size gates and
+finds nothing — with no error raised anywhere, because each stage did what it
+was told.
+
+**1.11.0** — feature. The ring-pitch ladder returns the same scale for one
+target photographed at different angles. It had been returning 10.4, 36.1 and
+7.6 px for one target at three tilts, from four causes each measured
+separately — beginning with a radial profile read at one percentile, which is
+blind to the white rings printed inside the black where rings 7 to 10 live.
+
+**1.10.1** — correction. The unit test source set had never once been compiled
+and failed the moment it could be: an assertion passing three Ints to JUnit's
+three-argument form, which takes doubles. It was reachable only because 1.10.0
+was the first release whose main source compiled at all.
+
+**1.10.0** — feature. Direct least-squares ellipse fitting on the ring edges,
+in the numerically stable Halíř–Flusser form, and an evidence-based choice
+between it and a circle by cross-validation. It fits all five ellipse
+parameters where the pooled estimate fits two and assumes three; verified
+against an independent implementation to five decimal places on twelve
+reference cases.
+
+**1.9.1** — correction. Four compile errors from the 1.6.0–1.9.0 run of
+releases, none of which had been through a compiler: two companion objects in
+one class, a `return@` naming a function that had been renamed, and a `when`
+over an enum with six values ported from one with three. The static gates in
+`tools/kotlin_checks.py` now catch all three classes, verified by putting each
+bug back.
+
+**1.9.0** — feature. The two gaps from 1.8.0, and Hough centre voting. The
+target spinners on the detection screens show a picture of each face — 1.8.0
+had put thumbnails only in the Targets tab, which is where a face is browsed,
+while the spinner is where one is chosen moments before scoring against it.
+Live camera detection uses the colour channel too.
+
+**1.8.0** — feature. Five features, of which the first two change how
+registration works rather than tuning it. Hole detection reads distance from
+the paper's own colour rather than brightness: a pellet hole is brown, not
+merely dark, which doubles its separation from the paper — 115 luma levels
+against 242 — and measuring the paper rather than assuming it is neutral
+matters, because an ISSF card is yellow.
+
+**1.7.1** — correction. Three corrections, two with one cause: the black text
+was not the spinners but all 35 borderless buttons, whose platform style takes
+its colour from attributes this app cannot reach. A spinner also delivers its
+first `onItemSelected` on the layout pass after `onCreate`, which was being
+read as a user choice.
+
+**1.7.0** — feature. Clear the log — the button existed, but four controls in
+one row pushed it off the right-hand edge of a phone — and clear the recorded
+shots from Results, Import and Session, keeping the target, rules and distance
+so the same card can be re-scored. Every spinner in the app had been rendering
+black text on the dark background.
+
+**1.6.0** — feature. A diagnostic log reachable from Home, hideable in
+Settings, whose Report button shares the log together with the active face,
+rules, gauge and equipment. The app also stopped staying silent when the
+selected face does not match the target in the picture.
+
+**1.5.3** — correction. From running the detector against two real uploaded
+targets rather than synthetic data: printed ring numerals were being scored as
+shots. Radial normalisation removes rings but not numerals, which occupy four
+angles out of 360 and barely move a radial median — 22 candidates for 5 real
+shots, 17 of them digits. Now rejected by testing each candidate for
+rotational twins.
+
+**1.5.2** — correction. Three failures found in the field, the first being
+auto-detect skewing the box on square-on targets: it was applying a tilt
+inferred from how elliptical the aiming mark measured, and a shot-up mark
+measures a few per cent elliptical from segmentation noise alone, which `acos`
+turns into 14 to 25 degrees. The estimate is offered on a button now, never
+imposed.
+
+**1.5.1** — correction. The first real CI run compiled everything and passed
+75 of 76 tests, and the failure was the test rather than the app: it asserted
+that a 10 degree tilt is recovered, where the code deliberately ignores
+anything under 11.4. That gate is a named constant now and the test asserts
+the behaviour that exists.
+
+**1.5.0** — feature. Individual tilt and rotation controls on the registration
+box, laid out the way a phone camera app lays them out. Box plus these is
+seven degrees of freedom, which is every one a flat target through a normal
+lens needs; the eighth, shear, cannot arise with square pixels.
+
+**1.4.0** — feature. Registration by a square bounding box with draggable
+handles, placed automatically from the detected aiming mark and expanded to
+the whole scoring area by the face's own published ratio. Corner registration
+stays available for angled views, and the detector says when it is needed.
+Ring values are printed on the plot at all four cardinal points.
+
+**1.3.1** — correction. The photo-upload entry points had existed since 1.2.0
+but were styled borderless — flat text under a filled button — and users could
+not find them. Both are ordinary buttons now, and the Home one comes first.
+
+**1.3.0** — feature. Play Store listing material: short and full descriptions
+and the 1024×500 feature graphic, generated from the same drawing as the icon
+so the listing and the home screen cannot drift.
+
+**1.2.1** — correction. `applicationId` is `com.STS`, and CI builds release
+artefacts only. Signing degrades to unsigned rather than failing when no
+keystore is present.
+
+**1.2.0** — feature. Score a target from a photograph after the session, and a
+shot distribution histogram on Results, Session, Import and the shared report.
+A correction found while writing its tests: the image loader's sample size
+used the common idiom that stops one step early, so a 50 MP photo decoded at
+4080 px instead of the 3000 requested.
+
+**1.1.0** — feature. Real launcher and Play Store icon, generated from one
+drawing into the 512 px store asset, the adaptive foreground at five
+densities, and the Android 13+ monochrome layer.
+
+**1.0.1** — correction. Removed `res/mipmap-hdpi/README.txt`, which the
+resource merger rejects — `res` accepts only `.xml` and `.png`.
 
 **1.0.0** — first release.
 
