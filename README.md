@@ -14,6 +14,24 @@ profile system that is deliberately field-compatible with VTB and DBM.
 
 Open the folder in Android Studio and build.
 
+---
+
+## 📖 User Guide
+
+**[STS User Guide (PDF) — https://www.rfsat.com/download/STS-User-Guide.pdf](https://www.rfsat.com/download/STS-User-Guide.pdf)**
+
+The complete guide for shooters: setting up a profile set, scoring a card from
+a photograph, live scoring from the camera, reading the Results screen, the AI
+scoring options, and what accuracy to expect. Hosted on the RFSAT portal, so
+the link stays valid as the guide is reissued.
+
+The same document is kept in `docs/` in this repository — the editable
+`STS-User-Guide_v<version>.docx` and the `STS-User-Guide.pdf` that is uploaded
+to the portal. The PDF filename carries no version, so the portal link never
+has to change; the version is on the guide's title page.
+
+---
+
 `.github/workflows/android-ci.yml` is **release only** — it never assembles a
 debug artefact. It runs the unit tests against the release variant, then
 builds the release APK and the Android App Bundle for Play, and uploads both
@@ -295,6 +313,76 @@ Each release ships as a **single ZIP** holding the whole project —
 `STS_v<brand>_<major>_<minor>.zip` — with nothing loose beside it.
 
 ### Changelog
+
+One line per release, newest first. The FULL entry for each — what was
+wrong, what was measured, and what was rejected — is the header comment of
+`app/build.gradle.kts`, which is where the changelog is written as the work
+is done rather than reconstructed afterwards. Releases before 1.10.0 are
+kept in long form further down.
+
+* **1.48.0** — feature. The photograph now survives a restart, and three things on Results that read badly were fixed.
+* **1.47.1** — correction. Check box labels ignored the theme.
+* **1.47.0** — feature. Which AI service is used is now three separate, stated choices, and the app no longer names one it is not calling.
+* **1.46.0** — feature. API keys survive an upgrade, and cannot be silently lost for ever.
+* **1.46.0** — correction. The User Guide named Claude throughout.
+* **1.45.0** — correction. OpenAI would not connect at all. Reported with the exact error, which named the fault precisely: "unexpected char 0x0a at 83 in header value".
+* **1.45.0** — feature. A key for EACH service, visible at once.
+* **1.45.0** — correction. The settings screen named Claude throughout.
+* **1.44.0** — feature. OpenAI alongside Claude. Settings -> AI service.
+* **1.43.0** — feature. The Targets preview is square, so a face fills the width — and the ring numerals appear at last.
+* **1.43.0** — correction. The offline stub had View.layoutParams as a read-only Any?.
+* **1.42.0** — correction. The settings screen explained itself instead of describing itself.
+* **1.41.0** — correction. "the reply was not in the expected form", reported on Opus 5. The fault was the parsing, not the model.
+* **1.40.0** — feature. ONE choice of what scores a card, made on import.
+* **1.39.0** — feature. Claude can find AND score the card outright.
+* **1.38.0** — feature. The second opinion can be set to WIN.
+* **1.37.0** — correction. Removal removed ONE. Reported from real use.
+* **1.37.0** — correction. The second-opinion dialog said far too much.
+* **1.36.0** — correction. "off" now means off. Three faults, all reported from real use on T0002.
+* **1.35.0** — correction. The second opinion could only make an OVER-DETECTED card worse. Reported from real use.
+* **1.34.0** — correction. A shot in the TEN RING was being dropped, and the reason was a threshold doing the wrong job.
+* **1.33.0** — feature. A region holding more than one shot is SPLIT instead of thrown away.
+* **1.33.0** — measurement. The two-photograph difference method does NOT work on hand-held re-photographs, and the splitter is therefore necessary rather than a fallback.
+* **1.32.0** — feature. A suggestion from Claude is now MEASURED before it becomes a shot.
+* **1.32.0** — feature. The shooter's photograph is rectified four times finer than the detection grid.
+* **1.32.0** — correction. The release build still would not link.
+* **1.31.0** — feature. The background is estimated LOCALLY, and card A now scores exactly right.
+* **1.31.0** — correction. The RELEASE build would not link.
+* **1.30.0** — feature. A SECOND OPINION from Claude, on demand, that is not allowed to score.
+* **1.30.0** — correction. Two failures found on the punched test card.
+* **1.29.0** — feature. Two sights that cannot be clicked, and more of a catalogue window given over to the catalogue.
+* **1.29.0** — correction. Catalogue screens gave too much room to their furniture and not enough to the list.
+* **1.28.0** — feature. The test card is now PART OF THE APP, and every build is scored against it.
+* **1.28.0** — correction. `continue` inside an inline lambda, which needs Kotlin 2.2 while this project builds on 2.1.
+* **1.27.0** — feature. Shots are found in the PHOTOGRAPH, and the shot inside the aiming mark is found at last. 10 -> 19 on the user's card, which is the hand-scored truth exactly.
+* **1.26.0** — feature. The detector can be asked whether a candidate has the PROFILE of a puncture, and to look for the shots that missed the rings.
+* **1.25.0** — feature. The camera ADOPTS the face it identifies, and the plot no longer loses your zoom when you nudge a shot.
+* **1.24.0** — feature. The guide says continuously whether the card matches the selected face.
+* **1.23.1** — correction. The app now WARNS when the card in front of the camera is not the face that is selected.
+* **1.23.0** — feature. The selected face's rings as an alignment guide.
+* **1.22.1** — correction. The WEAKER registration was the automatic one.
+* **1.22.0** — feature. Results markers, photo/template swap, a brighter crosshair, and the rings that were found but not used.
+* **1.21.0** — feature. Merged shots, the shot-count check, hole-centre precision as its own metric, and stage timings.
+* **1.20.0** — feature. Resolution discipline, a bound on the ladder search, and the tilt-axis wedge behind a switch.
+* **1.19.2** — toolchain. The activities can finally be compiled offline, closing the gap that let three failures reach CI.
+* **1.19.1** — correction. Two compile errors that have been in the tree since 1.18.0, through two releases.
+* **1.19.0** — feature. 9x19 service pistols and factory loads.
+* **1.18.1** — correction. In-app capture actually exists now, and it is guarded.
+* **1.18.0** — feature. The camera is held still, and its resolution can be chosen.
+* **1.17.0** — feature. Face identification stabilised, and the two largest costs in registration removed.
+* **1.16.0** — feature. The scale is now measured two independent ways and cross-checked. Accuracy, not speed.
+* **1.15.0** — feature. The interface follows the theme, and buttons are consistent.
+* **1.14.1** — correction. Two presentation fixes, and a third static gate that found a real error while being written.
+* **1.14.0** — feature. Justified description text, and an aligned parameter table on the rules screen.
+* **1.13.0** — feature. Interface changes across Home, Session, Results, Targets, Settings and Import.
+* **1.12.2** — correction. NameWrapTest asserted nothing and said so only in CI.
+* **1.12.1** — correction. Seven interface changes, all reported.
+* **1.12.0** — feature. The real reason hole detection "generally fails", plus the photo overlay and real buttons.
+* **1.11.0** — feature. The ring-pitch ladder now returns the same scale for the same target photographed at different angles.
+* **1.10.1** — correction. The unit test source set had never once been compiled, and failed the moment it could be.
+* **1.10.0** — feature. Direct least-squares ellipse fitting on the ring edges, and an evidence-based choice between it and a circle.
+
+#### Before 1.10.0
 
 **1.9.1** — correction. Four compile errors, from four releases that had not
 been through a compiler.

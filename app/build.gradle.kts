@@ -32,6 +32,24 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.48.1 — documentation: the guide has a permanent address, and
+        //          the README's changelog is no longer thirty-nine releases
+        //          out of date.
+        //
+        //   The README stopped at 1.9.1. Anyone reading the repository was
+        //   told what the app did in October and nothing since — including
+        //   about the AI scoring, the punched-card corpus and every accuracy
+        //   result measured on it. It now carries one line per release back
+        //   to 1.10.0, newest first, and says plainly that the full entry
+        //   lives in this file, which is where it is written as the work is
+        //   done rather than reconstructed from memory afterwards.
+        //
+        //   The guide is published at
+        //   www.rfsat.com/download/STS-User-Guide.pdf and linked from the
+        //   top of the README. The PDF filename carries NO version so the
+        //   address survives every reissue; the version is on the title page,
+        //   which is where a reader can see it anyway.
+        //
         // 1.48.0 — feature: the photograph now survives a restart, and
         //          three things on Results that read badly were fixed.
         //
@@ -2135,8 +2153,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 67
-        versionName = "1.48.0"
+        versionCode = 68
+        versionName = "1.48.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
