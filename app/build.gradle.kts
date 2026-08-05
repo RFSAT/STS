@@ -32,6 +32,28 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.48.2 — documentation: the shooter's own edits are now the
+        //          baseline the guide is built from, and the generator that
+        //          would have overwritten them lives in the repository.
+        //
+        //   The guide came back proof-read: a link written out in full, a
+        //   parenthesis removed, several articles dropped. Six edits. The
+        //   generator that produces the document knew nothing about any of
+        //   them, so the next reissue would have silently reverted every one
+        //   — the author's wording replaced by mine, with nothing to show it
+        //   had happened.
+        //
+        //   All six are now in the generator's own text, verified by
+        //   regenerating and diffing: the only remaining difference from the
+        //   returned document is the version on the title page.
+        //
+        //   The generator itself was living in a temporary directory, which
+        //   is how it came to be possible to lose the edits in the first
+        //   place. It is now docs/guide/, with the returned document kept
+        //   beside it as baseline_v<version>.docx and the rule written down:
+        //   diff the returned copy by TEXT first, fold every difference in,
+        //   regenerate, diff again.
+        //
         // 1.48.1 — documentation: the guide has a permanent address, and
         //          the README's changelog is no longer thirty-nine releases
         //          out of date.
@@ -2153,8 +2175,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 68
-        versionName = "1.48.1"
+        versionCode = 69
+        versionName = "1.48.2"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

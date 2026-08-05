@@ -320,6 +320,10 @@ wrong, what was measured, and what was rejected — is the header comment of
 is done rather than reconstructed afterwards. Releases before 1.10.0 are
 kept in long form further down.
 
+* **1.48.2** — documentation. The proof-read guide is the baseline the
+  generator is held to, and the generator now lives in `docs/guide/`.
+* **1.48.1** — documentation. The guide has a permanent address on the RFSAT
+  portal, and the README changelog is no longer thirty-nine releases behind.
 * **1.48.0** — feature. The photograph now survives a restart, and three things on Results that read badly were fixed.
 * **1.47.1** — correction. Check box labels ignored the theme.
 * **1.47.0** — feature. Which AI service is used is now three separate, stated choices, and the app no longer names one it is not calling.
