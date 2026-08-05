@@ -30,6 +30,11 @@ The same document is kept in `docs/` in this repository — the editable
 to the portal. The PDF filename carries no version, so the portal link never
 has to change; the version is on the guide's title page.
 
+The document itself is the source: it is laid out in Word, and wording changes
+between editions are made inside it by `docs/guide/edit_guide.py`. Nothing
+regenerates it, so its template, heading styles, logo and page breaks cannot
+be lost — see `docs/guide/README.md`.
+
 ---
 
 `.github/workflows/android-ci.yml` is **release only** — it never assembles a
@@ -320,6 +325,8 @@ wrong, what was measured, and what was rejected — is the header comment of
 is done rather than reconstructed afterwards. Releases before 1.10.0 are
 kept in long form further down.
 
+* **1.48.3** — correction. The guide is edited inside the author's own
+  document; the generator that kept destroying its formatting is gone.
 * **1.48.2** — documentation. The proof-read guide is the baseline the
   generator is held to, and the generator now lives in `docs/guide/`.
 * **1.48.1** — documentation. The guide has a permanent address on the RFSAT

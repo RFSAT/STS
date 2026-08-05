@@ -32,6 +32,38 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.48.3 — correction: the guide is edited IN the author's own
+        //          document now. The generator that kept destroying its
+        //          formatting is gone.
+        //
+        //   Reported plainly: do not change the formatting, do not add page
+        //   breaks, do not remove the RFSAT logo from the first page, do not
+        //   change the heading styles.
+        //
+        //   All four had the same cause. The guide was REBUILT FROM SCRATCH
+        //   by a script that emitted every paragraph, table and page break
+        //   itself. That works exactly once. The document then goes to the
+        //   author, who lays it out in Word — a real template, real heading
+        //   styles, the logo on the title page, page breaks where a reader
+        //   wants them — and the next regeneration hands back the script's
+        //   own idea of a document instead. Twice.
+        //
+        //   A generator cannot preserve what it was never told about, and it
+        //   cannot be taught a Word template. So the document is the source
+        //   now. docs/guide/edit_guide.py opens it, substitutes the strings
+        //   it is given, and saves: styles, images, headers, footers,
+        //   numbering, section properties and page breaks are never written,
+        //   so they cannot be lost. Verified — the output differs from the
+        //   author's copy in the version string and in nothing else, image
+        //   and style parts included.
+        //
+        //   It refuses to save when an edit does not match exactly once. An
+        //   edit that silently matches nothing is how a guide comes to
+        //   describe a setting renamed three releases ago.
+        //
+        //   Structural changes are made in Word and come back as the new
+        //   baseline. No script writes paragraphs into this document again.
+        //
         // 1.48.2 — documentation: the shooter's own edits are now the
         //          baseline the guide is built from, and the generator that
         //          would have overwritten them lives in the repository.
@@ -2175,8 +2207,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 69
-        versionName = "1.48.2"
+        versionCode = 70
+        versionName = "1.48.3"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
