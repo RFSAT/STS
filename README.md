@@ -257,19 +257,6 @@ rejection, group statistics, and the click conversions for mil, MOA and
 mm-at-distance sights. `gradle testDebugUnitTest` runs them; CI runs them on
 every push.
 
-## Before release
-
-- Verify the non-ISSF target dimensions and courses of fire against the
-  rulebooks you actually shoot under, and correct them in the catalogue.
-- Field-test detection at each discipline's distance and lighting; the
-  thresholds in `HoleDetector` are conservative starting points.
-- Generate a release keystore and set `ANDROID_KEYSTORE_BASE64`,
-  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`
-  as repository secrets. The `applicationId` is permanent once published.
-- Play listing: the app records and analyses camera and microphone input
-  entirely on the device and sends nothing anywhere, which is worth stating
-  plainly in the data-safety form.
-
 ---
 
 ## Play Store listing
