@@ -88,7 +88,25 @@ class MainActivity : BaseActivity() {
         binding.tvSetupSight.text = NameWrap.shortName(profiles.getScope().label())
         binding.tvSetupTarget.text = face.name
         binding.tvSetupRules.text = rule.name
-        binding.tvSetupDistance.text = UnitsManager.formatDistance(rule.distanceM)
+        // THE SESSION'S DISTANCE, not the rule set's nominal one.
+        //
+        // Reported: 200 m typed on the Session tab, 10 m shown here. Both
+        // numbers were real — this line was showing the distance printed in
+        // the ISSF rule set, which is where a match is shot, while the
+        // session was scored at the distance the shooter had entered. A
+        // competition face used for training at another distance is ordinary,
+        // and the correction, the MOA figures and the group statistics all
+        // use the session's number, so showing the rule's here contradicted
+        // every screen that mattered.
+        val sessionM = ScoringSession.state.distanceM
+        val usingSession = sessionM > 0.0 && kotlin.math.abs(sessionM - rule.distanceM) > 0.05
+        binding.tvSetupDistance.text = buildString {
+            append(UnitsManager.formatDistance(if (sessionM > 0.0) sessionM else rule.distanceM))
+            // Said out loud rather than left to be noticed: a distance that
+            // differs from the rule book is usually deliberate and
+            // occasionally a typing mistake, and the two look identical.
+            if (usingSession) append("  (rules say ${UnitsManager.formatDistance(rule.distanceM)})")
+        }
 
         val unverified = !face.verified || !rule.verified
         binding.tvSetupNote.visibility =

@@ -345,7 +345,16 @@ class SessionActivity : BaseActivity() {
     private fun startFreshSession() {
         val f = currentFace()
         val r = currentRules()
-        ScoringSession.startNew(f, r, r.distanceM)
+        // THE DISTANCE THE SHOOTER SET, where they have set one.
+        //
+        // This used to take the rule set's nominal distance every time, so
+        // starting a new string silently threw away a distance typed for the
+        // previous one — 200 m becoming 10 m because that is where an ISSF
+        // air rifle match is shot. A competition face used at another
+        // distance in training is ordinary, and the rule book's figure is a
+        // sensible DEFAULT rather than a correction to be applied.
+        val kept = ScoringSession.state.distanceM
+        ScoringSession.startNew(f, r, if (kept > 0.0) kept else r.distanceM)
         // The kept photograph belonged to the session just replaced. A new
         // session showing the previous card underneath its shots would be
         // worse than showing no photograph at all.

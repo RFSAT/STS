@@ -32,6 +32,66 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.49.0 — feature: the picture can be stretched back to square, the
+        //          two registration routes agree, and Home stops showing the
+        //          rule book's distance instead of yours.
+        //
+        //   THE DISTANCE. 200 m typed on the Session tab, 10 m on Home. Both
+        //   numbers were real: Home was showing the distance printed in the
+        //   ISSF rule set while the session was scored at the one entered.
+        //   The correction, the MOA figures and the group statistics all use
+        //   the session's number, so the summary screen was contradicting
+        //   every screen that matters. Worse, starting a new string reset the
+        //   distance to the rule book's, silently throwing away what had been
+        //   typed for the previous one — a competition face used at another
+        //   distance in training is ordinary, and the rule's figure is a
+        //   DEFAULT, not a correction. Home now shows the session's distance
+        //   and, where it differs, the rule's in brackets.
+        //
+        //   THE PICTURE, NOT THE CIRCLES. Reported: the estimated circles sit
+        //   over the printing on one axis and not the other, most often
+        //   vertically. The fix could have been to reshape the drawn circles,
+        //   and that would have been the wrong one — it leaves an ELLIPTICAL
+        //   geometry in the pipeline, and the scale, the gauge, the ring
+        //   radii and every hole-size gate are written in terms of ONE
+        //   millimetres-per-pixel number. An ellipse gives them two, and each
+        //   stage then has to know which applies in which direction.
+        //
+        //   So the picture is stretched instead, and the rings are round
+        //   before any of that runs. The app measures the stretch from the
+        //   fitted ring family, fills the two percentages in, and waits: a
+        //   good photograph of a flat card measures one to two per cent out
+        //   of round on segmentation noise alone, and applying that would
+        //   distort a picture that was already right. Same rule as the tilt
+        //   estimate, for the same reason.
+        //
+        //   It refuses the case it cannot express. A card photographed from
+        //   one side is foreshortened along an axis that is not the picture's
+        //   own; stretching would make that worse while looking like a fix.
+        //   A suggestion is offered only when the long axis lies within 20
+        //   degrees of the width or the height.
+        //
+        //   Applying re-registers from the new pixels and throws away the
+        //   box, the ring fit, the mark radius and the registration itself —
+        //   all of them measured in a picture that no longer exists. The
+        //   ORIGINAL is kept and every stretch is applied to it, so adjusting
+        //   a percentage up and down does not resample the card repeatedly.
+        //
+        //   THE TWO ROUTES DISAGREED. "Identify target and register" and
+        //   "Auto-detect the target" returned different bounding boxes for
+        //   the same photograph, and only the first drew the rings it had
+        //   measured. The second was fitting no rings at all — one circle
+        //   round the aiming mark, a box derived from that, and nothing on
+        //   screen to say whether the scoring geometry lined up with the
+        //   printing.
+        //
+        //   Auto-detect now fits the rings too, seeded from the mark it has
+        //   just found, draws them, and takes its box from the same shared
+        //   code the other route uses. What it still does NOT do is identify
+        //   the face, and it should not: the shooter selected one, that is
+        //   the whole difference between the two buttons, and it now says so
+        //   in as many words.
+        //
         // 1.48.3 — correction: the guide is edited IN the author's own
         //          document now. The generator that kept destroying its
         //          formatting is gone.
@@ -2207,8 +2267,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 70
-        versionName = "1.48.3"
+        versionCode = 71
+        versionName = "1.49.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

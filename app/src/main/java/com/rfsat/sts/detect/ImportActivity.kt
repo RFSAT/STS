@@ -63,6 +63,15 @@ class ImportActivity : BaseActivity() {
     private lateinit var binding: ActivityImportBinding
 
     private var shotBitmap: Bitmap? = null
+    /**
+     * The picture as it arrived, kept so an aspect correction is always
+     * applied to the ORIGINAL. Stretching an already-stretched copy resamples
+     * twice and loses a little of the card each time, and a shooter adjusting
+     * a percentage up and down to find the right one would do it repeatedly.
+     */
+    private var sourceShotBitmap: Bitmap? = null
+    private var aspectX = 1.0
+    private var aspectY = 1.0
     private var cleanBitmap: Bitmap? = null
     private var cleanUri: Uri? = null
     private var shotUri: Uri? = null
@@ -195,6 +204,21 @@ class ImportActivity : BaseActivity() {
             startActivity(android.content.Intent(this, ResultsActivity::class.java)); finish()
         }
         binding.overlay.onCornersChanged = { refreshStatus() }
+        binding.btnAspectApply.setOnClickListener { applyAspect() }
+        binding.btnAspectReset.setOnClickListener { resetAspect() }
+        moreInfo(binding.infoAspect, "Stretching the picture",
+            "The scale, the gauge, the ring radii and every hole-size gate are written in terms " +
+            "of ONE millimetres-per-pixel number. Reshaping the drawn circles instead would " +
+            "leave an elliptical geometry in the pipeline and give every one of those stages a " +
+            "second number to know about. Stretching the picture means the rings are round " +
+            "before any of it runs.\n\n" +
+            "It can only correct a distortion along the picture's own axes — a lens, a sensor " +
+            "with non-square pixels, a photograph resized unevenly. A card photographed from " +
+            "one side is foreshortened along some other axis; that needs the tilt controls or " +
+            "corner registration, and no stretch will fix it. The app offers a figure only when " +
+            "the rings measure out of round along the width or the height, and never applies " +
+            "one by itself: a good photograph of a flat card measures one or two per cent out " +
+            "on noise alone.")
         wireTransformControls()
 
         restoreLastImage()
@@ -223,6 +247,8 @@ class ImportActivity : BaseActivity() {
             return
         }
         shotBitmap = bmp
+        sourceShotBitmap = bmp
+        aspectX = 1.0; aspectY = 1.0
         shotUri = uri
         binding.image.setImageBitmap(bmp)
         binding.overlay.setSourceGeometry(
@@ -234,6 +260,127 @@ class ImportActivity : BaseActivity() {
             "Showing the last photo you scored. Pick another to replace it, or register and " +
                 "score this one again."
         )
+    }
+
+    private fun moreInfo(view: android.widget.TextView, title: String, body: String) {
+        view.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(body)
+                .setPositiveButton("Close", null)
+                .show()
+        }
+    }
+
+    // ------------------------------------------------------------------
+    //  Image aspect
+    // ------------------------------------------------------------------
+
+    /**
+     * Offers a stretch when the fitted rings say one would help.
+     *
+     * Filled in, not applied. Called from both registration routes, because
+     * both fit the rings and the shooter should not have to run a particular
+     * one of them to be told the picture is squashed.
+     */
+    private fun offerAspect(fit: RingFit) {
+        val s = AspectCorrection.suggest(fit.axisRatio, fit.orientationDeg)
+        if (s == null) {
+            binding.tvAspect.text =
+                if (fit.axisRatio >= 1.0 - AspectCorrection.NOISE_FLOOR)
+                    "The rings measure round; no stretch needed."
+                else
+                    ("The rings measure %.0f%% out of round, but along a diagonal — that is a " +
+                        "tilt rather than a stretch. Use the tilt controls or corner " +
+                        "registration.").format(100 * (1 - fit.axisRatio))
+            return
+        }
+        binding.etAspectX.setText("%.1f".format(s.percentX))
+        binding.etAspectY.setText("%.1f".format(s.percentY))
+        binding.tvAspect.text =
+            ("The rings measure %.0f%% out of round along the picture's own axes. Width %.1f%%, " +
+                "height %.1f%% would make them round — press Apply to try it.")
+                .format(100 * s.outOfRoundFraction, s.percentX, s.percentY)
+        notifyUser(
+            ("The printed rings measure %.0f%% out of round. Under “Image aspect” there is now a " +
+                "stretch that would correct it — nothing has been applied.")
+                .format(100 * s.outOfRoundFraction)
+        )
+    }
+
+    /**
+     * Rescales the picture and starts the registration again from scratch.
+     *
+     * EVERYTHING measured from the old pixels is dropped, not adjusted: the
+     * box, the ring fit, the mark radius and the registration itself are all
+     * in units of a picture that no longer exists. Carrying any of them over
+     * would put the scoring geometry a few per cent out with nothing on
+     * screen to show it.
+     */
+    private fun applyAspect() {
+        val src = sourceShotBitmap ?: shotBitmap ?: run {
+            notifyUser("Choose a photo first."); return
+        }
+        val sx = AspectCorrection.parsePercent(binding.etAspectX.text.toString())
+        val sy = AspectCorrection.parsePercent(binding.etAspectY.text.toString())
+        if (sx == null || sy == null) {
+            notifyUser(
+                "Both figures must be percentages between %.0f and %.0f."
+                    .format(100.0 / AspectCorrection.MAX_STRETCH, 100.0 * AspectCorrection.MAX_STRETCH)
+            )
+            return
+        }
+        if (!AspectCorrection.worthApplying(sx, sy)) {
+            resetAspect(); return
+        }
+        val w = (src.width * sx).toInt().coerceAtLeast(1)
+        val h = (src.height * sy).toInt().coerceAtLeast(1)
+        val scaled = runCatching { Bitmap.createScaledBitmap(src, w, h, true) }.getOrNull() ?: run {
+            notifyUser("The picture could not be resized — it may be too large for this device.")
+            return
+        }
+        aspectX = sx; aspectY = sy
+        useBitmap(scaled)
+        binding.tvAspect.text =
+            "Stretched to width %.1f%%, height %.1f%% of the original.".format(sx * 100, sy * 100)
+        notifyUser(
+            "Picture stretched to %.1f%% by %.1f%%. Registering again from the new pixels."
+                .format(sx * 100, sy * 100)
+        )
+        doIdentifyTarget(silent = true)
+    }
+
+    private fun resetAspect() {
+        val src = sourceShotBitmap ?: run { notifyUser("Choose a photo first."); return }
+        if (aspectX == 1.0 && aspectY == 1.0) {
+            notifyUser("The picture is already the original.")
+            return
+        }
+        aspectX = 1.0; aspectY = 1.0
+        binding.etAspectX.setText("100")
+        binding.etAspectY.setText("100")
+        useBitmap(src)
+        binding.tvAspect.text = "Original picture."
+        notifyUser("Back to the original picture. Registering it again.")
+        doIdentifyTarget(silent = true)
+    }
+
+    /**
+     * Puts a bitmap on screen as the one being worked on, and throws away
+     * everything measured from the previous one.
+     */
+    private fun useBitmap(bmp: Bitmap) {
+        if (shotBitmap !== bmp && shotBitmap !== sourceShotBitmap) shotBitmap?.recycle()
+        shotBitmap = bmp
+        binding.image.setImageBitmap(bmp)
+        binding.overlay.setSourceGeometry(
+            bmp.width, bmp.height, RegistrationOverlayView.SourceFit.FIT_CENTER
+        )
+        binding.overlay.clearAll()
+        registration = null
+        lastFit = null
+        lastMarkRadiusPx = 0.0
+        refreshStatus()
     }
 
     private fun rememberLastImage(uri: Uri) {
@@ -263,8 +410,14 @@ class ImportActivity : BaseActivity() {
             notifyUser("Clean target loaded. Register the SHOT target below; the clean one is " +
                 "registered from the same corners, so photograph both from roughly the same place.")
         } else {
-            shotBitmap?.recycle()
+            if (shotBitmap !== sourceShotBitmap) shotBitmap?.recycle()
+            sourceShotBitmap?.recycle()
             shotBitmap = bmp
+            sourceShotBitmap = bmp
+            aspectX = 1.0; aspectY = 1.0
+            binding.etAspectX.setText("100")
+            binding.etAspectY.setText("100")
+            binding.tvAspect.text = ""
             shotUri = uri
             rememberLastImage(uri)
             binding.image.setImageBitmap(bmp)
@@ -343,6 +496,35 @@ class ImportActivity : BaseActivity() {
         binding.overlay.setBoxInSource(box[0], box[1], box[2], box[3])
         binding.overlay.detectedMarkers =
             listOf(Triple(disc.centreXPx.toFloat(), disc.centreYPx.toFloat(), disc.radiusPx.toFloat()))
+
+        // ---- THE RINGS, FOR THE FACE ALREADY SELECTED ----
+        //
+        // This route does NOT identify the face and does not need to: the
+        // shooter chose one above, and searching the catalogue for a better
+        // fit is what the other button is for. What it was also not doing was
+        // fitting the rings AT ALL, so it drew one circle round the aiming
+        // mark, derived its box from that alone, and left the shooter with no
+        // way to see whether the scoring geometry lined up with the printing.
+        // The same photograph then gave two different boxes depending on
+        // which button was pressed.
+        //
+        // The fit is seeded from the mark that has just been found, so it
+        // costs one pass and cannot wander off to some other circular thing
+        // in the picture.
+        val fit = runCatching {
+            RingFinder.find(
+                LumaFrame.fromBitmapForDetection(bmp),
+                seedX = disc.centreXPx, seedY = disc.centreYPx
+            )
+        }.getOrNull()
+        if (fit != null) {
+            lastFit = fit
+            lastMarkRadiusPx = disc.radiusPx
+            if (showRingFamily(fit, face)) {
+                boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
+            }
+            offerAspect(fit)
+        }
         // NOT applied automatically, and this is the correction that
         // mattered most in the field. The tilt is inferred from how
         // elliptical the aiming mark measures, a shot-up mark measures a few
@@ -368,7 +550,12 @@ class ImportActivity : BaseActivity() {
                     .format(disc.ellipticity, kotlin.math.hypot(suggestedTilt.tiltXDeg, suggestedTilt.tiltYDeg))
             )
         } else if (!silent) {
-            notifyUser("Found the target. Check the box, adjust the handles if needed, then Register.")
+            notifyUser(buildString {
+                append("Found the target")
+                if (lastFit != null) append(" and fitted ${lastFit?.ringCount ?: 0} rings")
+                append(", taking ${face.name} as selected — this route does not identify the face. ")
+                append("Check the box, adjust the handles if needed, then Register.")
+            })
         }
         refreshStatus()
     }
@@ -857,34 +1044,8 @@ class ImportActivity : BaseActivity() {
         }
         registration = reg
         boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
-        // BACK TO SOURCE PIXELS FIRST. Since the de-foreshortening was added,
-        // every coordinate in a RingFit is in the CORRECTED frame, and the
-        // overlay draws on the original photograph. Using them directly put
-        // the box and the ring markers in the wrong place — by up to nine
-        // pixels on a mildly angled card, and further as the angle grows —
-        // so what the user saw did not agree with what had been registered,
-        // and nudging the box from there started from the wrong place.
-        val cf = fit.correctedFrame
-        val (srcCx, srcCy) = cf?.toSource(fit.centreXPx, fit.centreYPx)
-            ?: (fit.centreXPx to fit.centreYPx)
-        // Radii are unforeshortened along the major axis, so a corrected
-        // length is a source length there. Across it the true outline is an
-        // ellipse, which a square box cannot express in any case.
-        val outerPx = (face.outerRadiusMm / (face.ringPitchMm!! / fit.pitchPx)).toFloat()
-        binding.overlay.setBoxInSource(
-            (srcCx - outerPx).toFloat(), (srcCy - outerPx).toFloat(),
-            (srcCx + outerPx).toFloat(), (srcCy + outerPx).toFloat()
-        )
-        binding.overlay.detectedMarkers = fit.ringsPx.map {
-            Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat())
-        }
-        // Everything else the detector saw, dashed. A ring inside the black
-        // that is found but not part of the fitted family looks exactly like
-        // one that was never seen, and the two mean different things.
-        val used = fit.ringsPx.toSet()
-        binding.overlay.unusedMarkers = fit.candidatesPx
-            .filter { c -> used.none { kotlin.math.abs(it - c) < 1.0 } }
-            .map { Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat()) }
+        showRingFamily(fit, face)
+        offerAspect(fit)
         Logger.i(
             "ImportActivity",
             "%d ring candidates found, %d used by the fitted family".format(
@@ -906,6 +1067,45 @@ class ImportActivity : BaseActivity() {
 
     /** The picture the detector should work on: the colour channel, which is
      *  where a brown hole in white paper actually stands out. */
+    /**
+     * Draws a fitted ring family on the photograph and takes the registration
+     * box from it. Returns false when this face cannot be scaled from a ring
+     * pitch, which is not a failure — the practical faces put their zones at
+     * unequal spacings by design.
+     *
+     * SHARED BY BOTH REGISTRATION ROUTES, and that is the point. They used to
+     * derive the box differently: one from the fitted rings, the other from
+     * the black aiming mark, so the same photograph gave two different boxes
+     * and only one of the two routes ever drew the circles it had measured.
+     * A shooter comparing them had no way to tell which was right, or that
+     * the difference was a difference of method rather than of accuracy.
+     */
+    private fun showRingFamily(fit: RingFit, face: TargetFace): Boolean {
+        val pitchMm = face.ringPitchMm ?: return false
+        if (fit.pitchPx <= 0.0) return false
+        // BACK TO SOURCE PIXELS FIRST. Every coordinate in a RingFit is in
+        // the de-foreshortened frame; the overlay draws on the photograph.
+        val cf = fit.correctedFrame
+        val (srcCx, srcCy) = cf?.toSource(fit.centreXPx, fit.centreYPx)
+            ?: (fit.centreXPx to fit.centreYPx)
+        val outerPx = (face.outerRadiusMm / (pitchMm / fit.pitchPx)).toFloat()
+        binding.overlay.setBoxInSource(
+            (srcCx - outerPx).toFloat(), (srcCy - outerPx).toFloat(),
+            (srcCx + outerPx).toFloat(), (srcCy + outerPx).toFloat()
+        )
+        binding.overlay.detectedMarkers = fit.ringsPx.map {
+            Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat())
+        }
+        // Everything else the detector saw, dashed. A ring inside the black
+        // that is found but not part of the fitted family looks exactly like
+        // one that was never seen, and the two mean different things.
+        val used = fit.ringsPx.toSet()
+        binding.overlay.unusedMarkers = fit.candidatesPx
+            .filter { c -> used.none { kotlin.math.abs(it - c) < 1.0 } }
+            .map { Triple(srcCx.toFloat(), srcCy.toFloat(), it.toFloat()) }
+        return true
+    }
+
     private fun detectionFrame(): LumaFrame? =
         shotBitmap?.let { LumaFrame.fromBitmapForDetection(it) }
 
@@ -1031,7 +1231,9 @@ class ImportActivity : BaseActivity() {
         // recreated on a theme change; leaking one is a real problem on a
         // phone that is also running a camera.
         binding.image.setImageDrawable(null)
-        shotBitmap?.recycle(); shotBitmap = null
+        if (shotBitmap !== sourceShotBitmap) shotBitmap?.recycle()
+        shotBitmap = null
+        sourceShotBitmap?.recycle(); sourceShotBitmap = null
         cleanBitmap?.recycle(); cleanBitmap = null
     }
 }

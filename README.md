@@ -325,6 +325,9 @@ wrong, what was measured, and what was rejected — is the header comment of
 is done rather than reconstructed afterwards. Releases before 1.10.0 are
 kept in long form further down.
 
+* **1.49.0** — feature. The picture can be stretched back to square before
+  scoring, both registration routes fit and draw the rings, and Home shows
+  the session's distance rather than the rule book's.
 * **1.48.3** — correction. The guide is edited inside the author's own
   document; the generator that kept destroying its formatting is gone.
 * **1.48.2** — documentation. The proof-read guide is the baseline the

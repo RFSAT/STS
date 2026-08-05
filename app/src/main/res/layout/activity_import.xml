@@ -111,7 +111,7 @@
                 android:textSize="12sp"
                 android:layout_marginTop="6dp"
                 android:textColor="?android:attr/textColorSecondary"
-                android:text="The app finds the black centre and draws a square box around the scoring area. Check it, then drag the top-left or bottom-right handle to adjust, or drag the middle to move it. The dashed circle is what the box actually measures."
+                android:text="Uses the target face selected above without searching for a better one, finds the black centre, fits the printed rings and draws them. Check the box, then drag a corner handle to resize it or the middle to move it."
                 android:justificationMode="inter_word" />
 
             <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCornerMode"
@@ -132,6 +132,59 @@
                     style="@style/Sts.TextButton" />
             </LinearLayout>
 
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Image aspect" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Stretches the picture itself so the printed rings come out round. Use it when the drawn circles sit over the printing on one axis but not the other. The picture is re-registered afterwards."
+                android:justificationMode="inter_word" />
+
+            <TextView android:id="@+id/infoAspect"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
+
+            <TextView android:id="@+id/tvAspect"
+                style="@style/Sts.Value" android:textSize="12sp" android:layout_marginTop="2dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:gravity="center_vertical">
+                <TextView style="@style/Sts.ParamName" android:text="Width %" />
+                <EditText android:id="@+id/etAspectX"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:inputType="numberDecimal"
+                    android:text="100"
+                    android:autofillHints="" />
+                <TextView style="@style/Sts.ParamName" android:text="  Height %" />
+                <EditText android:id="@+id/etAspectY"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:inputType="numberDecimal"
+                    android:text="100"
+                    android:autofillHints="" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="4dp">
+                <Button android:id="@+id/btnAspectApply"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Apply and re-register"
+                    style="@style/Sts.ActionButton.Dense" />
+                <Button android:id="@+id/btnAspectReset"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Original picture"
+                    style="@style/Sts.ActionButton.Dense" />
+            </LinearLayout>
 
             <TextView style="@style/Sts.SectionHeading" android:text="Tilt and rotation" />
 
