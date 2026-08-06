@@ -146,7 +146,7 @@ class WindowManager {
     }
 }
 
-class Surface(t: Any?)
+class Surface(t: Any?) { fun release() {} }
 
 /** Only ever received and ignored, but the type has to exist for the
  *  editor-action listener to carry its real signature. */

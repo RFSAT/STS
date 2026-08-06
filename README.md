@@ -310,6 +310,17 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.54.0** — feature. RTSP written out by hand, and the reason three releases
+of decoder work changed nothing: it was never the decoder. A camera's access
+point has no internet, Android leaves the default route on mobile data, and
+every socket went out over cellular where 192.168.1.1 is correctly
+unreachable. The app now requests the Wi-Fi transport *without* the internet
+capability and binds to it. ExoPlayer is gone with it — TCP interleaved,
+DESCRIBE probed across nine candidate paths, SDP parsed, RTP depacketised and
+fed to MediaCodec, with every step of the handshake logged, because a library
+that reports only an error code is what made three releases of guessing
+possible. Two dependencies dropped, none added.
+
 **1.53.0** — feature. The stream says what it is doing, and stops claiming a
 connection it has not made — the message "Connected, but no picture has
 arrived" appeared with the phone not on the camera's Wi-Fi at all. A TCP

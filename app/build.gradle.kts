@@ -32,6 +32,47 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.54.0 — feature: RTSP written out by hand, and the reason three
+        //          releases of decoder work changed nothing.
+        //
+        //   IT WAS NEVER THE DECODER. A camera's own access point has no
+        //   internet, and Android leaves the phone's DEFAULT ROUTE on mobile
+        //   data — so every socket this app opened went out over the cellular
+        //   network, where 192.168.1.1 is correctly unreachable. The stream
+        //   was not failing to decode. It was not being contacted.
+        //
+        //   The app now asks for the Wi-Fi transport WITHOUT the internet
+        //   capability and binds the process to it. That "without" is the
+        //   whole trick: a plain TRANSPORT_WIFI request implies
+        //   NET_CAPABILITY_INTERNET, an access point that has none never
+        //   satisfies it, the callback never fires, and the failure is
+        //   silent. Needs CHANGE_NETWORK_STATE, now declared.
+        //
+        //   This is not a deduction. It is what VTB does, against the same
+        //   class of camera, working — and its own source comment says
+        //   exactly this, having been through the same afternoon.
+        //
+        //   AND ExoPlayer IS GONE with it. The RTSP client is written out
+        //   here: TCP interleaved, DESCRIBE probed across nine candidate
+        //   paths, the SDP parsed, SETUP and PLAY, RTP depacketised — single
+        //   NAL, STAP-A and FU-A — and fed to MediaCodec rendering to the
+        //   stream view. Same design as VTB's, which has scored real
+        //   sessions off a scope.
+        //
+        //   The reason for writing it rather than configuring a library is
+        //   the log. Every step of the handshake is recorded with what the
+        //   camera answered: the path that responded 200, the SDP, the
+        //   transport, the decoder's dimensions, the frame and byte counts.
+        //   Three releases were spent guessing because the library would say
+        //   nothing but an error code.
+        //
+        //   The picture size comes from the SPS the camera sends, parsed by
+        //   [SpsDimensions] and tested against parameter sets built by an
+        //   independent encoder — 720 is 736 macroblock rows cropped, and
+        //   forgetting the cropping is the classic form of that bug.
+        //
+        //   Two dependencies dropped, no dependency added.
+        //
         // 1.53.0 — feature: the stream says what it is doing, and stops
         //          claiming a connection it has not made.
         //
@@ -2452,8 +2493,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 77
-        versionName = "1.53.0"
+        versionCode = 78
+        versionName = "1.54.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
@@ -2560,12 +2601,6 @@ dependencies {
     // process with root or a backup extraction can read it.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // RTSP. The platform MediaPlayer cannot do RTSP over TCP and cannot
-    // decode H.265, which between them are why a camera that plays in VLC
-    // showed nothing here. Two modules only — no UI, no session, no
-    // extractors beyond what the RTSP source needs.
-    implementation("androidx.media3:media3-exoplayer:1.4.1")
-    implementation("androidx.media3:media3-exoplayer-rtsp:1.4.1")
 
     testImplementation("junit:junit:4.13.2")
 }

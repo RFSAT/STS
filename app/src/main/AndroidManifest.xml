@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Pins the app to the camera's own access point while a stream is
+         playing. Without it requestNetwork is refused, sockets go out over
+         the default route — mobile data — and the camera's 192.168.x.x is
+         unreachable, which is exactly the failure that was reported. -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <!-- Acoustic shot gating: the report timestamps the frame in which a new
          hole should appear, which suppresses false positives from target

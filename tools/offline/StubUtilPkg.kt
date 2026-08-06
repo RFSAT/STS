@@ -19,5 +19,7 @@ object Log {
 
 object Base64 {
     const val NO_WRAP = 2
+    const val DEFAULT = 0
     fun encodeToString(input: ByteArray, flags: Int): String = ""
+    fun decode(s: String, flags: Int): ByteArray = ByteArray(0)
 }
