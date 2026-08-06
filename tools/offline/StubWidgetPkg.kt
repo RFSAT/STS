@@ -32,7 +32,12 @@ open class TextView(c: android.content.Context? = null, a: AttributeSet? = null,
 }
 
 open class Button(c: android.content.Context? = null, a: AttributeSet? = null, d: Int = 0) : TextView(c, a, d)
-open class EditText(c: android.content.Context? = null, a: AttributeSet? = null, d: Int = 0) : TextView(c, a, d) { fun setSelection(i: Int) {} }
+open class EditText(c: android.content.Context? = null, a: AttributeSet? = null, d: Int = 0) : TextView(c, a, d) {
+    fun setSelection(i: Int) {}
+    // The real signature: (view, actionId, KeyEvent?) -> Boolean. Stated in
+    // full so a lambda with the wrong arity fails here and not in CI.
+    fun setOnEditorActionListener(l: ((TextView, Int, android.view.KeyEvent?) -> Boolean)?) {}
+}
 open class CheckBox(c: android.content.Context? = null, a: AttributeSet? = null, d: Int = 0) : Button(c, a, d) {
     var isChecked: Boolean = false
     fun setOnCheckedChangeListener(l: ((View, Boolean) -> Unit)?) {}

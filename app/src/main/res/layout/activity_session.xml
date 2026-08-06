@@ -83,8 +83,15 @@
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:hint="http://192.168.1.50:8080/video  or  rtsp://…"
                 android:inputType="textUri"
+                android:imeOptions="actionDone"
                 android:visibility="gone"
                 android:autofillHints="" />
+
+            <Button android:id="@+id/btnStreamConnect"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Connect to the stream"
+                android:visibility="gone"
+                style="@style/Sts.ActionButton.Dense" />
 
             <TextView style="@style/Sts.SectionHeading" android:text="Registration" />
 

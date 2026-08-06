@@ -147,5 +147,9 @@ class WindowManager {
 }
 
 class Surface(t: Any?)
+
+/** Only ever received and ignored, but the type has to exist for the
+ *  editor-action listener to carry its real signature. */
+class KeyEvent
 object Gravity { const val CENTER = 17; const val START = 8388611; const val END = 8388613
                  const val TOP = 48; const val BOTTOM = 80; const val CENTER_VERTICAL = 16 }

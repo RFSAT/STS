@@ -32,6 +32,37 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.52.0 — correction: a stream source was never opened at all.
+        //
+        //   Reported with a log, and the log was the evidence: two lines
+        //   about the phone camera being bound, ring fits from the camera,
+        //   and NOT ONE line about the stream. An address that plays in VLC
+        //   was never being handed to the decoder.
+        //
+        //   Starting an external source was done in exactly one place — the
+        //   live-detection button — and that button refuses until a reference
+        //   frame has been captured. A reference frame comes from the source.
+        //   So a stream source sat in a deadlock the app could not report:
+        //   no frames until detection starts, no detection until a frame
+        //   arrives, and nothing in the log either way, because the code that
+        //   would have logged it never ran.
+        //
+        //   The decoder work in 1.50.0 was necessary and was never reached.
+        //   That is worth stating plainly: two releases were spent on the
+        //   right fix to the wrong stage, because the failure produced no
+        //   evidence and the absence of evidence was not read as evidence.
+        //
+        //   A stream is now opened whenever the shooter has said what they
+        //   want: on choosing the source, on Done in the address box, on the
+        //   new Connect button, on returning to the screen, and on start-up
+        //   when a saved address is restored. The live button, when there is
+        //   no reference, now says whether the actual cause is that nothing
+        //   is connected.
+        //
+        //   Every stage is logged — the attempt, the first frame with its
+        //   size, and every error — because a failure that leaves no trace
+        //   costs a release to find.
+        //
         // 1.51.0 — feature: the stream address is remembered.
         //
         //   Asked for, and obviously right once asked: a stream address is
@@ -2355,8 +2386,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 74
-        versionName = "1.51.0"
+        versionCode = 75
+        versionName = "1.52.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

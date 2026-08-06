@@ -310,6 +310,14 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.52.0** — correction. A stream source was never opened at all. Starting one
+happened in a single place — the live-detection button — which refuses until a
+reference frame has been captured, and the reference frame comes from the
+source: no frames until detection starts, no detection until a frame arrives,
+and nothing in the log either way. A stream now opens on choosing the source,
+on Done in the address box, on the new Connect button, on returning to the
+screen, and on start-up from a saved address, with every stage logged.
+
 **1.51.0** — feature. The stream address is remembered between restarts and
 across upgrades, along with the source type — a long exact address typed on a
 phone keyboard was being discarded every time the screen closed. Saved when the

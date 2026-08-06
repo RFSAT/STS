@@ -258,8 +258,23 @@ class SessionActivity : BaseActivity() {
             applySourceVisibility(i)
             prefs.edit().putInt(KEY_STREAM_SOURCE, i).apply()
             stopAllSources()
-            if (i == 0) startCameraIfPermitted()
+            if (i == 0) startCameraIfPermitted() else ensureStreamConnected()
         }
+        binding.btnStreamConnect.setOnClickListener {
+            // Explicit reconnect: a stream that has dropped is the ordinary
+            // reason to press this, so it stops whatever is nominally
+            // attached rather than refusing because something is.
+            stopAllSources()
+            ensureStreamConnected(announce = true)
+        }
+        binding.etStreamUrl.setOnEditorActionListener { _, _, _ ->
+            stopAllSources()
+            ensureStreamConnected(announce = true)
+            false
+        }
+        // The address may have been restored above, in which case the
+        // shooter has already said what they want — on a previous run.
+        if (restoredSource != 0) binding.etStreamUrl.post { ensureStreamConnected() }
 
         // ---- buttons ----
         binding.overlay.onCornersChanged = { refreshStatus() }
@@ -494,8 +509,41 @@ class SessionActivity : BaseActivity() {
      *  a user choice cannot drift apart. */
     private fun applySourceVisibility(i: Int) {
         binding.etStreamUrl.visibility = if (i == 0) View.GONE else View.VISIBLE
+        binding.btnStreamConnect.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.preview.visibility = if (i == 0) View.VISIBLE else View.GONE
         binding.streamView.visibility = if (i == 2) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Opens the stream as soon as there is a source and an address to open,
+     * rather than waiting for something else to ask.
+     *
+     * THIS IS WHY A STREAM COULD NEVER APPEAR. Starting it was done in ONE
+     * place — the live-detection button — and that button refuses until a
+     * reference frame has been captured. A reference frame comes from the
+     * source. So with a stream selected the app sat in a deadlock it could
+     * not report: no frames until detection starts, no detection until a
+     * frame arrives, and nothing in the log either way, because the code that
+     * would have logged it never ran. The address was right and the decoder
+     * work in 1.50.0 was necessary; neither was ever reached.
+     *
+     * The stream is now connected on choosing the source, on returning to the
+     * screen, on pressing Done in the address box and on the Connect button —
+     * every point at which the shooter has said what they want.
+     */
+    private fun ensureStreamConnected(announce: Boolean = false) {
+        val i = binding.spSource.selectedItemPosition
+        if (i == 0) return
+        if (externalSource?.isRunning == true) {
+            if (announce) notifyUser("Already connected to ${externalSource?.label}.")
+            return
+        }
+        val url = binding.etStreamUrl.text.toString().trim()
+        if (url.isEmpty()) {
+            if (announce) notifyUser("Enter the stream address first.")
+            return
+        }
+        startExternalSource()
     }
 
     private fun startExternalSource() {
@@ -535,11 +583,25 @@ class SessionActivity : BaseActivity() {
 
     private fun begin(src: FrameSource) {
         externalSource = src
+        // LOGGED BEFORE AND AFTER. The failure reported from the field left
+        // no trace at all, and a log that only records success cannot
+        // distinguish "it did not work" from "it was never attempted".
+        Logger.i("SessionActivity", "Opening external source: ${src.label}")
+        var first = true
         src.start(
-            onFrame = { onFrame(it) },
-            onError = { msg -> runOnUiThread { notifyUser(msg) } }
+            onFrame = {
+                if (first) {
+                    first = false
+                    Logger.i("SessionActivity", "First frame from ${src.label}: ${it.width} x ${it.height}")
+                    runOnUiThread { refreshStatus() }
+                }
+                onFrame(it)
+            },
+            onError = { msg ->
+                Logger.w("SessionActivity", "External source: $msg")
+                runOnUiThread { notifyUser(msg) }
+            }
         )
-        Logger.i("SessionActivity", "External source started: ${src.label}")
     }
 
     /**
@@ -779,7 +841,16 @@ class SessionActivity : BaseActivity() {
     private fun toggleLive() {
         val detector = live
         if (detector == null || !detector.isArmed) {
-            notifyUser("Capture the clean target as a reference first.")
+            // Said with the reason when there is one: on a stream source the
+            // usual cause of having no reference is having no picture, and
+            // "capture a reference first" sends the shooter to a button that
+            // will fail for the same reason.
+            notifyUser(
+                if (binding.spSource.selectedItemPosition != 0 && externalSource?.isRunning != true)
+                    "The stream is not connected, so there is nothing to capture a reference " +
+                        "from. Press Connect to the stream first."
+                else "Capture the clean target as a reference first."
+            )
             return
         }
         liveRunning = !liveRunning
