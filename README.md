@@ -310,6 +310,15 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.53.0** — feature. The stream says what it is doing, and stops claiming a
+connection it has not made — the message "Connected, but no picture has
+arrived" appeared with the phone not on the camera's Wi-Fi at all. A TCP
+reachability probe now runs first and is logged, every player transition is
+logged with the transport and the full cause chain of any error, and the
+message names the stage actually reached: nothing answered, answered but no
+session, session but nothing decoded, decoding but the picture could not be
+copied.
+
 **1.52.1** — correction. The stream arrived and every frame was blank.
 `TextureView.getBitmap()` copies out of the view's own GL surface, and off the
 thread that owns it the copy comes back blank rather than failing — no

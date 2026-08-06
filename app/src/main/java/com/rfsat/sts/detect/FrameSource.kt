@@ -175,6 +175,23 @@ class RtspFrameSource(
     private val framesSeen = AtomicBoolean(false)
     private var triedTcp = false
 
+    // ---- what actually happened, so a failure can be told apart from ----
+    // ---- another failure. All of it is logged as it occurs.          ----
+    /** The socket answered at all. Distinguishes "not on the camera's
+     *  network" from every other cause, which is the distinction the
+     *  reported message got wrong. */
+    private val reachable = AtomicBoolean(false)
+    private val probed = AtomicBoolean(false)
+    /** The player reached READY: the session was negotiated and there is a
+     *  track to play. */
+    private val ready = AtomicBoolean(false)
+    /** A frame was actually decoded and drawn to the surface. If this is set
+     *  and no picture reaches the detector, the fault is the read-back. */
+    private val rendered = AtomicBoolean(false)
+    /** An error was reported, so the watchdog must keep quiet: it would say
+     *  something vaguer about the same event. */
+    private val failed = AtomicBoolean(false)
+
     /** Supplies the frames; owned by the caller's TextureView. */
     private var readBitmap: (() -> Bitmap?)? = null
 
@@ -185,9 +202,65 @@ class RtspFrameSource(
         readBitmap = bitmapReader
     }
 
+    /**
+     * Can anything be reached at that address at all?
+     *
+     * Runs before the player, on its own thread, and is the single most
+     * useful line in the log: it separates "the phone is not on the camera's
+     * network" from every other cause. The reported message asserted a
+     * connection that had never been made, which is worse than saying
+     * nothing — it sent the shooter looking at the camera's video format
+     * when the phone was on the wrong Wi-Fi.
+     */
+    private fun probeReachable() {
+        val parsed = runCatching { java.net.URI(url) }.getOrNull()
+        val host = parsed?.host
+        val port = parsed?.port?.takeIf { it > 0 } ?: 554
+        val path = parsed?.path.orEmpty()
+        Logger.i("RtspFrameSource", "address: host=$host port=$port path=" +
+            (if (path.isEmpty()) "(none)" else path))
+        if (path.isEmpty()) {
+            // VLC is forgiving about this; a stricter server answers a
+            // path-less DESCRIBE with 400 or 404. Worth saying, since the
+            // shooter is the only one who can find the real path.
+            Logger.i("RtspFrameSource",
+                "the address has no path — if this fails, try the full one VLC shows " +
+                    "under Tools > Codec information, e.g. rtsp://host:554/live")
+        }
+        if (host == null) {
+            Logger.w("RtspFrameSource", "the address could not be parsed as rtsp://host[:port]/path")
+            probed.set(true)
+            return
+        }
+        Thread {
+            val began = System.currentTimeMillis()
+            val ok = runCatching {
+                java.net.Socket().use { sock ->
+                    sock.connect(java.net.InetSocketAddress(host, port), PROBE_TIMEOUT_MS)
+                    true
+                }
+            }.getOrElse { e ->
+                Logger.w("RtspFrameSource",
+                    "$host:$port did not answer: ${e.javaClass.simpleName}: ${e.message}")
+                false
+            }
+            if (ok) {
+                Logger.i("RtspFrameSource",
+                    "$host:$port answered in ${System.currentTimeMillis() - began} ms")
+            }
+            reachable.set(ok)
+            probed.set(true)
+        }.also { it.isDaemon = true; it.name = "sts-rtsp-probe" }.start()
+    }
+
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun open(forceTcp: Boolean, onError: (String) -> Unit) {
-        val tex = texture ?: return
+        val tex = texture ?: run {
+            Logger.w("RtspFrameSource", "no surface to decode into; not opening")
+            return
+        }
+        val transport = if (forceTcp) "TCP" else "UDP"
+        Logger.i("RtspFrameSource", "opening over $transport, timeout ${OPEN_TIMEOUT_MS} ms")
         val factory = androidx.media3.exoplayer.rtsp.RtspMediaSource.Factory()
             .setForceUseRtpTcp(forceTcp)
             // Some cameras answer the default "Exo" agent with 4xx. A plain
@@ -200,17 +273,48 @@ class RtspFrameSource(
         val p = androidx.media3.exoplayer.ExoPlayer.Builder(context).build()
         p.setVideoSurface(Surface(tex))
         p.addListener(object : androidx.media3.common.Player.Listener {
+            // EVERY TRANSITION IS LOGGED. The previous version logged an
+            // error and nothing else, so a stream that failed to start
+            // without erroring — which is what happened — left a log saying
+            // only that it had been opened.
+            override fun onPlaybackStateChanged(state: Int) {
+                val name = when (state) {
+                    1 -> "IDLE"; 2 -> "BUFFERING"; 3 -> "READY"; 4 -> "ENDED"
+                    else -> "state $state"
+                }
+                Logger.i("RtspFrameSource", "$transport: playback $name")
+                if (state == 3) ready.set(true)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                Logger.i("RtspFrameSource", "$transport: playing=$isPlaying")
+            }
+
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                Logger.i("RtspFrameSource",
+                    "$transport: video ${videoSize.width} x ${videoSize.height}")
+            }
+
+            override fun onRenderedFirstFrame() {
+                // The decoder produced a picture and drew it. Anything blank
+                // after this is the read-back, not the stream.
+                rendered.set(true)
+                Logger.i("RtspFrameSource", "$transport: first frame rendered to the surface")
+            }
+
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                Logger.w("RtspFrameSource", "${if (forceTcp) "TCP" else "UDP"}: ${error.errorCodeName}")
+                Logger.w("RtspFrameSource", "$transport failed: ${chain(error)}")
                 if (!forceTcp && !triedTcp) {
                     // The commonest single cause of "it plays in VLC and not
                     // here": the camera will not serve UDP to this client.
                     triedTcp = true
+                    Logger.i("RtspFrameSource", "retrying the same address over TCP")
                     runCatching { p.release() }
                     open(forceTcp = true, onError = onError)
                     return
                 }
                 running.set(false)
+                failed.set(true)
                 onError(describe(error))
             }
         })
@@ -218,6 +322,23 @@ class RtspFrameSource(
         p.prepare()
         p.playWhenReady = true
         player = p
+    }
+
+    /** The whole cause chain on one line. An ExoPlayer error code says the
+     *  category; the cause underneath it says what the server actually did. */
+    private fun chain(t: Throwable): String {
+        val sb = StringBuilder()
+        if (t is androidx.media3.common.PlaybackException) sb.append(t.errorCodeName).append(": ")
+        var e: Throwable? = t
+        var depth = 0
+        while (e != null && depth < 5) {
+            if (depth > 0) sb.append(" <- ")
+            sb.append(e.javaClass.simpleName)
+            e.message?.takeIf { it.isNotBlank() }?.let { sb.append(" (").append(it).append(")") }
+            e = e.cause
+            depth++
+        }
+        return sb.toString()
     }
 
     /** Turns an ExoPlayer failure into something a shooter can act on. */
@@ -248,6 +369,9 @@ class RtspFrameSource(
         if (running.getAndSet(true)) return
         framesSeen.set(false)
         triedTcp = false
+        reachable.set(false); probed.set(false)
+        ready.set(false); rendered.set(false); failed.set(false)
+        probeReachable()
         val startedAt = System.currentTimeMillis()
         try {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
@@ -287,19 +411,11 @@ class RtspFrameSource(
                             runCatching { onFrame(LumaFrame.fromBitmap(bmp)) }
                             busy.set(false)
                         }
-                    } else if (!framesSeen.get() &&
+                    } else if (!framesSeen.get() && !failed.get() &&
                         System.currentTimeMillis() - startedAt > SILENT_TIMEOUT_MS
                     ) {
-                        // SAYING NOTHING IS THE FAILURE THAT WAS REPORTED. A
-                        // stream that connects and never delivers a picture
-                        // looked exactly like an app ignoring the address.
                         framesSeen.set(true)   // report once, then stop nagging
-                        onError(
-                            "Connected, but no picture has arrived in " +
-                                "${SILENT_TIMEOUT_MS / 1000} seconds. The stream view must be " +
-                                "on screen for frames to be decoded; if it is, the camera may " +
-                                "be sending a format this phone cannot decode."
-                        )
+                        onError(diagnose())
                     }
                 }
                 ui.postDelayed(this, frameIntervalMs)
@@ -309,6 +425,40 @@ class RtspFrameSource(
         this.ticker = tick
         this.workers = worker
         ui.post(tick)
+    }
+
+    /**
+     * Says which of the several quite different failures this was.
+     *
+     * THE PREVIOUS MESSAGE ASSERTED A CONNECTION. It read "Connected, but no
+     * picture has arrived", and it said that whether or not anything had been
+     * connected to — including with the phone on the wrong Wi-Fi entirely,
+     * where it sent the shooter to look at the camera's video format for a
+     * fault that was two rooms away. A message that states something the app
+     * has not established is worse than no message.
+     *
+     * Each branch below is a state the app has actually observed.
+     */
+    private fun diagnose(): String = when {
+        probed.get() && !reachable.get() ->
+            "Nothing answered at $url. The phone is probably not on the camera's own Wi-Fi, " +
+                "or the address or port is wrong. Nothing was connected to, so the video " +
+                "format is not the question yet."
+        rendered.get() ->
+            "The stream is playing and frames are being decoded, but the picture could not be " +
+                "copied out for scoring. Keep the Session tab and the stream view on screen."
+        ready.get() ->
+            "The stream was negotiated but no video has been decoded in " +
+                "${SILENT_TIMEOUT_MS / 1000} seconds. The camera may be sending a format this " +
+                "phone cannot decode — if it can be set to H.264 rather than H.265, try that."
+        reachable.get() ->
+            "$url answered, but no RTSP session was established in ${SILENT_TIMEOUT_MS / 1000} " +
+                "seconds. If the address has no path, try the full one VLC shows under " +
+                "Tools > Codec information — some cameras refuse a path-less request."
+        else ->
+            "No picture in ${SILENT_TIMEOUT_MS / 1000} seconds, and the address was never " +
+                "reached. Check the phone is on the camera's Wi-Fi and that the camera is " +
+                "streaming."
     }
 
     /**
@@ -349,5 +499,8 @@ class RtspFrameSource(
     private companion object {
         const val OPEN_TIMEOUT_MS = 8000
         const val SILENT_TIMEOUT_MS = 10000L
+        /** Long enough for a phone on the camera's own access point, short
+         *  enough to answer before the watchdog does. */
+        const val PROBE_TIMEOUT_MS = 3000
     }
 }

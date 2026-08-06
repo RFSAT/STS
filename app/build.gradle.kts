@@ -32,6 +32,42 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.53.0 — feature: the stream says what it is doing, and stops
+        //          claiming a connection it has not made.
+        //
+        //   Reported, and the report was right about the worst part: the
+        //   message "Connected, but no picture has arrived" appeared with the
+        //   phone NOT on the camera's Wi-Fi at all. It asserted a connection
+        //   the app had never established, which sent the shooter to look at
+        //   the camera's video format for a fault that was two rooms away. A
+        //   message that states something unverified is worse than none.
+        //
+        //   A REACHABILITY PROBE now runs first: a plain TCP connect to the
+        //   host and port, logged with the time it took or the reason it
+        //   failed. That single line separates "not on the camera's network"
+        //   from every other cause, and it is the one the log did not have.
+        //
+        //   EVERY PLAYER TRANSITION IS LOGGED — IDLE, BUFFERING, READY, the
+        //   negotiated video size, the first frame actually rendered, the
+        //   transport in use and the full cause chain of any error, not just
+        //   its category. The log that came back said only that the stream
+        //   had been opened, three times, and then that no picture arrived;
+        //   there was nothing in it to say which stage had failed.
+        //
+        //   THE MESSAGE NOW NAMES THE STAGE REACHED. Nothing answered at the
+        //   address; answered but no session negotiated; negotiated but
+        //   nothing decoded; decoding but the picture could not be copied.
+        //   Four different faults that had one sentence between them.
+        //
+        //   The address is also inspected: a path-less rtsp://host:554 is
+        //   noted in the log, because VLC forgives one and a stricter server
+        //   answers it with 400 or 404 — a likely cause here, and one only
+        //   the shooter can confirm from what VLC shows.
+        //
+        //   And the live-detection button now opens the stream through the
+        //   same guarded path as everything else, which is how the same
+        //   stream came to be opened twice within a millisecond.
+        //
         // 1.52.1 — correction: the stream arrived and every frame was blank.
         //
         //   The log from the field showed the stream open, frames at
@@ -2416,8 +2452,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 76
-        versionName = "1.52.1"
+        versionCode = 77
+        versionName = "1.53.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

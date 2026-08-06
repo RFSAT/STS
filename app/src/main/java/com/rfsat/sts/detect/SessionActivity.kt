@@ -262,23 +262,23 @@ class SessionActivity : BaseActivity() {
             applySourceVisibility(i)
             prefs.edit().putInt(KEY_STREAM_SOURCE, i).apply()
             stopAllSources()
-            if (i == 0) startCameraIfPermitted() else ensureStreamConnected()
+            if (i == 0) startCameraIfPermitted() else ensureStreamConnected("source chosen")
         }
         binding.btnStreamConnect.setOnClickListener {
             // Explicit reconnect: a stream that has dropped is the ordinary
             // reason to press this, so it stops whatever is nominally
             // attached rather than refusing because something is.
             stopAllSources()
-            ensureStreamConnected(announce = true)
+            ensureStreamConnected("Connect button", announce = true)
         }
         binding.etStreamUrl.setOnEditorActionListener { _, _, _ ->
             stopAllSources()
-            ensureStreamConnected(announce = true)
+            ensureStreamConnected("address entered", announce = true)
             false
         }
         // The address may have been restored above, in which case the
         // shooter has already said what they want — on a previous run.
-        if (restoredSource != 0) binding.etStreamUrl.post { ensureStreamConnected() }
+        if (restoredSource != 0) binding.etStreamUrl.post { ensureStreamConnected("saved address") }
 
         // ---- buttons ----
         binding.overlay.onCornersChanged = { refreshStatus() }
@@ -541,9 +541,10 @@ class SessionActivity : BaseActivity() {
      * screen, on pressing Done in the address box and on the Connect button —
      * every point at which the shooter has said what they want.
      */
-    private fun ensureStreamConnected(announce: Boolean = false) {
+    private fun ensureStreamConnected(reason: String, announce: Boolean = false) {
         val i = binding.spSource.selectedItemPosition
         if (i == 0) return
+        Logger.i("SessionActivity", "stream connect requested by: $reason")
         // ONE OPEN AT A TIME. Selecting the source, restoring a saved address
         // and returning to the screen can all fire within a few
         // milliseconds — the field log showed the same stream opened twice,
@@ -552,10 +553,12 @@ class SessionActivity : BaseActivity() {
         // slow starts, because "is it running yet" is answered too late to be
         // any use here.
         if (opening) {
+            Logger.i("SessionActivity", "…refused: a connection is already being opened")
             if (announce) notifyUser("Already connecting…")
             return
         }
         if (externalSource?.isRunning == true) {
+            Logger.i("SessionActivity", "…refused: already connected")
             if (announce) notifyUser("Already connected to ${externalSource?.label}.")
             return
         }
@@ -885,7 +888,10 @@ class SessionActivity : BaseActivity() {
         liveRunning = !liveRunning
         binding.btnLive.text = if (liveRunning) "Stop live detection" else "Start live detection"
         if (liveRunning && externalSource == null && binding.spSource.selectedItemPosition != 0) {
-            startExternalSource()
+            // Through the guarded path, not around it: this used to call the
+            // starter directly, which is how the same stream came to be
+            // opened twice within a millisecond.
+            ensureStreamConnected("live detection started")
         }
         refreshStatus()
     }

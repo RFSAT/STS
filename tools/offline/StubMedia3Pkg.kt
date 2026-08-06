@@ -15,8 +15,17 @@ open class PlaybackException(message: String? = null) : Exception(message) {
     val errorCodeName: String = ""
 }
 
+class VideoSize {
+    val width: Int = 0
+    val height: Int = 0
+}
+
 interface Player {
     interface Listener {
         fun onPlayerError(error: PlaybackException) {}
+        fun onPlaybackStateChanged(state: Int) {}
+        fun onIsPlayingChanged(isPlaying: Boolean) {}
+        fun onVideoSizeChanged(videoSize: VideoSize) {}
+        fun onRenderedFirstFrame() {}
     }
 }

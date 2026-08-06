@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.52.1.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.53.0.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,7 +42,21 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.52.0", "Version 1.52.1"),
+    ("Version 1.52.1", "Version 1.53.0"),
+
+    # 1.53.0 — what to do when a stream does not appear. Appended to the
+    # frame-source step; a troubleshooting ROW would be better and has to be
+    # added in Word.
+    ("The address is remembered, so it "
+     "is typed once and is still there after a restart or an upgrade, and the app "
+     "reconnects to it by itself when you come back to this tab.",
+     "The address is remembered, so it is typed once and is still there after a "
+     "restart or an upgrade, and the app reconnects to it by itself when you come back "
+     "to this tab. If no picture appears, the message says which stage was reached — "
+     "nothing answered at the address, answered but no session, session but nothing "
+     "decoded — and the diagnostic log carries the whole sequence. Use the exact "
+     "address VLC shows under Tools > Codec information, including its path: some "
+     "cameras refuse a request without one."),
 
 
 
