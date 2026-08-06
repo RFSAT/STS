@@ -45,6 +45,46 @@ class ProfileActivity : BaseActivity() {
 
     private var suppressThemeCallback = true
 
+    /**
+     * Picks the shooter's own reticle image.
+     *
+     * COPIED INTO THE APP'S OWN FILES rather than referenced where it sits.
+     * A gallery URI's permission does not reliably outlive the process, and a
+     * reticle that vanishes after a reboot — on the firing point, with no
+     * explanation — is worse than one that was never offered.
+     */
+    private val pickReticle = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) refreshReticle() else onReticlePicked(uri)
+    }
+
+    private fun onReticlePicked(uri: android.net.Uri) {
+        val ok = runCatching {
+            val dest = java.io.File(filesDir, "reticle.png")
+            contentResolver.openInputStream(uri)?.use { input ->
+                java.io.FileOutputStream(dest).use { out -> input.copyTo(out) }
+            }
+            val bmp = android.graphics.BitmapFactory.decodeFile(dest.absolutePath)
+                ?: throw IllegalStateException("not an image this device can read")
+            bmp.recycle()
+            ScaleSettings.setReticleFile(this, dest.absolutePath)
+            ScaleSettings.setReticle(this, com.rfsat.sts.ui.Reticle.CUSTOM)
+            true
+        }.getOrElse {
+            notifyUser("That image could not be used: ${it.message}")
+            false
+        }
+        if (ok) {
+            notifyUser(
+                "Your reticle will be drawn over the viewfinder, at the guide size set on the " +
+                    "Session tab. It is drawn as it comes — a transparent PNG works best, and " +
+                    "its colours are not changed by the theme."
+            )
+        }
+        refreshReticle()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityProfileBinding.inflate(layoutInflater)
@@ -171,6 +211,48 @@ class ProfileActivity : BaseActivity() {
                 else "The second opinion will offer changes rather than make them."
             )
         }
+        // ---- reticle ----
+        binding.spReticle.adapter = android.widget.ArrayAdapter(
+            this, R.layout.spinner_item, com.rfsat.sts.ui.Reticle.values().map { it.label }
+        ).also { it.setDropDownViewResource(R.layout.spinner_dropdown_item) }
+        binding.spReticle.setSelection(
+            com.rfsat.sts.ui.Reticle.values().indexOf(ScaleSettings.reticle()))
+        binding.spReticle.onItemSelectedListener = onSelectedIndex { i ->
+            val chosen = com.rfsat.sts.ui.Reticle.values().getOrNull(i) ?: return@onSelectedIndex
+            if (chosen == com.rfsat.sts.ui.Reticle.CUSTOM &&
+                ScaleSettings.reticleFile().isEmpty()
+            ) {
+                pickReticle.launch("image/*")
+                return@onSelectedIndex
+            }
+            ScaleSettings.setReticle(this, chosen)
+            refreshReticle()
+        }
+        refreshReticle()
+
+        binding.etStreamLensK.setText(
+            if (ScaleSettings.lensK() != 0.0) "%.3f".format(ScaleSettings.lensK()) else ""
+        )
+        binding.etStreamLensK.setOnEditorActionListener { _, _, _ ->
+            val text = binding.etStreamLensK.text.toString().trim()
+            if (text.isEmpty()) {
+                ScaleSettings.setLensK(this, 0.0)
+                notifyUser("Live frames are used as they come.")
+            } else {
+                val k = com.rfsat.sts.detect.LensDistortion.parse(text)
+                if (k == null) {
+                    notifyUser(
+                        "That is not a usable coefficient. Measure one on the Import screen, " +
+                            "under Lens distortion, from a photo taken with the same camera."
+                    )
+                } else {
+                    ScaleSettings.setLensK(this, k)
+                    notifyUser("Live frames will be straightened with k = %.3f.".format(k))
+                }
+            }
+            false
+        }
+
         wireMoreInfo()
 
         // ---- keys and models, one service at a time ----
@@ -859,6 +941,30 @@ class ProfileActivity : BaseActivity() {
             "the second opinion's are separate: they can name different services, and asking " +
             "the other one is what makes a second opinion worth having. Falls back to Embedded " +
             "if the named service has no key.")
+        moreInfo(binding.infoReticle, "The reticle",
+            "It is drawn over the picture and it changes no score: the app has no idea where " +
+            "the barrel points, and a shot is scored from the hole in the paper. It is there to " +
+            "line the camera up, and to stay out of the way.\n\n" +
+            "Choose None when the camera looks through a scope. That camera already shows the " +
+            "scope's own reticle, and a second one drawn a few pixels away is worse than " +
+            "neither — it is the app arguing with the optic.\n\n" +
+            "The built-in reticles are drawn as line work, so they take the theme's colour and " +
+            "stay red under the night-red theme. An image of your own is drawn exactly as it " +
+            "comes, which is the point of it, so a transparent PNG works best and it will not " +
+            "follow the theme.\n\n" +
+            "Separate from the ring guide on the Session tab, which draws the SELECTED FACE'S " +
+            "rings and does say something: whether the card in front of the camera is the one " +
+            "you chose. Switching the reticle off does not switch that check off.")
+        moreInfo(binding.infoStreamLens, "Lens correction on a live stream",
+            "A short-focus camera bows straight lines outward, most at the edges of the frame " +
+            "and not at all in the middle, so a ring near the edge measures short. Down a range " +
+            "it is negligible; filling the frame from close to a card it is not.\n\n" +
+            "The figure is measured on Import from a photograph taken with the same camera, " +
+            "where the app can compare the fitted rings against the even spacing they are " +
+            "printed at. It is entered here rather than measured live because an estimate that " +
+            "wanders from frame to frame would change the scoring geometry underneath a string " +
+            "that is being shot.\n\n" +
+            "Negative is barrel, which is what a wide lens gives. Zero, or an empty box, is off.")
         moreInfo(binding.infoKey, "API key",
             "The key comes from that service's own console — console.anthropic.com for Claude, " +
             "platform.openai.com for OpenAI — and bills that account. It is not the " +
@@ -866,6 +972,19 @@ class ProfileActivity : BaseActivity() {
             "kept for each service separately and encrypted on this device, and is never " +
             "written to the log. A card costs a fraction of a penny to check, and needs a " +
             "connection, which most ranges do not have.")
+    }
+
+    /** The reticle line, and the button that changes it. */
+    private fun refreshReticle() {
+        val r = ScaleSettings.reticle()
+        binding.spReticle.setSelection(com.rfsat.sts.ui.Reticle.values().indexOf(r))
+        binding.tvReticle.text = when {
+            r == com.rfsat.sts.ui.Reticle.CUSTOM && ScaleSettings.reticleFile().isNotEmpty() ->
+                "Using your own image. Choose “My own image…” again to replace it."
+            r == com.rfsat.sts.ui.Reticle.CUSTOM -> "No image loaded yet."
+            r == com.rfsat.sts.ui.Reticle.NONE -> "Nothing is drawn over the picture."
+            else -> "Drawn in the theme colour, at the guide size set on the Session tab."
+        }
     }
 
     private fun onSelected(block: () -> Unit) = object : AdapterView.OnItemSelectedListener {

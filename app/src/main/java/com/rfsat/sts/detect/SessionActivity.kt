@@ -689,7 +689,14 @@ class SessionActivity : BaseActivity() {
     //  Frame handling
     // ------------------------------------------------------------------
 
-    private fun onFrame(frame: LumaFrame) {
+    private fun onFrame(raw: LumaFrame) {
+        // Straightened FIRST, before anything measures it: the registration,
+        // the ring fit and every hole position downstream are all in the
+        // geometry of whatever arrives here.
+        val frame =
+            if (binding.spSource.selectedItemPosition != 0 && ScaleSettings.lensK() != 0.0)
+                runCatching { LensCorrection.apply(raw, ScaleSettings.lensK()) }.getOrDefault(raw)
+            else raw
         latestFrame.set(frame)
         // Re-check periodically while aiming, so the corner badge follows the
         // card rather than reporting what was true a minute ago.
@@ -1272,6 +1279,16 @@ class SessionActivity : BaseActivity() {
      *  the whole point is that a card which does not match will not line up. */
     private fun refreshGuide() {
         binding.crosshair.guide = ScaleSettings.aimGuide()
+        binding.crosshair.reticle = ScaleSettings.reticle()
+        // Loaded here rather than held for the life of the app: it changes
+        // rarely, this screen is opened rarely, and a bitmap kept for ever
+        // against that is a bitmap kept for ever.
+        binding.crosshair.customReticle =
+            if (ScaleSettings.reticle() == com.rfsat.sts.ui.Reticle.CUSTOM &&
+                ScaleSettings.reticleFile().isNotEmpty()
+            ) runCatching {
+                android.graphics.BitmapFactory.decodeFile(ScaleSettings.reticleFile())
+            }.getOrNull() else null
         binding.crosshair.preserveNightVision =
             com.rfsat.sts.ui.ThemeManager.mode() == com.rfsat.sts.ui.ThemeMode.NIGHT_RED
         binding.crosshair.sizeFraction = ScaleSettings.aimGuideSize()

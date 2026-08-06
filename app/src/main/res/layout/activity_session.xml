@@ -87,9 +87,15 @@
                 android:visibility="gone"
                 android:autofillHints="" />
 
+            <!-- The stream connects on its own now, so this is a small
+                 reconnect beside the address rather than a full-width
+                 button — kept because a stream that has dropped needs one
+                 tap to bring back, and hunting through a menu for it on a
+                 firing point is not a design. -->
             <Button android:id="@+id/btnStreamConnect"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Connect to the stream"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="↻ Reconnect"
                 android:visibility="gone"
                 style="@style/Sts.ActionButton.Dense" />
 

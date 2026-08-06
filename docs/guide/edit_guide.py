@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.54.0.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.55.0.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,24 +42,29 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.53.0", "Version 1.54.0"),
+    ("Version 1.54.0", "Version 1.55.0"),
 
-    # 1.54.0 — mobile data is now the first thing to check, because it was
-    # the actual cause: sockets go out over cellular and the camera's
-    # 192.168.x.x is unreachable from there.
-    ("If no picture appears, the message says which stage was reached — "
-     "nothing answered at the address, answered but no session, session but nothing "
-     "decoded — and the diagnostic log carries the whole sequence. Use the exact "
-     "address VLC shows under Tools > Codec information, including its path: some "
-     "cameras refuse a request without one.",
-     "If no picture appears, the message says which stage was reached — nothing "
-     "answered at the address, answered but no session, session but nothing decoded — "
-     "and the diagnostic log carries the whole handshake, including what the camera "
-     "answered at each step. Two things fix almost every case: the phone must be "
-     "joined to the camera's own Wi-Fi, and the app pins itself to that network "
-     "because it has no internet and the phone would otherwise send everything over "
-     "mobile data; and the address should be the one VLC shows under Tools > Codec "
-     "information. A path is not required — the app tries the usual ones."),
+    # 1.55.0 — the reticle and the lens correction. Appended to paragraphs
+    # that already exist; new sections belong in Word.
+    ("The guide draws the rings of the selected face over the camera preview, at their "
+     "true proportions. Line the printed rings up with the drawn ones.",
+     "The guide draws the rings of the selected face over the camera preview, at their "
+     "true proportions. Line the printed rings up with the drawn ones. Separately, "
+     "Settings carries a reticle — none, a simple crosshair, duplex, mil-dot, MOA grid, "
+     "German #4, circle and dot, or an image of your own. Choose None when the camera "
+     "looks through a scope: it already shows the scope's own reticle, and a second one "
+     "beside it helps nobody. The reticle changes no score; the ring guide is the part "
+     "that checks the face."),
+
+    ("If the card is at an angle, the Tilt and rotation controls let you correct it.",
+     "A wide lens bows the picture outward, most at the edges and not at all in the "
+     "middle, so a ring near the edge measures short. It matters when the card fills "
+     "the frame from close range and hardly at all down a range. The app measures it "
+     "from the printed rings — they are evenly spaced, so any unevenness across the "
+     "picture is the lens — and offers a figure under Lens distortion for you to apply. "
+     "For a live stream, measure it once from a photograph taken with the same camera "
+     "and enter it in Settings. If the card is at an angle, the Tilt and rotation "
+     "controls let you correct it."),
 
 
 

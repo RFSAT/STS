@@ -310,6 +310,18 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.55.0** — feature. A reticle library with your own image, and lens
+distortion measured from the target itself. A camera on the scope already
+shows the scope's reticle, so the app was drawing a second one beside it;
+Settings now offers None, five drawn reticles and an image of your own, kept
+separate from the ring guide so switching it off does not switch off the
+wrong-face check. For the lens: no action camera publishes a distortion
+figure, and one number would not fit a zoom anyway, so it is measured from the
+printed rings — they are concentric circles at equal spacing, so their radii
+should be evenly spaced in pixels and the departure is the distortion.
+Offered, never imposed. The Connect button is now a small Reconnect beside the
+address.
+
 **1.54.0** — feature. RTSP written out by hand, and the reason three releases
 of decoder work changed nothing: it was never the decoder. A camera's access
 point has no internet, Android leaves the default route on mobile data, and

@@ -72,6 +72,7 @@ class ImportActivity : BaseActivity() {
     private var sourceShotBitmap: Bitmap? = null
     private var aspectX = 1.0
     private var aspectY = 1.0
+    private var lensK = 0.0
     private var cleanBitmap: Bitmap? = null
     private var cleanUri: Uri? = null
     private var shotUri: Uri? = null
@@ -205,6 +206,22 @@ class ImportActivity : BaseActivity() {
         }
         binding.overlay.onCornersChanged = { refreshStatus() }
         binding.btnAspectApply.setOnClickListener { applyAspect() }
+        binding.btnLensApply.setOnClickListener { applyLens() }
+        moreInfo(binding.infoLens, "Lens distortion",
+            "Everything the app measures geometrically assumes a pinhole camera, in which a " +
+            "straight line stays straight. A short-focus action camera is not one: near the " +
+            "edges of the frame a wide lens pulls the picture inward, so a ring that should sit " +
+            "at 40 mm measures short, and the error grows with the square of the distance from " +
+            "the centre.\n\n" +
+            "No action camera publishes the figure — Tactacam's specification lists zoom, " +
+            "resolution and battery life and no optics at all — and one number would not do " +
+            "anyway, because a zoom lens distorts differently at each focal length. So it is " +
+            "measured from your own card: the printed rings are concentric circles at equal " +
+            "spacing, so their radii should be evenly spaced in pixels, and the departure from " +
+            "that is the distortion. No calibration target, no calibration session.\n\n" +
+            "It matters at close range and hardly at all down a range. Filling the frame with a " +
+            "card at arm's length is the case that needs it; the camera's zoom, used from " +
+            "further back, mostly avoids it.")
         binding.btnAspectReset.setOnClickListener { resetAspect() }
         moreInfo(binding.infoAspect, "Stretching the picture",
             "The scale, the gauge, the ring radii and every hole-size gate are written in terms " +
@@ -350,6 +367,77 @@ class ImportActivity : BaseActivity() {
         doIdentifyTarget(silent = true)
     }
 
+    /**
+     * Straightens the picture with the coefficient in the box, then starts
+     * the registration again.
+     *
+     * Applied to the ORIGINAL together with any aspect stretch, in that
+     * order: the lens acted on the light before anything else did, so its
+     * correction belongs first, and applying it to an already-stretched copy
+     * would be correcting a radial error that is no longer radial.
+     */
+    private fun applyLens() {
+        val src = sourceShotBitmap ?: run { notifyUser("Choose a photo first."); return }
+        val k = LensDistortion.parse(binding.etLensK.text.toString())
+        if (k == null) {
+            notifyUser(
+                "The coefficient must be a number between %.2f and %.2f. Negative straightens a " +
+                    "barrel-shaped bulge, which is what a wide lens gives."
+                        .format(-LensDistortion.MAX_K, LensDistortion.MAX_K)
+            )
+            return
+        }
+        lensK = k
+        val corrected = runCatching { LensCorrection.apply(src, k) }.getOrNull() ?: run {
+            notifyUser("The picture could not be corrected — it may be too large for this device.")
+            return
+        }
+        val stretched = if (AspectCorrection.worthApplying(aspectX, aspectY)) {
+            val w = (corrected.width * aspectX).toInt().coerceAtLeast(1)
+            val h = (corrected.height * aspectY).toInt().coerceAtLeast(1)
+            runCatching { Bitmap.createScaledBitmap(corrected, w, h, true) }.getOrNull() ?: corrected
+        } else corrected
+        useBitmap(stretched)
+        binding.tvLens.text =
+            if (LensDistortion.worthApplying(k)) "Corrected with k = %.3f.".format(k)
+            else "No lens correction applied."
+        notifyUser("Lens correction applied. Registering again from the corrected picture.")
+        doIdentifyTarget(silent = true)
+    }
+
+    /**
+     * Offers a coefficient measured from the ring family that was just
+     * fitted. Filled in, never applied: the same rule as the tilt and the
+     * aspect, and for the same reason — a fit has a residual of its own and
+     * imposing a correction derived from it would resample a picture that
+     * was already straight.
+     */
+    private fun offerLens(fit: RingFit) {
+        if (lensK != 0.0) return          // already corrected; do not re-measure the result
+        val frame = shotBitmap ?: return
+        val norm = Math.hypot((frame.width - 1) / 2.0, (frame.height - 1) / 2.0)
+        // The fit's radii are in the frame it was measured in, which is the
+        // detection frame rather than the photograph; the ratio of the two
+        // cancels because the coefficient is normalised by the same length.
+        val fitNorm = fit.correctedFrame
+            ?.let { Math.hypot(it.frame.width / 2.0, it.frame.height / 2.0) } ?: norm
+        val k = LensDistortion.estimate(fit.ringsPx, fitNorm)
+        if (k == null) {
+            binding.tvLens.text = "The rings are evenly spaced; no lens correction needed."
+            return
+        }
+        binding.etLensK.setText("%.3f".format(k))
+        binding.tvLens.text =
+            ("The ring spacing is uneven in the way a %s lens makes it. k = %.3f would " +
+                "straighten it — press Apply to try.")
+                .format(if (k < 0) "barrel-distorting" else "pincushion", k)
+        notifyUser(
+            ("The printed rings are not evenly spaced across the picture, which is what a wide " +
+                "lens does at close range. A correction of %.3f is offered under “Lens " +
+                "distortion” — nothing has been applied.").format(k)
+        )
+    }
+
     private fun resetAspect() {
         val src = sourceShotBitmap ?: run { notifyUser("Choose a photo first."); return }
         if (aspectX == 1.0 && aspectY == 1.0) {
@@ -357,6 +445,9 @@ class ImportActivity : BaseActivity() {
             return
         }
         aspectX = 1.0; aspectY = 1.0
+        lensK = 0.0
+        binding.etLensK.setText("0")
+        binding.tvLens.text = ""
         binding.etAspectX.setText("100")
         binding.etAspectY.setText("100")
         useBitmap(src)
@@ -524,6 +615,7 @@ class ImportActivity : BaseActivity() {
                 boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
             }
             offerAspect(fit)
+            offerLens(fit)
         }
         // NOT applied automatically, and this is the correction that
         // mattered most in the field. The tilt is inferred from how
@@ -1046,6 +1138,7 @@ class ImportActivity : BaseActivity() {
         boxMeaning = TargetRegistration.BoxMeaning.OUTER_SCORING_RING
         showRingFamily(fit, face)
         offerAspect(fit)
+        offerLens(fit)
         Logger.i(
             "ImportActivity",
             "%d ring candidates found, %d used by the fitted family".format(

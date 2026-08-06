@@ -32,6 +32,72 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.55.0 — feature: a reticle library with your own image, lens
+        //          distortion measured from the target itself, and the
+        //          Connect button cut down to what it is now for.
+        //
+        //   THE RETICLE. A camera on the scope already shows the scope's own
+        //   reticle, and the app was drawing a second one a few pixels away —
+        //   the app arguing with the optic. Settings now carries None, a
+        //   simple crosshair, duplex, mil-dot, MOA grid, German #4, circle
+        //   and dot, and an image of your own.
+        //
+        //   The built-in ones are LINE WORK, not pictures, so they take the
+        //   theme colour and stay red under the night-red theme, whose whole
+        //   purpose is preserving dark adaptation. An imported image is drawn
+        //   exactly as it comes — that is the point of it — and is copied
+        //   into the app's own files rather than referenced where it sits,
+        //   because a gallery permission does not reliably outlive the
+        //   process and a reticle that vanishes on the firing point is worse
+        //   than one never offered.
+        //
+        //   It is kept SEPARATE from the ring guide, which draws the selected
+        //   face's rings and does say something: whether the card in front of
+        //   the camera is the one that was chosen. Switching the reticle off
+        //   must not switch off the check that catches a wrong face, and the
+        //   old code drew a crosshair whenever there was no face, which is
+        //   how the two came to be tangled.
+        //
+        //   THE LENS. Reported: spherical distortion on the Tactacam at close
+        //   range. Everything the app measures assumes a PINHOLE camera, in
+        //   which a straight line stays straight; a short-focus action camera
+        //   is not one, and a ring near the frame edge measures short by an
+        //   amount that grows with the square of its distance from the
+        //   centre.
+        //
+        //   The manufacturer publishes nothing: the 5.0 specification lists
+        //   zoom, resolution, autofocus and battery life and no optics at
+        //   all — no field of view, let alone a distortion coefficient. Nor
+        //   would one number do, since the camera has an 8x zoom and a lens
+        //   distorts differently at each focal length.
+        //
+        //   So it is MEASURED FROM THE TARGET. The printed rings are
+        //   concentric circles at equal spacing, so their radii in pixels
+        //   should form an arithmetic progression, and the departure from
+        //   that is the distortion. One coefficient is fitted by searching
+        //   for the value that straightens the ladder — the classical
+        //   plumb-line calibration with the shooter's own card as the plumb
+        //   line. No chequerboard, no calibration session, nothing to be
+        //   told to do.
+        //
+        //   Offered, never imposed, like the tilt and the aspect. For a live
+        //   stream the figure is entered in Settings instead: an estimate
+        //   that wandered from frame to frame would change the scoring
+        //   geometry underneath a string being shot.
+        //
+        //   Two things the tests caught, both of which would have shipped as
+        //   a plausible wrong number: the fixed-point inverse of the model
+        //   was eight pixels out at the frame corner for an ordinary -0.25,
+        //   and the coarse search only reached +/-0.2, so a card shot at
+        //   -0.25 came back as -0.222 — the edge of the search wearing the
+        //   costume of a measurement.
+        //
+        //   THE CONNECT BUTTON is now a small "Reconnect" beside the address
+        //   rather than a full-width button, since 1.52.0 made the stream
+        //   connect by itself. Kept because a dropped stream needs one tap to
+        //   bring back, and hunting for that on a firing point is not a
+        //   design.
+        //
         // 1.54.0 — feature: RTSP written out by hand, and the reason three
         //          releases of decoder work changed nothing.
         //
@@ -2493,8 +2559,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 78
-        versionName = "1.54.0"
+        versionCode = 79
+        versionName = "1.55.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

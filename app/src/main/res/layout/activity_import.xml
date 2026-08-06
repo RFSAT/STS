@@ -186,6 +186,42 @@
                     style="@style/Sts.ActionButton.Dense" />
             </LinearLayout>
 
+            <TextView style="@style/Sts.SectionHeading" android:text="Lens distortion" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:text="Straightens a picture bowed by a wide lens. Measured from the printed rings; matters at close range and hardly at all down a range."
+                android:justificationMode="inter_word" />
+
+            <TextView android:id="@+id/infoLens"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
+
+            <TextView android:id="@+id/tvLens"
+                style="@style/Sts.Value" android:textSize="12sp" android:layout_marginTop="2dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="4dp"
+                android:gravity="center_vertical">
+                <TextView style="@style/Sts.ParamName" android:text="Coefficient" />
+                <EditText android:id="@+id/etLensK"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:inputType="numberDecimal|numberSigned"
+                    android:text="0"
+                    android:autofillHints="" />
+                <Button android:id="@+id/btnLensApply"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Apply"
+                    style="@style/Sts.ActionButton.Dense" />
+            </LinearLayout>
+
             <TextView style="@style/Sts.SectionHeading" android:text="Tilt and rotation" />
 
             <TextView

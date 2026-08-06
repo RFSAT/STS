@@ -39,6 +39,49 @@
                  app is being developed, so each can be measured on its own
                  and in combination. What stays selectable is a decision for
                  the point at which the accuracy is good enough to ship. -->
+            <TextView style="@style/Sts.SectionHeading" android:text="Viewfinder reticle" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Drawn over the camera picture to help line it up. Choose None when the camera looks through a scope that already shows one." />
+
+            <TextView android:id="@+id/infoReticle"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
+
+            <Spinner android:id="@+id/spReticle"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView android:id="@+id/tvReticle"
+                style="@style/Sts.Value" android:textSize="12sp" android:layout_marginTop="2dp" />
+
+            <TextView style="@style/Sts.SectionHeading" android:text="Stream lens correction" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Straightens live frames from a camera with a wide lens. Measure the figure once on Import, from a photo taken with the same camera, then enter it here. 0 is off." />
+
+            <TextView android:id="@+id/infoStreamLens"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
+
+            <EditText android:id="@+id/etStreamLensK"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="13sp"
+                android:inputType="numberDecimal|numberSigned"
+                android:hint="0"
+                android:autofillHints="" />
+
             <TextView style="@style/Sts.SectionHeading" android:text="Detection algorithms" />
 
             <TextView style="@style/Sts.FieldLabel" android:text="Where the scale comes from" />

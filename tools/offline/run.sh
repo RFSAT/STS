@@ -43,14 +43,14 @@ M="$ROOT/app/src/main/java/com/rfsat/sts"
 for f in detect/BlackMarkDetector detect/BoxTransform detect/EllipseFit detect/HoleDetector \
          detect/Homography detect/HoughCentre detect/LumaFrame detect/MarkOutline \
          detect/RingFinder detect/RingShapeSelector detect/ShapeCorrection detect/MergedHoles \
-         detect/AspectCorrection detect/SpsDimensions detect/TargetGeometryCheck detect/TargetRegistration detect/RingFamilyFit detect/PunctureCheck detect/SourceHoleDetector detect/LocalBackground \
+         detect/AspectCorrection detect/SpsDimensions detect/LensDistortion detect/TargetGeometryCheck detect/TargetRegistration detect/RingFamilyFit detect/PunctureCheck detect/SourceHoleDetector detect/LocalBackground \
          profiles/BulletProfile profiles/RifleProfile profiles/ScopeProfile \
          profiles/AmmoCatalog profiles/RifleCatalog profiles/ScopeCatalog \
          rules/RuleCatalog rules/RuleSet \
          scoring/CorrectionCalculator scoring/GroupStatistics scoring/ScoringEngine \
          scoring/Shot scoring/ShotDistribution \
          targets/PracticalGeometry targets/TargetCatalog targets/TargetFace \
-         scoring/ScoredPhoto ui/NameWrap ui/AimGuide detect/ScaleSettings scoring/ShotCountCheck \
+         scoring/ScoredPhoto ui/NameWrap ui/AimGuide ui/Reticle detect/ScaleSettings scoring/ShotCountCheck \
          cloud/SecondOpinion cloud/OpinionReconciler cloud/AiProvider; do
   cp "$M/$f.kt" "$WORK/src/$(basename $f).kt"
 done

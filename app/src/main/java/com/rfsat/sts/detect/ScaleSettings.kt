@@ -63,6 +63,9 @@ object ScaleSettings {
     private const val KEY_LOCAL_BG = "local_background"
     private const val KEY_GUIDE = "aim_guide"
     private const val KEY_GUIDE_SIZE = "aim_guide_size"
+    private const val KEY_RETICLE = "reticle"
+    private const val KEY_RETICLE_FILE = "reticle_file"
+    private const val KEY_LENS_K = "lens_k"
 
     private var mode: ScaleMode = ScaleMode.CROSS_CHECK
     private var wedge: Boolean = false
@@ -73,6 +76,9 @@ object ScaleSettings {
     private var localBg: Boolean = true
     private var guide: com.rfsat.sts.ui.AimGuide = com.rfsat.sts.ui.AimGuide.CROSS
     private var guideSize: Float = 0.80f
+    private var reticle: com.rfsat.sts.ui.Reticle = com.rfsat.sts.ui.Reticle.CROSS
+    private var reticleFile: String = ""
+    private var lensK: Double = 0.0
 
     fun init(context: Context) {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -89,6 +95,54 @@ object ScaleSettings {
             .firstOrNull { it.name == p.getString(KEY_GUIDE, null) }
             ?: com.rfsat.sts.ui.AimGuide.CROSS
         guideSize = p.getFloat(KEY_GUIDE_SIZE, 0.80f)
+        reticle = com.rfsat.sts.ui.Reticle.values()
+            .firstOrNull { it.name == p.getString(KEY_RETICLE, null) }
+            ?: com.rfsat.sts.ui.Reticle.CROSS
+        reticleFile = p.getString(KEY_RETICLE_FILE, "").orEmpty()
+        lensK = p.getFloat(KEY_LENS_K, 0f).toDouble()
+    }
+
+    /**
+     * Which reticle is drawn over the viewfinder.
+     *
+     * Separate from [aimGuide], which draws the SELECTED FACE'S RINGS and is
+     * a measurement aid: it says whether the card in front of the camera is
+     * the one that was chosen. A reticle says nothing and measures nothing.
+     * Keeping them apart means switching the reticle off does not switch off
+     * the check that catches a wrong face.
+     */
+    fun reticle(): com.rfsat.sts.ui.Reticle = reticle
+
+    fun setReticle(context: Context, value: com.rfsat.sts.ui.Reticle) {
+        reticle = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_RETICLE, value.name).apply()
+    }
+
+    /** Where the shooter's own reticle image was copied to, or empty. */
+    fun reticleFile(): String = reticleFile
+
+    fun setReticleFile(context: Context, path: String) {
+        reticleFile = path
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_RETICLE_FILE, path).apply()
+    }
+
+    /**
+     * Radial lens distortion for the LIVE frame source, as measured on a
+     * photograph from the same camera under "Lens distortion" on Import.
+     *
+     * Not measured automatically here: a live frame is one of many and the
+     * estimate would wander frame to frame, changing the geometry underneath
+     * a string that is being scored. One number, entered deliberately, is
+     * both steadier and easier to account for afterwards.
+     */
+    fun lensK(): Double = lensK
+
+    fun setLensK(context: Context, value: Double) {
+        lensK = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putFloat(KEY_LENS_K, value.toFloat()).apply()
     }
 
     /** What is drawn over the viewfinder to line the phone up with the card. */
