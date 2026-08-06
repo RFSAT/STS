@@ -32,6 +32,68 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.51.0 — feature: the stream address is remembered.
+        //
+        //   Asked for, and obviously right once asked: a stream address is
+        //   long, exact and typed on a phone keyboard —
+        //   rtsp://192.168.1.254:554/live — and it was discarded every time
+        //   the screen closed. Every session began by typing it again from
+        //   memory, at the firing point, which is the worst place to be
+        //   doing it.
+        //
+        //   Kept in ordinary preferences, so it survives an app upgrade as
+        //   well as a restart, and it is backed up: unlike an API key there
+        //   is nothing secret about it and nothing that stops it being read
+        //   on another phone.
+        //
+        //   Saved when the source is STARTED, and again on leaving the screen
+        //   if what is in the box is a complete address — typing one and
+        //   walking to the firing point without pressing Start is ordinary,
+        //   and losing it for that would be the same fault in a smaller
+        //   costume. Anything that is not yet a URL is left alone, so a
+        //   half-typed address cannot replace a working one.
+        //
+        //   The source choice is remembered with it, but only when there is
+        //   an address to go back to: restoring "RTSP stream" with an empty
+        //   box is restoring a screen that cannot start.
+        //
+        // 1.50.0 — feature: RTSP is decoded by ExoPlayer, so a stream that
+        //          plays in VLC now plays here.
+        //
+        //   Reported: an RTSP address entered on the Session tab showed
+        //   nothing, and the same address plays in VLC. Three faults, and any
+        //   one of them was enough.
+        //
+        //   1. THE DECODER. It was the platform MediaPlayer, whose RTSP
+        //      support is RTP over UDP and nothing else. It cannot do RTSP
+        //      interleaved over TCP — which is exactly what VLC falls back to,
+        //      and what many cameras offer by preference or exclusively — and
+        //      it does not decode H.265 on that path at all. So "works in
+        //      VLC, not here" was the expected outcome, not a surprise.
+        //
+        //      ExoPlayer's RTSP source does both transports and uses the
+        //      device's own decoders. UDP is tried first because it is lower
+        //      latency; on failure TCP is tried automatically, because
+        //      leaving the shooter to guess which of the two their camera
+        //      wants is not a diagnosis.
+        //
+        //   2. THE SURFACE. RTSP decodes into the TextureView the app then
+        //      reads frames back out of, and a TextureView made visible a
+        //      moment ago has NO SurfaceTexture until the next layout pass.
+        //      Reading it straight out of the button handler returned null
+        //      whenever the address was typed and Start pressed without a
+        //      pause. It now waits for the surface and says so.
+        //
+        //   3. THE SILENCE. A stream that connected and delivered no picture
+        //      looked identical to an app that had ignored the address. Every
+        //      failure now carries a sentence that can be acted on — no
+        //      answer, refused as unauthorised, cannot be decoded — and a
+        //      watchdog speaks up after ten seconds without a frame.
+        //
+        //   Also: the source picker refuses an rtsp:// address under MJPEG
+        //   and an http:// one under RTSP rather than failing obscurely, and
+        //   says "scope or action camera" since that is what people connect.
+        //
         // 1.49.1 — documentation: the changelog reads to one standard from
         //          end to end, and the pre-publication checklist is gone.
         //
@@ -2293,8 +2355,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 72
-        versionName = "1.49.1"
+        versionCode = 74
+        versionName = "1.51.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
@@ -2400,6 +2462,13 @@ dependencies {
     // own account does not belong in plain SharedPreferences, where any
     // process with root or a backup extraction can read it.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // RTSP. The platform MediaPlayer cannot do RTSP over TCP and cannot
+    // decode H.265, which between them are why a camera that plays in VLC
+    // showed nothing here. Two modules only — no UI, no session, no
+    // extractors beyond what the RTSP source needs.
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-exoplayer-rtsp:1.4.1")
 
     testImplementation("junit:junit:4.13.2")
 }

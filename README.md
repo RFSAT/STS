@@ -310,6 +310,22 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.51.0** — feature. The stream address is remembered between restarts and
+across upgrades, along with the source type — a long exact address typed on a
+phone keyboard was being discarded every time the screen closed. Saved when the
+source is started, and again on leaving the screen if the box holds a complete
+address; anything that is not yet a URL is left alone, so a half-typed one
+cannot replace a working one.
+
+**1.50.0** — feature. RTSP is decoded by ExoPlayer rather than the platform
+MediaPlayer, so a stream that plays in VLC plays here. MediaPlayer does RTP
+over UDP only — no RTSP interleaved over TCP, which is what VLC falls back to
+and what many cameras offer exclusively — and no H.265 on that path. UDP is
+tried first and TCP automatically on failure. Two further faults went with it:
+the TextureView has no surface until the layout pass after it becomes visible,
+so pressing Start immediately did nothing at all, and a stream that connected
+and delivered no picture said nothing.
+
 **1.49.1** — documentation. The changelog reads to one standard from end to
 end: every release gets a summary sentence and the reason or the figure behind
 it, where the entries up to 1.9.0 had been full prose and everything after

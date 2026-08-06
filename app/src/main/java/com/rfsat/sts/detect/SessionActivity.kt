@@ -3,6 +3,7 @@ package com.rfsat.sts.detect
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
 import android.os.Bundle
 import android.util.Size
 import android.view.View
@@ -74,13 +75,21 @@ class SessionActivity : BaseActivity() {
          *  card and a preview that stays smooth. */
         const val FACE_CHECK_INTERVAL_MS = 2500L
 
+        /** How long to wait for the TextureView to hand over a surface
+         *  before saying so. Two seconds is several layout passes. */
+        const val SURFACE_WAIT_MS = 2000L
+
         const val EXTRA_NEW = "start_new"
+
+        private const val PREFS = "sts_session"
+        private const val KEY_STREAM_URL = "stream_url"
+        private const val KEY_STREAM_SOURCE = "stream_source"
         private const val REQ_PERMISSIONS = 4711
 
         private val SOURCES = listOf(
             "Phone camera",
             "MJPEG stream (IP or action camera)",
-            "RTSP stream (digital scope)"
+            "RTSP stream (scope or action camera)"
         )
     }
 
@@ -227,11 +236,27 @@ class SessionActivity : BaseActivity() {
         binding.lblDistance.text = "Distance (${UnitsManager.distanceUnitLabel()})"
 
         // ---- frame source ----
+        //
+        // BOTH THE ADDRESS AND THE CHOICE ARE REMEMBERED. A stream address is
+        // long, exact, and typed on a phone keyboard — rtsp://192.168.1.254:
+        // 554/live — and it was being thrown away every time the screen
+        // closed, so every session began by typing it again from memory or
+        // hunting for it. Kept in ordinary preferences, which survive an app
+        // upgrade, and restored below before the listener is attached so the
+        // restore does not read as a fresh choice by the user.
         binding.spSource.adapter = adapter(SOURCES)
+        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        val savedUrl = prefs.getString(KEY_STREAM_URL, "").orEmpty()
+        val savedSource = prefs.getInt(KEY_STREAM_SOURCE, 0).coerceIn(0, SOURCES.size - 1)
+        if (savedUrl.isNotEmpty()) binding.etStreamUrl.setText(savedUrl)
+        // The phone camera whenever there is no address to go back to: a
+        // stream source with an empty box is a screen that cannot start.
+        val restoredSource = if (savedUrl.isEmpty()) 0 else savedSource
+        applySourceVisibility(restoredSource)
+        binding.spSource.setSelection(restoredSource)
         binding.spSource.onItemSelectedListener = onSelected { i ->
-            binding.etStreamUrl.visibility = if (i == 0) View.GONE else View.VISIBLE
-            binding.preview.visibility = if (i == 0) View.VISIBLE else View.GONE
-            binding.streamView.visibility = if (i == 2) View.VISIBLE else View.GONE
+            applySourceVisibility(i)
+            prefs.edit().putInt(KEY_STREAM_SOURCE, i).apply()
             stopAllSources()
             if (i == 0) startCameraIfPermitted()
         }
@@ -465,23 +490,99 @@ class SessionActivity : BaseActivity() {
         }
     }
 
+    /** One place deciding which viewfinder is on screen, so the restore and
+     *  a user choice cannot drift apart. */
+    private fun applySourceVisibility(i: Int) {
+        binding.etStreamUrl.visibility = if (i == 0) View.GONE else View.VISIBLE
+        binding.preview.visibility = if (i == 0) View.VISIBLE else View.GONE
+        binding.streamView.visibility = if (i == 2) View.VISIBLE else View.GONE
+    }
+
     private fun startExternalSource() {
         val url = binding.etStreamUrl.text.toString().trim()
         if (url.isEmpty()) { notifyUser("Enter the stream address first."); return }
-        val src = when (binding.spSource.selectedItemPosition) {
-            1 -> MjpegFrameSource(url)
-            2 -> RtspFrameSource(url).also { rtsp ->
-                val tex = binding.streamView.surfaceTexture
-                if (tex != null) rtsp.attachTexture(tex) { binding.streamView.bitmap }
+        // Remembered on USE rather than on every keystroke: a half-typed
+        // address is not one worth coming back to, and this is the moment the
+        // shooter has said it is the one they mean.
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putString(KEY_STREAM_URL, url)
+            .putInt(KEY_STREAM_SOURCE, binding.spSource.selectedItemPosition)
+            .apply()
+        when (binding.spSource.selectedItemPosition) {
+            1 -> {
+                if (!url.startsWith("http", ignoreCase = true)) {
+                    notifyUser(
+                        "An MJPEG address starts with http. For an rtsp:// address choose " +
+                            "“RTSP stream” as the source."
+                    )
+                    return
+                }
+                begin(MjpegFrameSource(url))
+            }
+            2 -> {
+                if (!url.startsWith("rtsp", ignoreCase = true)) {
+                    notifyUser(
+                        "An RTSP address starts with rtsp. For an http:// address choose " +
+                            "“MJPEG stream” as the source."
+                    )
+                    return
+                }
+                startRtsp(url)
             }
             else -> return
         }
+    }
+
+    private fun begin(src: FrameSource) {
         externalSource = src
         src.start(
             onFrame = { onFrame(it) },
             onError = { msg -> runOnUiThread { notifyUser(msg) } }
         )
         Logger.i("SessionActivity", "External source started: ${src.label}")
+    }
+
+    /**
+     * Starts RTSP once the stream view actually has a surface to decode into.
+     *
+     * A TextureView made visible a moment ago does NOT have a SurfaceTexture
+     * until the next layout pass. Reading it straight out of the button
+     * handler therefore returned null whenever the shooter typed an address
+     * and pressed Start without pausing — and the failure was silent, so an
+     * address that plays perfectly well in VLC did nothing at all here.
+     */
+    private fun startRtsp(url: String) {
+        binding.streamView.visibility = View.VISIBLE
+        val existing = binding.streamView.surfaceTexture
+        if (existing != null) {
+            begin(RtspFrameSource(this, url).also {
+                it.attachTexture(existing) { binding.streamView.bitmap }
+            })
+            return
+        }
+        notifyUser("Waiting for the video surface…")
+        binding.streamView.surfaceTextureListener =
+            object : android.view.TextureView.SurfaceTextureListener {
+                override fun onSurfaceTextureAvailable(t: SurfaceTexture, w: Int, h: Int) {
+                    binding.streamView.surfaceTextureListener = null
+                    begin(RtspFrameSource(this@SessionActivity, url).also {
+                        it.attachTexture(t) { binding.streamView.bitmap }
+                    })
+                }
+                override fun onSurfaceTextureSizeChanged(t: SurfaceTexture, w: Int, h: Int) = Unit
+                override fun onSurfaceTextureDestroyed(t: SurfaceTexture): Boolean = true
+                override fun onSurfaceTextureUpdated(t: SurfaceTexture) = Unit
+            }
+        // A view that never gets a surface would otherwise wait for ever.
+        binding.streamView.postDelayed({
+            if (externalSource == null && binding.streamView.surfaceTextureListener != null) {
+                binding.streamView.surfaceTextureListener = null
+                notifyUser(
+                    "The stream view never became ready, so nothing could be decoded. " +
+                        "Leave the Session tab open and try Start again."
+                )
+            }
+        }, SURFACE_WAIT_MS)
     }
 
     private fun stopAllSources() {
@@ -1362,6 +1463,17 @@ class SessionActivity : BaseActivity() {
         val typed = binding.etDistance.text.toString().toDoubleOrNull()
         if (typed != null && typed > 0) {
             ScoringSession.setDistance(UnitsManager.inputDistanceToMeters(typed))
+        }
+        // A COMPLETE address is kept even if it was never started. Typing one
+        // and walking to the firing point without pressing Start is ordinary;
+        // losing it for that is not. Anything that is not yet a URL is left
+        // alone, so a half-typed address does not replace a working one.
+        val url = binding.etStreamUrl.text.toString().trim()
+        if (url.startsWith("rtsp", true) || url.startsWith("http", true)) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putString(KEY_STREAM_URL, url)
+                .putInt(KEY_STREAM_SOURCE, binding.spSource.selectedItemPosition)
+                .apply()
         }
     }
 

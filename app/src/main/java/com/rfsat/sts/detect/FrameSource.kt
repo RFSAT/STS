@@ -129,68 +129,130 @@ class MjpegFrameSource(private val url: String) : FrameSource {
 }
 
 /**
- * RTSP, by letting the platform's MediaPlayer decode into an off-screen
- * SurfaceTexture and pulling frames back out of it.
+ * RTSP, decoded by ExoPlayer into a TextureView the app then reads frames
+ * back out of.
  *
- * BE HONEST ABOUT WHAT THIS IS. MediaPlayer's RTSP support is real but
- * narrow: RTP over UDP, a limited codec set, no authentication in the URL on
- * some vendor builds, and latency of a second or more. Frames are recovered
- * by reading the texture, which needs a GL context and is therefore driven
- * from the view that owns it — [attachTexture] must be called with a live
- * SurfaceTexture before [start].
+ * WHY NOT MediaPlayer, WHICH THIS USED TO BE. Reported from real use: a URL
+ * that plays in VLC showed nothing here. The platform MediaPlayer's RTSP
+ * support is RTP over UDP and nothing else — it cannot do RTSP interleaved
+ * over TCP, which is what VLC falls back to and what a great many cameras
+ * offer either by preference or exclusively. Its codec set is narrower too:
+ * H.265, which is now common on cheap cameras, is not decoded on that path
+ * at all. And it reported failure as a pair of integers, so the one thing
+ * the shooter needed — WHY nothing appeared — was the one thing it could not
+ * say.
  *
- * It is included because a digital scope that streams to its own phone app
- * almost always streams RTSP, and being able to score off that is worth a
- * compromised implementation. Where an MJPEG endpoint exists, prefer it.
+ * ExoPlayer's RTSP source does TCP as well as UDP, decodes whatever the
+ * device's own decoders handle, and returns errors with names.
+ *
+ * UDP FIRST, THEN TCP. UDP is lower latency and is what most cameras answer
+ * with when asked; TCP survives access-point client isolation and the
+ * firewalls that silently drop the inbound RTP. Trying one and reporting
+ * failure would leave the shooter to guess which of the two their camera
+ * wanted, so the fallback is automatic and is stated when it happens.
+ *
+ * FRAMES COME BACK OFF THE TEXTURE, which needs a live TextureView: the view
+ * owns the GL context, and creating a second one on the same surface is
+ * asking for trouble. [attachTexture] must therefore be called with an
+ * AVAILABLE SurfaceTexture before [start] — the caller waits for it rather
+ * than failing, because a TextureView that has just been made visible does
+ * not have one until the next layout pass.
  */
 class RtspFrameSource(
+    private val context: android.content.Context,
     private val url: String,
     private val frameIntervalMs: Long = 200L
 ) : FrameSource {
 
     override val label: String get() = "RTSP stream — $url"
 
-    private var player: MediaPlayer? = null
+    private var player: androidx.media3.exoplayer.ExoPlayer? = null
     private var texture: SurfaceTexture? = null
     private var grabber: Thread? = null
     private val running = AtomicBoolean(false)
+    private val framesSeen = AtomicBoolean(false)
+    private var triedTcp = false
 
     /** Supplies the frames; owned by the caller's TextureView. */
     private var readBitmap: (() -> Bitmap?)? = null
 
     override val isRunning: Boolean get() = running.get()
 
-    /**
-     * Hands over the SurfaceTexture MediaPlayer will render into, and a
-     * closure that reads the current frame back. In practice the caller
-     * passes a TextureView's texture and `textureView::getBitmap`, because
-     * TextureView already owns the GL context this needs and re-creating one
-     * here would be a second, competing context on the same surface.
-     */
     fun attachTexture(surfaceTexture: SurfaceTexture, bitmapReader: () -> Bitmap?) {
         texture = surfaceTexture
         readBitmap = bitmapReader
+    }
+
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    private fun open(forceTcp: Boolean, onError: (String) -> Unit) {
+        val tex = texture ?: return
+        val factory = androidx.media3.exoplayer.rtsp.RtspMediaSource.Factory()
+            .setForceUseRtpTcp(forceTcp)
+            // Some cameras answer the default "Exo" agent with 4xx. A plain
+            // one is what the players they were tested against send.
+            .setUserAgent("STS")
+            .setTimeoutMs(OPEN_TIMEOUT_MS.toLong())
+        val source = factory.createMediaSource(
+            androidx.media3.common.MediaItem.fromUri(url)
+        )
+        val p = androidx.media3.exoplayer.ExoPlayer.Builder(context).build()
+        p.setVideoSurface(Surface(tex))
+        p.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                Logger.w("RtspFrameSource", "${if (forceTcp) "TCP" else "UDP"}: ${error.errorCodeName}")
+                if (!forceTcp && !triedTcp) {
+                    // The commonest single cause of "it plays in VLC and not
+                    // here": the camera will not serve UDP to this client.
+                    triedTcp = true
+                    runCatching { p.release() }
+                    open(forceTcp = true, onError = onError)
+                    return
+                }
+                running.set(false)
+                onError(describe(error))
+            }
+        })
+        p.setMediaSource(source)
+        p.prepare()
+        p.playWhenReady = true
+        player = p
+    }
+
+    /** Turns an ExoPlayer failure into something a shooter can act on. */
+    private fun describe(error: androidx.media3.common.PlaybackException): String {
+        val name = error.errorCodeName
+        val detail = error.cause?.message?.takeIf { it.isNotBlank() }
+        return when {
+            name.contains("TIMEOUT") || name.contains("IO_NETWORK") ->
+                "No answer from $url. Check the phone is on the camera's own network, and " +
+                    "that the address is exactly the one that plays in VLC."
+            name.contains("UNAUTHORIZED") || name.contains("AUTHENTICATION") ->
+                "The camera refused the connection as unauthorised. Put the user name and " +
+                    "password in the address itself: rtsp://user:password@host/path"
+            name.contains("DECODER") || name.contains("DECODING") ->
+                "The stream was reached but this phone cannot decode it${detail?.let { " ($it)" } ?: ""}. " +
+                    "If the camera can be set to H.264 rather than H.265, try that."
+            else -> "The stream could not be played: $name${detail?.let { " — $it" } ?: ""}"
+        }
     }
 
     override fun start(onFrame: (LumaFrame) -> Unit, onError: (String) -> Unit) {
         val tex = texture
         val reader = readBitmap
         if (tex == null || reader == null) {
-            onError("No preview surface attached — RTSP needs a visible preview to decode into")
+            onError("No preview surface attached — RTSP needs the stream view on screen to decode into.")
             return
         }
         if (running.getAndSet(true)) return
+        framesSeen.set(false)
+        triedTcp = false
+        val startedAt = System.currentTimeMillis()
         try {
-            player = MediaPlayer().apply {
-                setDataSource(url)
-                setSurface(Surface(tex))
-                setOnErrorListener { _, what, extra ->
-                    onError("RTSP error $what/$extra")
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                runCatching { open(forceTcp = false, onError = onError) }.onFailure {
                     running.set(false)
-                    true
+                    onError("Could not open the stream: ${it.message ?: it.javaClass.simpleName}")
                 }
-                setOnPreparedListener { it.start() }
-                prepareAsync()
             }
         } catch (t: Throwable) {
             running.set(false)
@@ -201,7 +263,20 @@ class RtspFrameSource(
             while (running.get()) {
                 val bmp = runCatching { reader() }.getOrNull()
                 if (bmp != null) {
+                    framesSeen.set(true)
                     runCatching { onFrame(LumaFrame.fromBitmap(bmp)) }
+                } else if (!framesSeen.get() &&
+                    System.currentTimeMillis() - startedAt > SILENT_TIMEOUT_MS
+                ) {
+                    // SAYING NOTHING IS THE FAILURE THAT WAS REPORTED. A
+                    // stream that connects and never delivers a frame looked
+                    // exactly like an app that had ignored the address.
+                    framesSeen.set(true)   // report once, then stop nagging
+                    onError(
+                        "Connected, but no picture has arrived in ${SILENT_TIMEOUT_MS / 1000} " +
+                            "seconds. The stream view must be visible for frames to be decoded; " +
+                            "if it is, the camera may be sending a format this phone cannot decode."
+                    )
                 }
                 Thread.sleep(frameIntervalMs)
             }
@@ -210,9 +285,16 @@ class RtspFrameSource(
 
     override fun stop() {
         running.set(false)
-        runCatching { player?.stop() }
-        runCatching { player?.release() }
+        val p = player
         player = null
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { p?.release() }
+        }
         grabber = null
+    }
+
+    private companion object {
+        const val OPEN_TIMEOUT_MS = 8000
+        const val SILENT_TIMEOUT_MS = 10000L
     }
 }

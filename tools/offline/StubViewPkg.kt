@@ -45,6 +45,7 @@ open class View(
     fun setMeasuredDimension(w: Int, h: Int) {}
     val isShown: Boolean = true
     fun post(r: Runnable): Boolean = true
+    fun postDelayed(r: Runnable, delayMs: Long): Boolean = true
     fun setBackgroundColor(c: Int) {}
     fun dispatchTouchEvent(e: MotionEvent): Boolean = false
 

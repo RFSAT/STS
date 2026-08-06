@@ -55,3 +55,13 @@
 -keepclassmembers class * extends com.google.crypto.tink.shaded.protobuf.GeneratedMessageLite {
     <fields>;
 }
+
+# Media3's own consumer rules ship with the library and are enough for it.
+# These are for the ANNOTATION-ONLY dependencies it and Guava reference and
+# neither ships — the same class of R8 failure that broke the release build
+# twice over encrypted storage. Warned away rather than satisfied with
+# another dependency, because nothing dereferences them at run time.
+-dontwarn org.checkerframework.**
+-dontwarn com.google.j2objc.annotations.**
+-dontwarn java.lang.instrument.**
+-dontwarn sun.misc.**
