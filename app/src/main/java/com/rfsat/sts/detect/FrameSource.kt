@@ -168,7 +168,9 @@ class RtspFrameSource(
 
     private var player: androidx.media3.exoplayer.ExoPlayer? = null
     private var texture: SurfaceTexture? = null
-    private var grabber: Thread? = null
+    private var ui: android.os.Handler? = null
+    private var ticker: Runnable? = null
+    private var workers: java.util.concurrent.ExecutorService? = null
     private val running = AtomicBoolean(false)
     private val framesSeen = AtomicBoolean(false)
     private var triedTcp = false
@@ -259,38 +261,89 @@ class RtspFrameSource(
             onError("Could not open the stream: ${t.message ?: t.javaClass.simpleName}")
             return
         }
-        grabber = Thread {
-            while (running.get()) {
-                val bmp = runCatching { reader() }.getOrNull()
-                if (bmp != null) {
-                    framesSeen.set(true)
-                    runCatching { onFrame(LumaFrame.fromBitmap(bmp)) }
-                } else if (!framesSeen.get() &&
-                    System.currentTimeMillis() - startedAt > SILENT_TIMEOUT_MS
-                ) {
-                    // SAYING NOTHING IS THE FAILURE THAT WAS REPORTED. A
-                    // stream that connects and never delivers a frame looked
-                    // exactly like an app that had ignored the address.
-                    framesSeen.set(true)   // report once, then stop nagging
-                    onError(
-                        "Connected, but no picture has arrived in ${SILENT_TIMEOUT_MS / 1000} " +
-                            "seconds. The stream view must be visible for frames to be decoded; " +
-                            "if it is, the camera may be sending a format this phone cannot decode."
-                    )
+        // THE READ-BACK RUNS ON THE MAIN THREAD, and that is not a style
+        // choice. TextureView.getBitmap() copies out of the view's own GL
+        // surface, and off the thread that owns it the copy comes back BLANK
+        // rather than failing — measured in the field as frames arriving at
+        // the right size and rate with "contrast between mark and paper is
+        // only 0" for every one of them. A silent wrong answer, from a call
+        // that looked like it was working.
+        //
+        // The conversion and the detection stay off it: only the copy needs
+        // the UI thread, and doing anything more there would drop the
+        // viewfinder's own frame rate.
+        val ui = android.os.Handler(android.os.Looper.getMainLooper())
+        val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+        val busy = AtomicBoolean(false)
+        val tick = object : Runnable {
+            override fun run() {
+                if (!running.get()) return
+                if (!busy.get()) {
+                    val bmp = runCatching { reader() }.getOrNull()
+                    if (bmp != null && !isBlank(bmp)) {
+                        framesSeen.set(true)
+                        busy.set(true)
+                        worker.execute {
+                            runCatching { onFrame(LumaFrame.fromBitmap(bmp)) }
+                            busy.set(false)
+                        }
+                    } else if (!framesSeen.get() &&
+                        System.currentTimeMillis() - startedAt > SILENT_TIMEOUT_MS
+                    ) {
+                        // SAYING NOTHING IS THE FAILURE THAT WAS REPORTED. A
+                        // stream that connects and never delivers a picture
+                        // looked exactly like an app ignoring the address.
+                        framesSeen.set(true)   // report once, then stop nagging
+                        onError(
+                            "Connected, but no picture has arrived in " +
+                                "${SILENT_TIMEOUT_MS / 1000} seconds. The stream view must be " +
+                                "on screen for frames to be decoded; if it is, the camera may " +
+                                "be sending a format this phone cannot decode."
+                        )
+                    }
                 }
-                Thread.sleep(frameIntervalMs)
+                ui.postDelayed(this, frameIntervalMs)
             }
-        }.also { it.isDaemon = true; it.name = "sts-rtsp"; it.start() }
+        }
+        this.ui = ui
+        this.ticker = tick
+        this.workers = worker
+        ui.post(tick)
+    }
+
+    /**
+     * A frame with no variation in it at all is not a picture.
+     *
+     * The blank read-back described above returns a bitmap of the right size
+     * full of one value, and passing that to the detector produces a
+     * confident measurement of nothing. Nine samples across the middle is
+     * enough to tell it from any real photograph of a card, and costs
+     * nothing at five frames a second.
+     */
+    private fun isBlank(bmp: Bitmap): Boolean {
+        if (bmp.width < 3 || bmp.height < 3) return true
+        val first = bmp.getPixel(bmp.width / 2, bmp.height / 2)
+        for (dy in -1..1) for (dx in -1..1) {
+            val x = (bmp.width / 2 + dx * bmp.width / 4).coerceIn(0, bmp.width - 1)
+            val y = (bmp.height / 2 + dy * bmp.height / 4).coerceIn(0, bmp.height - 1)
+            if (bmp.getPixel(x, y) != first) return false
+        }
+        return true
     }
 
     override fun stop() {
         running.set(false)
+        ticker?.let { t -> ui?.removeCallbacks(t) }
+        ticker = null
+        ui = null
+        runCatching { workers?.shutdown() }
+        workers = null
         val p = player
         player = null
         android.os.Handler(android.os.Looper.getMainLooper()).post {
+            runCatching { p?.setVideoSurface(null) }
             runCatching { p?.release() }
         }
-        grabber = null
     }
 
     private companion object {

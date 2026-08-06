@@ -9,6 +9,7 @@ class Handler(looper: Looper?) {
     fun post(r: Runnable): Boolean = true
     fun postDelayed(r: Runnable, ms: Long): Boolean = true
     fun removeCallbacksAndMessages(t: Any?) {}
+    fun removeCallbacks(r: Runnable) {}
 }
 class Looper { companion object { @JvmStatic fun getMainLooper(): Looper = Looper() } }
 class Environment

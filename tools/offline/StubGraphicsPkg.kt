@@ -6,6 +6,7 @@ class Bitmap {
     val height: Int = 0
     val isRecycled: Boolean = false
     fun getPixels(p: IntArray, o: Int, s: Int, x: Int, y: Int, w: Int, h: Int) {}
+    fun getPixel(x: Int, y: Int): Int = 0
     fun recycle() {}
     fun compress(f: CompressFormat, q: Int, out: java.io.OutputStream): Boolean = true
     enum class Config { ARGB_8888, RGB_565 }

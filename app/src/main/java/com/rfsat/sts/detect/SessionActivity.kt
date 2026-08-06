@@ -143,6 +143,10 @@ class SessionActivity : BaseActivity() {
     private var live: LiveHitDetector? = null
     private var liveRunning = false
 
+    /** Set from the moment a stream open is decided until the source is
+     *  attached, so the several places that can ask cannot each start one. */
+    private var opening = false
+
     private var faces: List<TargetFace> = emptyList()
     private var ruleSets: List<RuleSet> = emptyList()
 
@@ -377,7 +381,12 @@ class SessionActivity : BaseActivity() {
         }
         binding.etDistance.setText(fmt(UnitsManager.displayDistance(ScoringSession.state.distanceM)))
 
-        startCameraIfPermitted()
+        // ONLY WHEN THE CAMERA IS THE SOURCE. It was started unconditionally
+        // here, so a session restored to a stream had the phone camera bound
+        // and running behind it — visible in the log as "Camera bound" one
+        // millisecond before the stream opened. It costs power, it holds the
+        // camera against any other app, and its frames went nowhere.
+        if (binding.spSource.selectedItemPosition == 0) startCameraIfPermitted()
         refreshShotList()
         refreshStatus()
     }
@@ -406,6 +415,7 @@ class SessionActivity : BaseActivity() {
     // ------------------------------------------------------------------
 
     private fun startCameraIfPermitted() {
+        if (binding.spSource.selectedItemPosition != 0) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -534,6 +544,17 @@ class SessionActivity : BaseActivity() {
     private fun ensureStreamConnected(announce: Boolean = false) {
         val i = binding.spSource.selectedItemPosition
         if (i == 0) return
+        // ONE OPEN AT A TIME. Selecting the source, restoring a saved address
+        // and returning to the screen can all fire within a few
+        // milliseconds — the field log showed the same stream opened twice,
+        // four milliseconds apart, which puts two decoders on one
+        // SurfaceTexture and leaks the first. The flag is set before anything
+        // slow starts, because "is it running yet" is answered too late to be
+        // any use here.
+        if (opening) {
+            if (announce) notifyUser("Already connecting…")
+            return
+        }
         if (externalSource?.isRunning == true) {
             if (announce) notifyUser("Already connected to ${externalSource?.label}.")
             return
@@ -543,12 +564,13 @@ class SessionActivity : BaseActivity() {
             if (announce) notifyUser("Enter the stream address first.")
             return
         }
+        opening = true
         startExternalSource()
     }
 
     private fun startExternalSource() {
         val url = binding.etStreamUrl.text.toString().trim()
-        if (url.isEmpty()) { notifyUser("Enter the stream address first."); return }
+        if (url.isEmpty()) { opening = false; notifyUser("Enter the stream address first."); return }
         // Remembered on USE rather than on every keystroke: a half-typed
         // address is not one worth coming back to, and this is the moment the
         // shooter has said it is the one they mean.
@@ -563,6 +585,7 @@ class SessionActivity : BaseActivity() {
                         "An MJPEG address starts with http. For an rtsp:// address choose " +
                             "“RTSP stream” as the source."
                     )
+                    opening = false
                     return
                 }
                 begin(MjpegFrameSource(url))
@@ -573,16 +596,21 @@ class SessionActivity : BaseActivity() {
                         "An RTSP address starts with rtsp. For an http:// address choose " +
                             "“MJPEG stream” as the source."
                     )
+                    opening = false
                     return
                 }
                 startRtsp(url)
             }
-            else -> return
+            else -> { opening = false; return }
         }
     }
 
     private fun begin(src: FrameSource) {
+        // Anything still attached is stopped first: two sources feeding the
+        // detector would interleave frames from different pictures.
+        runCatching { externalSource?.stop() }
         externalSource = src
+        opening = false
         // LOGGED BEFORE AND AFTER. The failure reported from the field left
         // no trace at all, and a log that only records success cannot
         // distinguish "it did not work" from "it was never attempted".
@@ -639,9 +667,10 @@ class SessionActivity : BaseActivity() {
         binding.streamView.postDelayed({
             if (externalSource == null && binding.streamView.surfaceTextureListener != null) {
                 binding.streamView.surfaceTextureListener = null
+                opening = false
                 notifyUser(
                     "The stream view never became ready, so nothing could be decoded. " +
-                        "Leave the Session tab open and try Start again."
+                        "Leave the Session tab open and press Connect to the stream again."
                 )
             }
         }, SURFACE_WAIT_MS)

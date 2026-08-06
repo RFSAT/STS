@@ -310,6 +310,16 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.52.1** — correction. The stream arrived and every frame was blank.
+`TextureView.getBitmap()` copies out of the view's own GL surface, and off the
+thread that owns it the copy comes back blank rather than failing — no
+exception, no null, a bitmap of the right size full of one value, which the
+detector then measured confidently. The read-back is on the main thread now,
+with conversion and detection still on a worker, and a frame with no variation
+in it is discarded rather than scored. The same log showed the stream being
+opened twice within four milliseconds, and the phone camera bound behind it;
+both fixed.
+
 **1.52.0** — correction. A stream source was never opened at all. Starting one
 happened in a single place — the live-detection button — which refuses until a
 reference frame has been captured, and the reference frame comes from the

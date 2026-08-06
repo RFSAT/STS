@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.52.0.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.52.1.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,18 +42,9 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.51.0", "Version 1.52.0"),
+    ("Version 1.52.0", "Version 1.52.1"),
 
-    # 1.52.0 — the stream now has a Connect button of its own, which the
-    # step describing the frame source has to mention.
-    ("Pick MJPEG for an http address and RTSP for an rtsp one. The address is "
-     "remembered, so it is typed once and is still there after a restart or an "
-     "upgrade.",
-     "Pick MJPEG for an http address and RTSP for an rtsp one, then press Connect to "
-     "the stream. The picture should appear in the viewfinder; capture the reference "
-     "and start live detection from there as usual. The address is remembered, so it "
-     "is typed once and is still there after a restart or an upgrade, and the app "
-     "reconnects to it by itself when you come back to this tab."),
+
 
 
 ]

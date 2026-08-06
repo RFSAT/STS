@@ -32,6 +32,36 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.52.1 — correction: the stream arrived and every frame was blank.
+        //
+        //   The log from the field showed the stream open, frames at
+        //   1080 x 1101 at the right rate, and for every one of them
+        //   "contrast between mark and paper is only 0" and "only 0 usable
+        //   edge points". A picture of nothing, delivered punctually.
+        //
+        //   TextureView.getBitmap() copies out of the view's own GL surface.
+        //   Off the thread that owns that surface the copy comes back BLANK
+        //   rather than failing — no exception, no null, a bitmap of the
+        //   right size full of one value. The grabber was a background
+        //   thread, so every frame it read was empty and the detector
+        //   measured it confidently.
+        //
+        //   The read-back is now posted to the main thread and only the read
+        //   is: the luma conversion and the detection stay on a worker, since
+        //   doing those on the UI thread would cost the viewfinder its frame
+        //   rate. A frame with no variation in it at all is also now
+        //   discarded rather than measured, because a confident measurement
+        //   of nothing is the failure this whole class of bug produces.
+        //
+        //   TWO MORE THINGS THE SAME LOG SHOWED. The stream was opened TWICE,
+        //   four milliseconds apart — selecting the source, restoring the
+        //   saved address and resuming the screen can all fire at once — which
+        //   puts two decoders on one SurfaceTexture and leaks the first. And
+        //   the phone camera was bound one millisecond BEFORE the stream
+        //   opened and stayed bound behind it, costing power and holding the
+        //   camera against every other app for frames that went nowhere.
+        //   Both fixed; the camera is now started only when it is the source.
+        //
         // 1.52.0 — correction: a stream source was never opened at all.
         //
         //   Reported with a log, and the log was the evidence: two lines
@@ -2386,8 +2416,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 75
-        versionName = "1.52.0"
+        versionCode = 76
+        versionName = "1.52.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two
