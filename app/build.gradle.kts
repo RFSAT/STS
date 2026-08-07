@@ -32,6 +32,43 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.56.0 — feature: the app asks the camera what it will answer,
+        //          because nobody publishes the answer.
+        //
+        //   Asked for: set the camera's own options from the app — zoom, the
+        //   red dot, video size, stabilisation, exposure compensation, mains
+        //   frequency, white balance — so the stream is predictable. Every
+        //   one of those is worth fixing before a string, and several change
+        //   what the detector sees rather than merely how it looks.
+        //
+        //   THE PROTOCOL IS NOT PUBLISHED. Tactacam documents no API; its
+        //   specification sheet does not carry a field of view, let alone a
+        //   command set. Writing control code against a guess is how an app
+        //   comes to send commands that quietly do nothing — or something
+        //   else — and a shooter would have no way to tell which.
+        //
+        //   So the app asks first. "What can this camera be told?" on the
+        //   Session tab knocks on the ports that matter and sends only
+        //   QUESTIONS: the Novatek CGI query, the Ambarella JSON socket, a
+        //   plain HTTP root, an ONVIF device service, and an RTSP OPTIONS in
+        //   the camera's own language — whose reply says whether
+        //   SET_PARAMETER exists, which is the standards-based way to change
+        //   a setting. Nothing sent alters anything on the camera.
+        //
+        //   Every request and reply goes in the diagnostic log. One run
+        //   against the real device turns a guess into a protocol, and the
+        //   controls can then be written against what is actually there.
+        //
+        //   WHAT IS ALREADY KNOWN WITHOUT ASKING, and belongs in the guide
+        //   rather than in code: the red dot is burned into the picture at
+        //   the centre of the frame, which is where the ten ring usually
+        //   sits, so it can be read as a hole — off while scoring.
+        //   Stabilisation moves the image relative to the card between
+        //   frames, which is precisely what live detection assumes does not
+        //   happen. Auto white balance and auto exposure drift, and the
+        //   detector reads distance from the paper's own colour. 50 Hz where
+        //   the mains is 50 Hz, or the picture bands.
+        //
         // 1.55.0 — feature: a reticle library with your own image, lens
         //          distortion measured from the target itself, and the
         //          Connect button cut down to what it is now for.
@@ -2559,8 +2596,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 79
-        versionName = "1.55.0"
+        versionCode = 80
+        versionName = "1.56.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

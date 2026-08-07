@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.55.0.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.56.0.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,29 +42,24 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.54.0", "Version 1.55.0"),
+    ("Version 1.55.0", "Version 1.56.0"),
 
-    # 1.55.0 — the reticle and the lens correction. Appended to paragraphs
-    # that already exist; new sections belong in Word.
-    ("The guide draws the rings of the selected face over the camera preview, at their "
-     "true proportions. Line the printed rings up with the drawn ones.",
-     "The guide draws the rings of the selected face over the camera preview, at their "
-     "true proportions. Line the printed rings up with the drawn ones. Separately, "
-     "Settings carries a reticle — none, a simple crosshair, duplex, mil-dot, MOA grid, "
-     "German #4, circle and dot, or an image of your own. Choose None when the camera "
-     "looks through a scope: it already shows the scope's own reticle, and a second one "
-     "beside it helps nobody. The reticle changes no score; the ring guide is the part "
-     "that checks the face."),
-
-    ("If the card is at an angle, the Tilt and rotation controls let you correct it.",
-     "A wide lens bows the picture outward, most at the edges and not at all in the "
-     "middle, so a ring near the edge measures short. It matters when the card fills "
-     "the frame from close range and hardly at all down a range. The app measures it "
-     "from the printed rings — they are evenly spaced, so any unevenness across the "
-     "picture is the lens — and offers a figure under Lens distortion for you to apply. "
-     "For a live stream, measure it once from a photograph taken with the same camera "
-     "and enter it in Settings. If the card is at an angle, the Tilt and rotation "
-     "controls let you correct it."),
+    # 1.56.0 — what to set on a Wi-Fi camera before a string. Appended to
+    # the live-scoring set-up step, which is where a reader is standing when
+    # it matters.
+    ("Press Lock exposure and focus before the string, and make sure the phone cannot "
+     "move.",
+     "Press Lock exposure and focus before the string, and make sure the phone cannot "
+     "move. On a Wi-Fi camera the same settings are on the camera itself and are worth "
+     "fixing before you start: switch the red dot OFF, because it is burned into the "
+     "picture at the centre of the frame — where the ten ring usually is — and can be "
+     "read as a hole; switch image stabilisation OFF, because it shifts the picture "
+     "relative to the card between frames and live detection assumes that does not "
+     "happen; set white balance to a fixed setting rather than auto, and exposure "
+     "compensation to 0, because the detector measures how far each pixel sits from the "
+     "paper's own colour; and set the mains frequency to match your supply, or the "
+     "picture bands. “What can this camera be told?” on the Session tab reports whether "
+     "the app can set any of this for you."),
 
 
 

@@ -92,6 +92,13 @@
                  button — kept because a stream that has dropped needs one
                  tap to bring back, and hunting through a menu for it on a
                  firing point is not a design. -->
+            <Button android:id="@+id/btnCameraProbe"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="What can this camera be told?"
+                android:visibility="gone"
+                style="@style/Sts.TextButton" />
+
             <Button android:id="@+id/btnStreamConnect"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="end"

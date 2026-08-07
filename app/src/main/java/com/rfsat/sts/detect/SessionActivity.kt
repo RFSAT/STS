@@ -264,6 +264,7 @@ class SessionActivity : BaseActivity() {
             stopAllSources()
             if (i == 0) startCameraIfPermitted() else ensureStreamConnected("source chosen")
         }
+        binding.btnCameraProbe.setOnClickListener { probeCamera() }
         binding.btnStreamConnect.setOnClickListener {
             // Explicit reconnect: a stream that has dropped is the ordinary
             // reason to press this, so it stops whatever is nominally
@@ -520,6 +521,7 @@ class SessionActivity : BaseActivity() {
     private fun applySourceVisibility(i: Int) {
         binding.etStreamUrl.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.btnStreamConnect.visibility = if (i == 0) View.GONE else View.VISIBLE
+        binding.btnCameraProbe.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.preview.visibility = if (i == 0) View.VISIBLE else View.GONE
         binding.streamView.visibility = if (i == 2) View.VISIBLE else View.GONE
     }
@@ -569,6 +571,41 @@ class SessionActivity : BaseActivity() {
         }
         opening = true
         startExternalSource()
+    }
+
+    /**
+     * Asks the camera what control channel, if any, it will answer.
+     *
+     * Sends only questions. Nothing here changes a setting on the camera —
+     * the point is to find out whether a settings screen COULD be written,
+     * because nobody publishes the protocol for cameras of this kind and
+     * writing one against a guess is how an app comes to send commands that
+     * quietly do nothing.
+     */
+    private fun probeCamera() {
+        val url = binding.etStreamUrl.text.toString().trim()
+        if (url.isEmpty()) { notifyUser("Enter the stream address first."); return }
+        notifyUser("Asking the camera what it answers — this takes a few seconds.")
+        Thread {
+            val findings = runCatching { CameraProbe.run(url) }.getOrElse {
+                listOf(CameraProbe.Finding("probe", "failed: ${it.message}", false))
+            }
+            runOnUiThread {
+                val promising = findings.filter { it.promising }
+                notifyUser(buildString {
+                    if (promising.isEmpty()) {
+                        append("Nothing answered a control question. This camera is probably ")
+                        append("configurable only from its own app or its own buttons. ")
+                    } else {
+                        append("${promising.size} thing(s) answered: ")
+                        append(promising.joinToString("; ") { it.what })
+                        append(". ")
+                    }
+                    append("The full exchange is in the diagnostic log — send it and the ")
+                    append("controls can be built from what is actually there.")
+                })
+            }
+        }.also { it.isDaemon = true; it.name = "sts-camera-probe" }.start()
     }
 
     private fun startExternalSource() {

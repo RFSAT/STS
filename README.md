@@ -310,6 +310,14 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.56.0** — feature. The app asks the camera what it will answer, because
+nobody publishes the answer. Setting a camera's own options from the app would
+make the stream predictable, and none of the protocol is documented — so
+"What can this camera be told?" on the Session tab sends only questions (the
+Novatek CGI query, the Ambarella socket, HTTP, ONVIF, and an RTSP OPTIONS
+whose reply says whether SET_PARAMETER exists) and logs every exchange. One
+run against a real camera turns a guess into a protocol.
+
 **1.55.0** — feature. A reticle library with your own image, and lens
 distortion measured from the target itself. A camera on the scope already
 shows the scope's reticle, so the app was drawing a second one beside it;
