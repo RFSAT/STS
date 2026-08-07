@@ -60,6 +60,53 @@
             <TextView android:id="@+id/tvReticle"
                 style="@style/Sts.Value" android:textSize="12sp" android:layout_marginTop="2dp" />
 
+            <TextView style="@style/Sts.SectionHeading" android:text="Wi-Fi camera setup" />
+
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:justificationMode="inter_word"
+                android:text="Tell the app how the camera itself is set. It changes nothing on the camera — it lets the app know what the picture will be, and say so when a setting will cost you a score." />
+
+            <TextView android:id="@+id/infoCamera"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="12sp" android:paddingTop="1dp" android:paddingBottom="3dp"
+                android:textColor="?attr/colorAccent"
+                android:text="More info" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Zoom" />
+            <Spinner android:id="@+id/spCamZoom"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Video size" />
+            <Spinner android:id="@+id/spCamVideo"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="White balance" />
+            <Spinner android:id="@+id/spCamWb"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Exposure compensation (EV)" />
+            <Spinner android:id="@+id/spCamEv"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <TextView style="@style/Sts.FieldLabel" android:text="Mains frequency" />
+            <Spinner android:id="@+id/spCamMains"
+                android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCamRedDot"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Red dot is switched on" />
+
+            <CheckBox style="@style/Sts.CheckBox" android:id="@+id/cbCamStab"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Image stabilisation is switched on" />
+
+            <TextView android:id="@+id/tvCameraAdvice"
+                style="@style/Sts.Value" android:textSize="12sp" android:layout_marginTop="4dp"
+                android:justificationMode="inter_word" />
+
             <TextView style="@style/Sts.SectionHeading" android:text="Stream lens correction" />
 
             <TextView

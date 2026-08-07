@@ -8,6 +8,7 @@ fun main() {
         "com.rfsat.sts.AspectCorrectionTest",
         "com.rfsat.sts.SpsDimensionsTest",
         "com.rfsat.sts.LensDistortionTest",
+        "com.rfsat.sts.CameraProfileTest",
         "com.rfsat.sts.SecondOpinionTest",
         "com.rfsat.sts.ScoringGeometryTest", "com.rfsat.sts.ScoringRulesTest",
         "com.rfsat.sts.ShotDistributionTest", "com.rfsat.sts.NameWrapTest", "com.rfsat.sts.ScaleChoiceTest", "com.rfsat.sts.NineMillimetreCatalogueTest", "com.rfsat.sts.HoleAccuracyTest"

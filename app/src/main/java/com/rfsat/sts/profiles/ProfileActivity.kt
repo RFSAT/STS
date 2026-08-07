@@ -253,6 +253,7 @@ class ProfileActivity : BaseActivity() {
             false
         }
 
+        wireCameraProfile()
         wireMoreInfo()
 
         // ---- keys and models, one service at a time ----
@@ -941,6 +942,22 @@ class ProfileActivity : BaseActivity() {
             "the second opinion's are separate: they can name different services, and asking " +
             "the other one is what makes a second opinion worth having. Falls back to Embedded " +
             "if the named service has no key.")
+        moreInfo(binding.infoCamera, "Telling the app how the camera is set",
+            "The app cannot change anything on a Wi-Fi camera: none of these cameras publishes " +
+            "how they are controlled, and an app that sent commands it had guessed at would be " +
+            "worse than one that sent none. What it can do is know what you set, and say what " +
+            "that will cost.\n\n" +
+            "The red dot is the sharpest example. It is drawn into the video at the centre of " +
+            "the frame — which, once the card is lined up, is where the ten ring is. It is " +
+            "small, round and unlike the paper, so it reads as a hole, in the one place a " +
+            "shooter is least likely to question one. With it declared on, marks within half a " +
+            "gauge of the frame centre are ignored.\n\n" +
+            "Stabilisation moves the picture between frames to cancel shake, and live detection " +
+            "reads what moved as a shot. Auto white balance and auto exposure drift, and the " +
+            "detector works from how far each pixel sits from the paper's own colour. Zoom " +
+            "changes the focal length and with it the barrel distortion. The video size lets " +
+            "the app say whether the stream matches what you set — usually it does not, because " +
+            "that setting governs what goes to the card.")
         moreInfo(binding.infoReticle, "The reticle",
             "It is drawn over the picture and it changes no score: the app has no idea where " +
             "the barrel points, and a shot is scored from the hole in the paper. It is there to " +
@@ -972,6 +989,83 @@ class ProfileActivity : BaseActivity() {
             "kept for each service separately and encrypted on this device, and is never " +
             "written to the log. A card costs a fraction of a penny to check, and needs a " +
             "connection, which most ranges do not have.")
+    }
+
+    /**
+     * The Wi-Fi camera's own settings, as described by the shooter.
+     *
+     * Every control writes the WHOLE profile back rather than one field,
+     * because the advice underneath depends on the combination — and reading
+     * six controls to build it is cheaper than keeping six of them in step.
+     */
+    private fun wireCameraProfile() {
+        val evs = listOf(-2.0, -1.0, 0.0, 1.0, 2.0)
+        fun current() = ScaleSettings.cameraProfile()
+        fun save(p: com.rfsat.sts.detect.CameraProfile) {
+            ScaleSettings.setCameraProfile(this, p)
+            refreshCameraAdvice()
+        }
+
+        binding.spCamZoom.adapter = adapter(com.rfsat.sts.detect.CameraZoom.values().map { it.label })
+        binding.spCamZoom.setSelection(
+            com.rfsat.sts.detect.CameraZoom.values().indexOf(current().zoom))
+        binding.spCamZoom.onItemSelectedListener = onSelectedIndex { i ->
+            com.rfsat.sts.detect.CameraZoom.values().getOrNull(i)
+                ?.let { save(current().copy(zoom = it)) }
+        }
+
+        binding.spCamVideo.adapter =
+            adapter(com.rfsat.sts.detect.CameraVideoSize.values().map { it.label })
+        binding.spCamVideo.setSelection(
+            com.rfsat.sts.detect.CameraVideoSize.values().indexOf(current().videoSize))
+        binding.spCamVideo.onItemSelectedListener = onSelectedIndex { i ->
+            com.rfsat.sts.detect.CameraVideoSize.values().getOrNull(i)
+                ?.let { save(current().copy(videoSize = it)) }
+        }
+
+        binding.spCamWb.adapter =
+            adapter(com.rfsat.sts.detect.CameraWhiteBalance.values().map { it.label })
+        binding.spCamWb.setSelection(
+            com.rfsat.sts.detect.CameraWhiteBalance.values().indexOf(current().whiteBalance))
+        binding.spCamWb.onItemSelectedListener = onSelectedIndex { i ->
+            com.rfsat.sts.detect.CameraWhiteBalance.values().getOrNull(i)
+                ?.let { save(current().copy(whiteBalance = it)) }
+        }
+
+        binding.spCamEv.adapter = adapter(evs.map { "%+.1f".format(it) })
+        binding.spCamEv.setSelection(
+            evs.indexOfFirst { kotlin.math.abs(it - current().exposureCompensationEv) < 0.01 }
+                .takeIf { it >= 0 } ?: 2)
+        binding.spCamEv.onItemSelectedListener = onSelectedIndex { i ->
+            evs.getOrNull(i)?.let { save(current().copy(exposureCompensationEv = it)) }
+        }
+
+        binding.spCamMains.adapter = adapter(com.rfsat.sts.detect.CameraMains.values().map { it.label })
+        binding.spCamMains.setSelection(
+            com.rfsat.sts.detect.CameraMains.values().indexOf(current().mains))
+        binding.spCamMains.onItemSelectedListener = onSelectedIndex { i ->
+            com.rfsat.sts.detect.CameraMains.values().getOrNull(i)
+                ?.let { save(current().copy(mains = it)) }
+        }
+
+        binding.cbCamRedDot.isChecked = current().redDot
+        binding.cbCamRedDot.setOnClickListener {
+            save(current().copy(redDot = binding.cbCamRedDot.isChecked))
+        }
+        binding.cbCamStab.isChecked = current().stabilisation
+        binding.cbCamStab.setOnClickListener {
+            save(current().copy(stabilisation = binding.cbCamStab.isChecked))
+        }
+        refreshCameraAdvice()
+    }
+
+    /** What the described setup will do to a score, said here rather than
+     *  discovered on the plot afterwards. */
+    private fun refreshCameraAdvice() {
+        val p = ScaleSettings.cameraProfile()
+        val lines = p.advice() + listOf(p.distortionExpectation())
+        binding.tvCameraAdvice.text =
+            com.rfsat.sts.ui.Bullets.list(lines, binding.tvCameraAdvice.textSize)
     }
 
     /** The reticle line, and the button that changes it. */

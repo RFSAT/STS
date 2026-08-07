@@ -32,6 +32,44 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.57.0 — feature: the app is TOLD how the camera is set, which is
+        //          what was asked for and not what 1.56.0 built.
+        //
+        //   My misreading, stated plainly: 1.56.0 went off to discover
+        //   whether the camera could be CONTROLLED from the app. The request
+        //   was the other direction — a place to record how the camera has
+        //   already been set, so the app knows what the stream will look
+        //   like. The probe is harmless and stays, but this is the feature.
+        //
+        //   Settings now carries the camera's own menu: zoom, video size,
+        //   white balance, exposure compensation, mains frequency, red dot,
+        //   stabilisation. Nothing is sent to the camera.
+        //
+        //   AND IT IS NOT MERELY RECORDED. Two of them change what the app
+        //   does:
+        //
+        //   THE RED DOT IS SUBTRACTED. It is drawn into the video at the
+        //   centre of the frame, and a card lined up on that frame puts the
+        //   ten ring there — so a permanent round mark, a different colour
+        //   from the paper, sits exactly where a shot is most expected. It
+        //   would be the least questioned false hit this app could produce.
+        //   With the dot declared on, detections within half a gauge of the
+        //   frame centre are dropped, and the centre is mapped through the
+        //   registration rather than assumed to be the middle of the card.
+        //
+        //   THE STREAM SIZE IS CHECKED against what was declared, once per
+        //   size, and the mismatch is EXPLAINED rather than merely flagged:
+        //   on most cameras that setting governs the card recording and the
+        //   stream is a separate fixed one, so a shooter who sets 4K and
+        //   receives 720p has found normality rather than a fault.
+        //
+        //   The rest is advice, given in Settings where the choice is made:
+        //   stabilisation moves the picture between frames and live detection
+        //   reads what moved as a shot; auto white balance drifts under a
+        //   detector that measures distance from the paper's own colour; 8x
+        //   distorts far less than 1x, which is the cheapest answer to the
+        //   barrel distortion reported at close range.
+        //
         // 1.56.0 — feature: the app asks the camera what it will answer,
         //          because nobody publishes the answer.
         //
@@ -2596,8 +2634,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 80
-        versionName = "1.56.0"
+        versionCode = 81
+        versionName = "1.57.0"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

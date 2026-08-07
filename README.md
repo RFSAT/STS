@@ -310,6 +310,15 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.57.0** — feature. Settings records how the Wi-Fi camera is set — zoom,
+video size, white balance, exposure compensation, mains frequency, red dot,
+stabilisation — and nothing is sent to the camera. Two of them change what the
+app does: with the red dot declared on, detections within half a gauge of the
+frame centre are dropped, because the dot is drawn into the video exactly
+where the ten ring sits once the card is lined up; and the arriving stream
+size is checked against what was declared, with the usual reason for a
+mismatch explained rather than merely flagged.
+
 **1.56.0** — feature. The app asks the camera what it will answer, because
 nobody publishes the answer. Setting a camera's own options from the app would
 make the stream predictable, and none of the protocol is documented — so

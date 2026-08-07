@@ -29,7 +29,7 @@ number, a renamed setting, a corrected figure.
 
 RUN AS
 ------
-    python3 edit_guide.py baseline_v1.56.0.docx STS-User-Guide_v1.49.1.docx
+    python3 edit_guide.py baseline_v1.57.0.docx STS-User-Guide_v1.49.1.docx
 
 Edits are listed in EDITS below, as (old, new) pairs. Every one must match
 exactly once across the document, or the script refuses to save: an edit that
@@ -42,24 +42,24 @@ from docx import Document
 
 # (old, new). Applied to paragraph text and to table cell text.
 EDITS = [
-    ("Version 1.55.0", "Version 1.56.0"),
+    ("Version 1.56.0", "Version 1.57.0"),
 
-    # 1.56.0 — what to set on a Wi-Fi camera before a string. Appended to
-    # the live-scoring set-up step, which is where a reader is standing when
-    # it matters.
+    # 1.57.0 — the same advice, but now it is a place in Settings the
+    # shooter fills in rather than a list to remember.
     ("Press Lock exposure and focus before the string, and make sure the phone cannot "
      "move.",
      "Press Lock exposure and focus before the string, and make sure the phone cannot "
-     "move. On a Wi-Fi camera the same settings are on the camera itself and are worth "
-     "fixing before you start: switch the red dot OFF, because it is burned into the "
-     "picture at the centre of the frame — where the ten ring usually is — and can be "
-     "read as a hole; switch image stabilisation OFF, because it shifts the picture "
-     "relative to the card between frames and live detection assumes that does not "
-     "happen; set white balance to a fixed setting rather than auto, and exposure "
-     "compensation to 0, because the detector measures how far each pixel sits from the "
-     "paper's own colour; and set the mains frequency to match your supply, or the "
-     "picture bands. “What can this camera be told?” on the Session tab reports whether "
-     "the app can set any of this for you."),
+     "move. On a Wi-Fi camera those settings live on the camera itself, and Settings has "
+     "a place to record how you have set it: zoom, video size, white balance, exposure "
+     "compensation, mains frequency, red dot and stabilisation. Nothing is sent to the "
+     "camera — telling the app what you set is what lets it warn you before a string "
+     "rather than after a score, and two of the settings change what it does. With the "
+     "red dot declared on, marks found within half a gauge of the centre of the frame "
+     "are ignored, because the dot is drawn into the video exactly where the ten ring "
+     "sits once the card is lined up. And the size of the arriving stream is checked "
+     "against what you set, which usually differs — that setting governs what is saved "
+     "to the card. Switch stabilisation off for a camera on a stand, use a fixed white "
+     "balance rather than auto, and set the mains frequency to match your supply."),
 
 
 

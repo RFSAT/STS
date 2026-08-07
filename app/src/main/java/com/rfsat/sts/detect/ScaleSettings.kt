@@ -66,6 +66,13 @@ object ScaleSettings {
     private const val KEY_RETICLE = "reticle"
     private const val KEY_RETICLE_FILE = "reticle_file"
     private const val KEY_LENS_K = "lens_k"
+    private const val KEY_CAM_ZOOM = "cam_zoom"
+    private const val KEY_CAM_VIDEO = "cam_video"
+    private const val KEY_CAM_WB = "cam_wb"
+    private const val KEY_CAM_EV = "cam_ev"
+    private const val KEY_CAM_MAINS = "cam_mains"
+    private const val KEY_CAM_RED_DOT = "cam_red_dot"
+    private const val KEY_CAM_STAB = "cam_stab"
 
     private var mode: ScaleMode = ScaleMode.CROSS_CHECK
     private var wedge: Boolean = false
@@ -79,6 +86,7 @@ object ScaleSettings {
     private var reticle: com.rfsat.sts.ui.Reticle = com.rfsat.sts.ui.Reticle.CROSS
     private var reticleFile: String = ""
     private var lensK: Double = 0.0
+    private var camera: CameraProfile = CameraProfile()
 
     fun init(context: Context) {
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -100,6 +108,42 @@ object ScaleSettings {
             ?: com.rfsat.sts.ui.Reticle.CROSS
         reticleFile = p.getString(KEY_RETICLE_FILE, "").orEmpty()
         lensK = p.getFloat(KEY_LENS_K, 0f).toDouble()
+        camera = CameraProfile(
+            zoom = CameraZoom.values()
+                .firstOrNull { it.name == p.getString(KEY_CAM_ZOOM, null) } ?: CameraZoom.X1,
+            redDot = p.getBoolean(KEY_CAM_RED_DOT, false),
+            videoSize = CameraVideoSize.values()
+                .firstOrNull { it.name == p.getString(KEY_CAM_VIDEO, null) }
+                ?: CameraVideoSize.UNSTATED,
+            stabilisation = p.getBoolean(KEY_CAM_STAB, false),
+            exposureCompensationEv = p.getFloat(KEY_CAM_EV, 0f).toDouble(),
+            mains = CameraMains.values()
+                .firstOrNull { it.name == p.getString(KEY_CAM_MAINS, null) } ?: CameraMains.HZ_50,
+            whiteBalance = CameraWhiteBalance.values()
+                .firstOrNull { it.name == p.getString(KEY_CAM_WB, null) } ?: CameraWhiteBalance.AUTO
+        )
+    }
+
+    /**
+     * How the Wi-Fi camera has been set up, as the shooter has described it.
+     *
+     * The app sets nothing on the camera. This is the other direction: knowing
+     * what was set is what lets it say "that red dot will be read as a shot"
+     * before the string rather than after the score.
+     */
+    fun cameraProfile(): CameraProfile = camera
+
+    fun setCameraProfile(context: Context, value: CameraProfile) {
+        camera = value
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(KEY_CAM_ZOOM, value.zoom.name)
+            .putString(KEY_CAM_VIDEO, value.videoSize.name)
+            .putString(KEY_CAM_WB, value.whiteBalance.name)
+            .putString(KEY_CAM_MAINS, value.mains.name)
+            .putFloat(KEY_CAM_EV, value.exposureCompensationEv.toFloat())
+            .putBoolean(KEY_CAM_RED_DOT, value.redDot)
+            .putBoolean(KEY_CAM_STAB, value.stabilisation)
+            .apply()
     }
 
     /**

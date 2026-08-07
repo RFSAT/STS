@@ -741,14 +741,61 @@ class SessionActivity : BaseActivity() {
         if (analysisSize?.width != frame.width || analysisSize?.height != frame.height) {
             analysisSize = Size(frame.width, frame.height)
             runOnUiThread { binding.overlay.setSourceGeometry(frame.width, frame.height) }
+            // Said ONCE per size, and only when the shooter has told the app
+            // what they set: a stream that is not the size the camera menu
+            // says is normal, and knowing it is normal is the useful part.
+            if (binding.spSource.selectedItemPosition != 0) {
+                ScaleSettings.cameraProfile().mismatch(frame.width, frame.height)?.let { msg ->
+                    Logger.i("SessionActivity", msg)
+                    runOnUiThread { notifyUser(msg) }
+                }
+            }
         }
         val detector = live
         if (liveRunning && detector != null && detector.isArmed) {
-            val newShots = runCatching { detector.onFrame(frame) }.getOrDefault(emptyList())
+            val found = runCatching { detector.onFrame(frame) }.getOrDefault(emptyList())
+            val newShots = withoutRedDot(found, frame)
             if (newShots.isNotEmpty()) {
                 runOnUiThread { recordShots(newShots) }
             }
         }
+    }
+
+    /**
+     * Drops anything found where the camera's own red dot is drawn.
+     *
+     * THE DOT SITS WHERE THE TEN RING IS. It is burned into the video at the
+     * centre of the frame, and a card lined up on that frame puts the middle
+     * of the target there — so a permanent round mark of a different colour
+     * from the paper sits exactly where a shot is most expected, and is read
+     * as one. It would be the least questioned false hit the app could
+     * produce.
+     *
+     * Only when the shooter has said the dot is on: the app cannot see the
+     * camera's menu, and suppressing the centre of every card on the chance
+     * would throw away real tens.
+     *
+     * The frame centre is mapped through the registration, so this is the
+     * millimetre position of the dot ON THE CARD rather than a guess that the
+     * card is centred.
+     */
+    private fun withoutRedDot(holes: List<DetectedHole>, frame: LumaFrame): List<DetectedHole> {
+        if (holes.isEmpty()) return holes
+        val gauges = ScaleSettings.cameraProfile().redDotSuppressionGauges()
+        if (gauges <= 0.0) return holes
+        val reg = registration ?: return holes
+        val (u, v) = runCatching {
+            reg.homography.pxToMm((frame.width - 1) / 2.0, (frame.height - 1) / 2.0)
+        }.getOrNull() ?: return holes
+        if (u.isNaN() || v.isNaN()) return holes
+        val limit = currentRules().gaugeDiameterMm * gauges
+        val kept = holes.filter { Math.hypot(it.xMm - u, it.yMm - v) > limit }
+        val dropped = holes.size - kept.size
+        if (dropped > 0) {
+            Logger.i("SessionActivity",
+                "$dropped detection(s) ignored at the camera's red dot, %.1f, %.1f mm".format(u, v))
+        }
+        return kept
     }
 
     // ------------------------------------------------------------------
