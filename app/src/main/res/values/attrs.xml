@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The reticle's own colour. Given its own attribute rather than reused
+         from the accent or the text colour, because the reticle is drawn OVER
+         a photograph of a target and needs contrast against paper and shadow —
+         a different problem from text on a themed background. -->
+    <attr name="stsReticleColor" format="color" />
+</resources>

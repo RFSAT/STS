@@ -45,6 +45,11 @@ class StsApp : Application() {
         runCatching { Logger.init(this) }
         runCatching { ThemeManager.init(this) }
         runCatching { UnitsManager.init(this) }
+        // A copy of every preference file, taken once per version change and
+        // BEFORE anything reads or migrates them. An upgrade that mangles a
+        // stored profile is otherwise unrecoverable: the old data is gone by
+        // the time anyone notices.
+        runCatching { com.rfsat.sts.backup.UpgradeSnapshot.maybeTake(this) }
         runCatching { com.rfsat.sts.detect.ScaleSettings.init(this) }
         runCatching { com.rfsat.sts.targets.TargetRepository(this).seedBuiltInsIfEmpty() }
         runCatching { com.rfsat.sts.profiles.ProfileRepository(this).seedDefaultSetsIfEmpty() }
@@ -53,6 +58,12 @@ class StsApp : Application() {
             runCatching {
                 Logger.w("StsApp", "Previous launch crashed — skipping stored-session restore (safe mode)")
             }
+            // Skipping the restore is the right call: the stored session may
+            // be what crashed. Leaving it WRITABLE was not — an unrestored
+            // session is empty, and the first save wrote that emptiness over
+            // the shooter's card. Safe mode now sets the payload aside and
+            // refuses to write until it has successfully read.
+            runCatching { com.rfsat.sts.scoring.ScoringSession.enterSafeMode(this) }
         } else {
             runCatching { com.rfsat.sts.scoring.ScoringSession.restore(this) }
         }

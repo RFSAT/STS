@@ -310,6 +310,24 @@ entry — everything measured, everything tried and rejected — is the header
 comment of `app/build.gradle.kts`, which is where it is written as the work is
 done rather than reconstructed afterwards.
 
+**1.58.1** — correction. The wording follows BAS: "scope" for the class of
+optic, in twenty-three strings copied from BAS rather than derived by rule.
+Strings only — no identifier, preference key, enum constant or catalogue name
+was renamed, since that is what broke the build when the same alignment was
+done in BAS and would also have orphaned every stored profile. "Sight radius",
+"rear sight", "front sight" and "iron sight" stay, as they do in BAS.
+
+**1.58.0** — feature. The scoring half of BAS brought back, without any of
+VTB. Safe mode could destroy a session — it skipped the restore, then saved the
+resulting empty state over the stored card; it now sets the payload aside and
+refuses to write until it has read. Undo, twenty deep, by snapshot rather than
+inverse operation. One shared reticle drawing routine with its own theme
+colour, two more patterns, and a bounded decode for a reticle image chosen
+from the gallery. External cameras by name — GoPro, TACTACAM, ShotKam, generic
+RTSP — with "Score last clip", which pins to the camera's Wi-Fi, downloads the
+newest recording and scores its last frame. An upgrade snapshot is taken once
+per version change.
+
 **1.57.0** — feature. Settings records how the Wi-Fi camera is set — zoom,
 video size, white balance, exposure compensation, mains frequency, red dot,
 stabilisation — and nothing is sent to the camera. Two of them change what the

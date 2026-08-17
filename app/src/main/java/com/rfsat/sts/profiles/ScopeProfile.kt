@@ -46,7 +46,7 @@ enum class ClickUnit(val label: String) {
 /** What the shooter is actually aiming with. Decides which fields matter and
  *  what the correction advice should say. */
 enum class SightType(val label: String) {
-    SCOPE("Telescopic sight"),
+    SCOPE("Telescopic scope"),
     DIOPTER("Diopter / match iron sights"),
     OPEN_SIGHTS("Open iron sights"),
     RED_DOT("Red dot / reflex"),
@@ -54,7 +54,7 @@ enum class SightType(val label: String) {
     /** A fixed sight the shooter cannot adjust, or none at all. The group is
      *  still worth measuring — it is the only way to know the hold-off — but
      *  no adjustment can be advised. */
-    NONE("No sight / fixed sight")
+    NONE("No scope / fixed scope")
 }
 
 /**

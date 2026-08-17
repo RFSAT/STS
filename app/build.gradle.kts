@@ -32,6 +32,92 @@ android {
         //   strictly greater than the last uploaded one, and a code reused
         //   during testing is impossible to tell apart afterwards.
         //
+        // 1.58.1 — correction: the wording follows BAS now — "scope" where
+        //          BAS says scope, and nothing else touched.
+        //
+        //   STRINGS ONLY. Not one identifier, preference key, enum constant
+        //   or catalogue name was renamed: SightType, sightRadiusMm, the
+        //   stored keys and the JSON field names are all as they were. The
+        //   rename of an identifier is what broke the build in BAS when the
+        //   same alignment was done there, and it would also have orphaned
+        //   every stored profile, which is the more expensive half.
+        //
+        //   Twenty-three strings, each copied from BAS rather than derived by
+        //   rule: the settings heading is "Optics and Scopes", the field is
+        //   "Scope type", Home says "Scope", Results says "Scope correction",
+        //   and the correction sentences say scope.
+        //
+        //   WHAT DELIBERATELY STAYS "SIGHT", because BAS keeps it too and
+        //   because these name physical parts rather than the class of
+        //   optic: sight radius, rear sight, front sight, iron sight, "no
+        //   adjustable sight", and the catalogue entries — Built-in iron
+        //   sight, No sight, CM162 rear sight.
+        //
+        //   ONE PLACE WHERE BAS WAS NOT FOLLOWED. Its blind rename produced
+        //   "or move the FRONT scope the same amount the other way", two
+        //   lines below its own "rear sight". A scope has no front sight;
+        //   this is a defect in BAS rather than a term to copy, so STS keeps
+        //   "front sight" and the inconsistency stops here.
+        //
+        // 1.58.0 — feature: the scoring half of BAS brought back, and the
+        //          external-camera support with it.
+        //
+        //   BAS is STS and VTB merged. Its scoring code has moved on, and
+        //   three of its changes are worth more than the feature they arrived
+        //   with. What is NOT here is VTB: no ballistics, no environment, no
+        //   wind, no vapour-trail analysis, and none of the profile fields
+        //   that exist only to feed a solver.
+        //
+        //   A SESSION COULD BE DESTROYED BY SAFE MODE. After a crash the app
+        //   deliberately does not restore the stored session — it may be what
+        //   crashed. But the session object was then holding a DEFAULT, EMPTY
+        //   state indistinguishable from a real empty one, and the first save
+        //   wrote that emptiness over the shooter's card. Safe mode did not
+        //   hide the session; it deleted it, one save later. It now copies
+        //   the stored payload aside and REFUSES TO WRITE until it has
+        //   actually read something.
+        //
+        //   UNDO. Deleting the wrong shot was unrecoverable, and the score
+        //   and every series boundary move with it. Snapshots, twenty deep,
+        //   rather than inverse operations — reindexing means a deletion is
+        //   not simply the removal of an element, and an inverse-operation
+        //   scheme gets that wrong quietly. Offered on the Snackbar after the
+        //   fact rather than as a confirmation before it: the shooter is
+        //   usually right that the mark should go.
+        //
+        //   ONE RETICLE DRAWING ROUTINE, shared. The two viewfinders in BAS
+        //   had their own copies and had drifted, so one setting drew two
+        //   different reticles. Its colour is a theme attribute of its own,
+        //   because a reticle is drawn over a photograph and needs contrast
+        //   against paper and shadow — a different problem from text on a
+        //   themed background. Two more patterns come with it: the MOA and
+        //   MRAD wind trees.
+        //
+        //   A RETICLE IMAGE IS NOW DECODED WITH A BOUND. The one-pass decode
+        //   allocates whatever the file asks for, and the file is chosen from
+        //   the shooter's gallery — a 50 MP picture was an OutOfMemoryError
+        //   rather than a large allocation. Transparency is kept, which the
+        //   detector's own RGB_565 path would destroy; for a reticle the
+        //   transparency IS the image.
+        //
+        //   EXTERNAL CAMERAS. Named presets — GoPro, TACTACAM, ShotKam, a
+        //   generic RTSP stream — that fill in the address the firmware fixes
+        //   and that a shooter has no business having to know. "Score last
+        //   clip" pins the process to the camera's own Wi-Fi, downloads the
+        //   newest recording, takes the LAST frame — every hole made during
+        //   the string is in that one and only that one — and hands it to the
+        //   import screen, where it is an ordinary photograph. That is the
+        //   answer for the camera that records but will not stream, which is
+        //   most of them.
+        //
+        //   AN UPGRADE SNAPSHOT is taken once per version change, before
+        //   anything reads or migrates a preference file. An upgrade that
+        //   mangles a stored profile is otherwise unrecoverable: the old data
+        //   is gone by the time anyone notices.
+        //
+        //   The second opinion needed no work: BAS's cloud package is
+        //   byte-identical to this one, Anthropic and OpenAI both.
+        //
         // 1.57.0 — feature: the app is TOLD how the camera is set, which is
         //          what was asked for and not what 1.56.0 built.
         //
@@ -2634,8 +2720,8 @@ android {
         //         Android 13+ monochrome layer.
         // 1.0.1 — correction: removed res/mipmap-hdpi/README.txt, which the
         //         resource merger rejects (res accepts only .xml and .png).
-        versionCode = 81
-        versionName = "1.57.0"
+        versionCode = 83
+        versionName = "1.58.1"
     }
 
     // Resolved once, here, rather than re-read from the environment in two

@@ -65,7 +65,13 @@ class ProfileActivity : BaseActivity() {
             contentResolver.openInputStream(uri)?.use { input ->
                 java.io.FileOutputStream(dest).use { out -> input.copyTo(out) }
             }
-            val bmp = android.graphics.BitmapFactory.decodeFile(dest.absolutePath)
+            // BOUNDED. A one-pass decode allocates whatever the file asks
+            // for, so a 50 MP reticle is an OutOfMemoryError rather than a
+            // large allocation — and the file here is chosen by the shooter
+            // from their gallery. Transparency is preserved, which RGB_565
+            // would destroy: for a reticle the transparency IS the image.
+            val bmp = com.rfsat.sts.detect.ImageLoader.decodeFileSampled(
+                dest.absolutePath, com.rfsat.sts.detect.ImageLoader.OVERLAY_MAX_DIMENSION)
                 ?: throw IllegalStateException("not an image this device can read")
             bmp.recycle()
             ScaleSettings.setReticleFile(this, dest.absolutePath)
@@ -486,7 +492,7 @@ class ProfileActivity : BaseActivity() {
             AlertDialog.Builder(this)
                 .setTitle("Reset the active profiles?")
                 .setMessage("Your saved profile sets, custom targets and custom rules are NOT touched — " +
-                    "only the firearm, load and sight currently in use.")
+                    "only the firearm, load and scope currently in use.")
                 .setPositiveButton("Reset") { _, _ ->
                     repo.resetToDefaults(); loadProfilesIntoFields(); notifyUser("Reset.")
                 }
@@ -560,8 +566,8 @@ class ProfileActivity : BaseActivity() {
     private fun updateClickSummary() {
         val s = buildScopeFromFields()
         binding.tvClickSummary.text = if (!s.hasClicks) {
-            "This sight is recorded as having no usable clicks, so corrections will be given as a " +
-                "physical sight movement (if a sight radius is set) or as a distance on the target."
+            "This scope is recorded as having no usable clicks, so corrections will be given as a " +
+                "physical scope movement (if a sight radius is set) or as a distance on the target."
         } else {
             "One click = %.4f MRAD = %.4f MOA. At 10 m that moves the impact %.2f mm; at 50 m, %.1f mm; at 100 m, %.1f mm."
                 .format(
@@ -653,7 +659,7 @@ class ProfileActivity : BaseActivity() {
             setSingleLine()
         }
         AlertDialog.Builder(this)
-            .setTitle("Save the current firearm, load and sight as a set")
+            .setTitle("Save the current firearm, load and scope as a set")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val name = input.text.toString().trim()
@@ -803,14 +809,14 @@ class ProfileActivity : BaseActivity() {
                 spFamily.selectedItem?.toString() ?: ScopeCatalog.ALL
             )
             list.adapter = WrappingNameAdapter(this, shown.map { it.label() })
-            tvCount.text = "${shown.size} of ${ScopeCatalog.all.size} sights"
+            tvCount.text = "${shown.size} of ${ScopeCatalog.all.size} scopes"
         }
         val onFilter = onSelected { refilter() }
         listOf(spBrand, spClick, spMag, spFamily).forEach { it.onItemSelectedListener = onFilter }
         refilter()
 
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Sight catalogue")
+            .setTitle("Scope catalogue")
             .setView(view)
             .setNegativeButton("Cancel", null)
             .create()

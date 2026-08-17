@@ -83,7 +83,7 @@
                         <TextView android:id="@+id/tvSetupLoad" style="@style/Sts.SetupValue" />
                     </TableRow>
                     <TableRow>
-                        <TextView style="@style/Sts.SetupLabel" android:text="Sight" />
+                        <TextView style="@style/Sts.SetupLabel" android:text="Scope" />
                         <TextView style="@style/Sts.SetupColon" />
                         <TextView android:id="@+id/tvSetupSight" style="@style/Sts.SetupValue" />
                     </TableRow>

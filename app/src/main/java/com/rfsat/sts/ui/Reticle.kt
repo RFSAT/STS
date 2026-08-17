@@ -14,7 +14,7 @@ package com.rfsat.sts.ui
  * mounted on the scope is already showing the scope's own reticle. Drawing a
  * second one a few pixels away is worse than drawing neither.
  *
- * In its own file with no Android type in sight, because [ScaleSettings]
+ * In its own file with no Android type in scope, because [ScaleSettings]
  * stores the choice and that is pure logic the offline harness compiles
  * without a framework.
  */
@@ -26,5 +26,7 @@ enum class Reticle(val label: String) {
     MOA_GRID("MOA grid"),
     GERMAN_4("German #4"),
     CIRCLE_DOT("Circle and dot"),
+    MOA_TREE("MOA wind tree"),
+    MRAD_TREE("MRAD wind tree"),
     CUSTOM("My own image…")
 }

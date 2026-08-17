@@ -145,13 +145,13 @@ object CorrectionCalculator {
         if (group.mpiUncertaintyMm > 0 && offsetMag < SIGNIFICANCE_FACTOR * group.mpiUncertaintyMm) {
             warnings += "The group centre is ${fmtMm(offsetMag)} from the point of aim, which is inside " +
                 "its own uncertainty of ${fmtMm(group.mpiUncertaintyMm)}. There is no measurable zero " +
-                "error here — leave the sight alone."
+                "error here — leave the scope alone."
         }
 
         // ---- zero distance ----
         if (zeroDistanceM > 0.0 && abs(zeroDistanceM - distanceM) > 0.5) {
             warnings += "This correction centres the group at ${fmtM(distanceM)}, but the profile records " +
-                "the sight as zeroed at ${fmtM(zeroDistanceM)}. Applying it re-zeros the rifle for " +
+                "the scope as zeroed at ${fmtM(zeroDistanceM)}. Applying it re-zeros the rifle for " +
                 "${fmtM(distanceM)} — note the click count so you can put it back."
         }
 
@@ -160,12 +160,12 @@ object CorrectionCalculator {
         val neededWindMoa = abs(windageMrad) * MOA_PER_MRAD
         if (scope.maxElevationTravelMoa > 0 && neededElevMoa > scope.maxElevationTravelMoa / 2.0) {
             warnings += "The elevation correction is ${"%.1f".format(neededElevMoa)} MOA, more than half " +
-                "the sight's total travel. Check the mount and the base before assuming the turret can " +
+                "the scope's total travel. Check the mount and the base before assuming the turret can " +
                 "take it."
         }
         if (scope.maxWindageTravelMoa > 0 && neededWindMoa > scope.maxWindageTravelMoa / 2.0) {
             warnings += "The windage correction is ${"%.1f".format(neededWindMoa)} MOA, more than half the " +
-                "sight's total travel."
+                "scope's total travel."
         }
 
         // ---- clicks ----
@@ -190,7 +190,7 @@ object CorrectionCalculator {
             elevDir = if (elevUp != scope.invertElevationDirection) "UP" else "DOWN"
 
             if (windClicks == 0 && elevClicks == 0) {
-                warnings += "The correction is smaller than one click. The sight is as close as it can be set."
+                warnings += "The correction is smaller than one click. The scope is as close as it can be set."
             }
         }
 
@@ -217,7 +217,7 @@ object CorrectionCalculator {
                 rearY = moveY / (distanceM * 1000.0) * scope.sightRadiusMm
                 hasRear = true
             } else {
-                warnings += "This sight has no click value and no sight radius recorded, so the app cannot " +
+                warnings += "This scope has no click value and no sight radius recorded, so the app cannot " +
                     "say how far to move it. Measure the distance from the front sight to the rear sight " +
                     "and enter it as the sight radius in Settings, and the movement will be given in " +
                     "millimetres."
@@ -262,7 +262,7 @@ object CorrectionCalculator {
         rearX: Double, rearY: Double, hasRear: Boolean
     ): String {
         if (scope.hasClicks) {
-            if (windClicks == 0 && elevClicks == 0) return "No adjustment — the sight is already centred."
+            if (windClicks == 0 && elevClicks == 0) return "No adjustment — the scope is already centred."
             val parts = mutableListOf<String>()
             if (elevClicks != 0) parts += "$elevClicks click${plural(elevClicks)} $elevDir"
             if (windClicks != 0) parts += "$windClicks click${plural(windClicks)} $windDir"
@@ -283,7 +283,7 @@ object CorrectionCalculator {
             // only way to move it is to aim there, so the hold-off runs the
             // SAME way, not the opposite: shots landing high need a lower
             // aim, and moveY is already negative in that case.
-            return "No sight to adjust. Aim ${fmtMm(abs(moveY))} ${if (moveY > 0) "higher" else "lower"} " +
+            return "No scope to adjust. Aim ${fmtMm(abs(moveY))} ${if (moveY > 0) "higher" else "lower"} " +
                 "and ${fmtMm(abs(moveX))} ${if (moveX > 0) "right" else "left"} of where you aimed."
         }
         return "Move the point of impact ${fmtMm(abs(moveY))} ${if (moveY > 0) "up" else "down"} and " +

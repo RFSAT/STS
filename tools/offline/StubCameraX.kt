@@ -14,7 +14,12 @@ interface ImageProxy {
 interface ImageInfo { val rotationDegrees: Int }
 
 class Camera { val cameraControl: CameraControl = CameraControl(); val cameraInfo: CameraInfo = CameraInfo() }
-class CameraInfo { val sensorRotationDegrees: Int = 0 }
+class ZoomState { val zoomRatio: Float = 1f }
+class LiveDataOf<T>(val value: T?)
+class CameraInfo {
+    val sensorRotationDegrees: Int = 0
+    val zoomState: LiveDataOf<ZoomState> = LiveDataOf(ZoomState())
+}
 class CameraControl {
     fun startFocusAndMetering(a: FocusMeteringAction): Any? = null
     fun cancelFocusAndMetering(): Any? = null

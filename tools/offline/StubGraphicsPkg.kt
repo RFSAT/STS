@@ -21,10 +21,10 @@ class Bitmap {
 object BitmapFactory {
     class Options { var inJustDecodeBounds = false; var inSampleSize = 1
         var outWidth = 0; var outHeight = 0; var inPreferredConfig: Bitmap.Config? = null }
-    @JvmStatic fun decodeByteArray(b: ByteArray, o: Int, l: Int): Bitmap? = Bitmap()
+    @JvmStatic fun decodeByteArray(b: ByteArray, o: Int, l: Int, opts: Options? = null): Bitmap? = Bitmap()
     @JvmStatic fun decodeStream(s: java.io.InputStream?): Bitmap? = Bitmap()
     @JvmStatic fun decodeStream(s: java.io.InputStream?, r: Rect?, o: Options?): Bitmap? = Bitmap()
-    @JvmStatic fun decodeFile(path: String): Bitmap? = Bitmap()
+    @JvmStatic fun decodeFile(path: String, opts: Options? = null): Bitmap? = Bitmap()
 }
 
 class SurfaceTexture(id: Int)

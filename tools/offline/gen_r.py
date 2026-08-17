@@ -9,7 +9,7 @@ failure this is meant to catch.
 import glob, os, re, sys
 
 def collect(res_dir):
-    out = {k: set() for k in ("layout","id","string","style","color","drawable","menu","mipmap","array")}
+    out = {k: set() for k in ("layout","id","string","style","color","drawable","menu","mipmap","array","attr")}
     for path in glob.glob(os.path.join(res_dir, "**", "*.xml"), recursive=True):
         kind = os.path.basename(os.path.dirname(path)).split("-")[0]
         name = os.path.basename(path)[:-4]
@@ -17,6 +17,9 @@ def collect(res_dir):
             out[kind].add(name)
         text = open(path, encoding="utf-8").read()
         out["id"].update(re.findall(r'@\+id/(\w+)', text))
+        # Theme attributes, so a view that resolves one by name is checked
+        # against the attributes that actually exist.
+        out["attr"].update(re.findall(r'<attr\s+name="(\w+)"', text))
         for tag in ("string","color","style","array","integer","dimen"):
             key = tag if tag in out else None
             for m in re.finditer(r'<%s\s+name="([\w.]+)"' % tag, text):

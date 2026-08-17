@@ -20,7 +20,18 @@ class NetworkRequest {
     }
 }
 
+/** Enough of the routing table to find the camera's gateway. */
+class RouteInfo {
+    val isDefaultRoute: Boolean = false
+    val gateway: java.net.InetAddress? = null
+}
+
+class LinkProperties {
+    val routes: List<RouteInfo> = emptyList()
+}
+
 class ConnectivityManager {
+    fun getLinkProperties(network: Network?): LinkProperties? = null
     open class NetworkCallback {
         open fun onAvailable(network: Network) {}
     }

@@ -15,3 +15,12 @@ class Camera2CameraControl private constructor() {
         @JvmStatic fun from(c: androidx.camera.core.CameraControl): Camera2CameraControl = Camera2CameraControl()
     }
 }
+
+/** The camera's own characteristics, as CameraX hands them over. */
+class Camera2CameraInfo private constructor() {
+    fun <T> getCameraCharacteristic(key: android.hardware.camera2.CameraCharacteristics.Key<T>): T? = null
+    companion object {
+        @JvmStatic fun from(info: androidx.camera.core.CameraInfo): Camera2CameraInfo =
+            Camera2CameraInfo()
+    }
+}

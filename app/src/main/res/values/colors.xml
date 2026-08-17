@@ -41,6 +41,15 @@
          is tuned for a low-light firing point, the icon for a home screen. -->
     <color name="icon_background">#2E4034</color>
 
+    <!-- The reticle, per theme. Chosen for contrast against paper and
+         shadow rather than taken from the accent: a reticle that disappears
+         over the black of an aiming mark is a reticle that cannot be lined
+         up with anything. -->
+    <color name="reticle_dark">#FFC400</color>
+    <color name="reticle_day">#C62828</color>
+    <color name="reticle_ngreen">#4CFF4C</color>
+    <color name="reticle_nred">#FF5252</color>
+
     <!-- Target plot palette. Deliberately theme-independent: the plot is a
          scoring document, and a shot marker that changed hue with the theme
          would be unreadable in a shared screenshot. -->

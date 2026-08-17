@@ -23,3 +23,6 @@ object Base64 {
     fun encodeToString(input: ByteArray, flags: Int): String = ""
     fun decode(s: String, flags: Int): ByteArray = ByteArray(0)
 }
+
+/** Physical sensor size, in millimetres. */
+class SizeF(val width: Float, val height: Float)

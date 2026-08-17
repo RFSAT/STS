@@ -101,7 +101,7 @@ class ProfileRepository(context: Context) {
         if (parsed.clickUnit == ClickUnit.MM_AT_REFERENCE && parsed.clickReferenceDistanceM <= 0.0) {
             val fixed = parsed.copy(clickReferenceDistanceM = 10.0)
             saveScopeInternal(fixed)
-            Logger.w("ProfileRepository", "Sight '${parsed.name}' had a zero click reference distance; set to 10 m")
+            Logger.w("ProfileRepository", "Scope '${parsed.name}' had a zero click reference distance; set to 10 m")
             return fixed
         }
         return parsed

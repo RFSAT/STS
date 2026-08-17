@@ -13,7 +13,13 @@ open class Context {
     fun getString(res: Int): String = ""
     fun getString(res: Int, vararg args: Any?): String = ""
     fun startActivity(i: Intent) {}
-    fun <T> getSystemService(c: Class<T>): T? = null
+    // The platform's Kotlin view of this is non-null, and code ported from a
+    // real build relies on that. Unchecked here on purpose: a stub that is
+    // MORE nullable than the thing it stands in for rejects correct code,
+    // which is the same class of fault as one that is less strict.
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> getSystemService(c: Class<T>): T = null as T
+    fun getColor(id: Int): Int = 0
     companion object { const val MODE_PRIVATE = 0 }
 }
 

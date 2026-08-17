@@ -684,7 +684,7 @@ class ResultsActivity : BaseActivity() {
                 "The group centre is on the point of aim."
             else -> {
                 val template = "The group centre is %.1f mm %s and %.1f mm %s of the point of " +
-                    "aim — less than this sight can be adjusted by, so it is left alone."
+                    "aim — less than this scope can be adjusted by, so it is left alone."
                 template.format(
                     Math.abs(corr.moveImpactYMm),
                     if (corr.moveImpactYMm > 0) "below" else "above",

@@ -89,7 +89,7 @@ class LogActivity : BaseActivity() {
                     "gauge ${rule.gaugeDiameterMm} mm, ${"%.0f".format(rule.distanceM)} m")
                 appendLine("Firearm  : ${profiles.getRifle().label()}")
                 appendLine("Load     : ${profiles.getBullet().name}")
-                appendLine("Sight    : ${profiles.getScope().label()}")
+                appendLine("Scope    : ${profiles.getScope().label()}")
                 appendLine("Session  : ${com.rfsat.sts.scoring.ScoringSession.state.shots.size} shot(s) recorded")
             }.onFailure { appendLine("(could not read the active setup: ${it.message})") }
             appendLine()

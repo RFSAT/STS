@@ -22,6 +22,7 @@
         <item name="android:textColorHint">#A6B2A4</item>
         <item name="colorOnSurface">@color/dark_text</item>
         <item name="colorOnBackground">@color/dark_text</item>
+            <item name="stsReticleColor">@color/reticle_dark</item>
     </style>
 
     <!-- Day: bright, high contrast for direct-sunlight legibility -->
@@ -37,6 +38,7 @@
         <item name="android:textColorPrimary">@color/day_text</item>
         <item name="android:textColorSecondary">@color/day_text_dim</item>
         <item name="android:textColorTertiary">#3D4A3D</item>
+            <item name="stsReticleColor">@color/reticle_day</item>
     </style>
 
     <!-- Night Green: monochrome green on black -->
@@ -55,6 +57,7 @@
         <item name="android:textColorHint">#1FA31F</item>
         <item name="colorOnSurface">@color/ngreen_text</item>
         <item name="colorOnBackground">@color/ngreen_text</item>
+            <item name="stsReticleColor">@color/reticle_ngreen</item>
     </style>
 
     <!-- Night Red: monochrome red on black — preserves night vision best -->
@@ -73,6 +76,7 @@
         <item name="android:textColorHint">#A62A2A</item>
         <item name="colorOnSurface">@color/nred_text</item>
         <item name="colorOnBackground">@color/nred_text</item>
+            <item name="stsReticleColor">@color/reticle_nred</item>
     </style>
 
     <!-- Manifest default points here; BaseActivity swaps at runtime -->

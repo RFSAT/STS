@@ -57,7 +57,13 @@ class AlertDialog {
         fun setPositiveButton(t: CharSequence, l: ((Any?, Int) -> Unit)?): Builder = this
         fun setNegativeButton(t: CharSequence, l: ((Any?, Int) -> Unit)?): Builder = this
         fun setNeutralButton(t: CharSequence, l: ((Any?, Int) -> Unit)?): Builder = this
-        fun setItems(items: Array<CharSequence>, l: ((Any?, Int) -> Unit)?): Builder = this
+        fun setItems(items: Array<out CharSequence>, l: ((Any?, Int) -> Unit)?): Builder = this
+        // The real one takes a DialogInterface, which the lambda then calls
+        // dismiss() on — stated with a receiver that HAS dismiss(), so a
+        // caller that forgets it fails here rather than in CI.
+        fun setSingleChoiceItems(
+            items: Array<String>, checked: Int, l: ((AlertDialog, Int) -> Unit)?
+        ): Builder = this
         fun setCancelable(b: Boolean): Builder = this
         fun create(): AlertDialog = AlertDialog()
         fun show(): AlertDialog = AlertDialog()

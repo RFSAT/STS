@@ -94,6 +94,77 @@ object ImageLoader {
     }
 
     /**
+     * Longest edge for an overlay bitmap — a custom reticle drawn on top of
+     * the preview. It is scaled to a fraction of the screen, so anything past
+     * the screen's own long edge is memory spent on pixels that are thrown
+     * away during the draw.
+     */
+    const val OVERLAY_MAX_DIMENSION = 1440
+
+    /**
+     * File decode with the same upper bound on the allocation as [load].
+     *
+     * Two passes: bounds first (inJustDecodeBounds allocates NO pixels), then
+     * the real decode with inSampleSize set from them. Play reports the
+     * one-pass form because the memory it takes is decided by the file, not
+     * by the app — a camera that gains a sensor, or a user who picks a 50 MP
+     * reticle, is then an OutOfMemoryError rather than a bigger allocation.
+     *
+     * NOTE the absent inPreferredConfig. [load] asks for RGB_565 because the
+     * detector reads luminance from an opaque photograph; a reticle is a PNG
+     * whose transparency IS the image, and RGB_565 would fill every
+     * transparent pixel in black.
+     */
+    fun decodeFileSampled(path: String, maxDimension: Int = DEFAULT_MAX_DIMENSION): Bitmap? {
+        if (path.isEmpty()) return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxDimension)
+            }
+            BitmapFactory.decodeFile(path, opts)
+        } catch (t: Throwable) {
+            Logger.e("ImageLoader", "Could not decode $path", t)
+            null
+        }
+    }
+
+    /** As [decodeFileSampled], for an in-memory encoded image (a captured
+     *  JPEG). The bounds pass reads the header only. */
+    fun decodeBytesSampled(
+        bytes: ByteArray,
+        maxDimension: Int = DEFAULT_MAX_DIMENSION
+    ): Bitmap? {
+        if (bytes.isEmpty()) return null
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = sampleSizeFor(bounds.outWidth, bounds.outHeight, maxDimension)
+            }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        } catch (t: Throwable) {
+            Logger.e("ImageLoader", "Could not decode a ${bytes.size} byte image", t)
+            null
+        }
+    }
+
+    /**
+     * Is this file an image this device can decode? Bounds pass only, so the
+     * answer costs the header and nothing else — the caller that used to
+     * decode a full bitmap merely to throw it away was paying the whole
+     * allocation for a yes or no.
+     */
+    fun isDecodable(path: String): Boolean {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        runCatching { BitmapFactory.decodeFile(path, bounds) }
+        return bounds.outWidth > 0 && bounds.outHeight > 0
+    }
+
+    /**
      * Smallest power of two that brings BOTH edges to [maxDimension] or
      * under. BitmapFactory rounds a non-power-of-two down to one anyway, so
      * computing it explicitly is the difference between asking for what you

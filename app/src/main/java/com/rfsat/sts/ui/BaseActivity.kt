@@ -73,6 +73,42 @@ open class BaseActivity : AppCompatActivity() {
         sb.show()
     }
 
+    /**
+     * As [notifyUser], with an UNDO that restores the shots as they were
+     * before the change that produced this message.
+     *
+     * Deliberately the same Snackbar and not a confirmation dialog. A shot is
+     * deleted because the detector misread the card, and the shooter is
+     * usually right that it should go — so asking first is friction on the
+     * common case. Offering the reversal AFTER the fact costs nothing when
+     * the deletion was correct, and rescues the case where it was not,
+     * including the one no confirmation can catch: deleting the wrong shot
+     * and only noticing when the score changes.
+     */
+    fun notifyUndoable(message: String, onUndone: () -> Unit) {
+        val root = findViewById<android.view.View>(android.R.id.content) ?: return
+        val sb = com.google.android.material.snackbar.Snackbar.make(
+            root, message, com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+        )
+        fun attrColor(attr: Int, fallback: Int): Int {
+            val tv = android.util.TypedValue()
+            return if (theme.resolveAttribute(attr, tv, true)) tv.data else fallback
+        }
+        sb.view.setBackgroundColor(
+            attrColor(com.google.android.material.R.attr.colorSurface, 0xFF202020.toInt())
+        )
+        sb.setTextColor(attrColor(android.R.attr.textColorPrimary, 0xFFF2F7F0.toInt()))
+        sb.setTextMaxLines(4)
+        sb.setActionTextColor(
+            attrColor(com.google.android.material.R.attr.colorPrimary, 0xFF7FD1A4.toInt()))
+        sb.setAction("UNDO") {
+            val what = com.rfsat.sts.scoring.ScoringSession.undo()
+            onUndone()
+            if (what != null) notifyUser("Undone: $what.")
+        }
+        sb.show()
+    }
+
     /** Bars can transiently reappear (keyboard dismiss, edge swipe, dialog)
      *  — re-hide whenever the window regains focus so the app STAYS full
      *  screen, not merely starts that way. */

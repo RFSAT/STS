@@ -92,6 +92,23 @@
                  button — kept because a stream that has dropped needs one
                  tap to bring back, and hunting through a menu for it on a
                  firing point is not a design. -->
+            <!-- Camera presets and the clip download, on the row above the
+                 address: choosing "TACTACAM" fills the address in, and a
+                 camera that will not stream can still be scored from its own
+                 recording. -->
+            <LinearLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="2dp">
+                <Button android:id="@+id/btnCameraType"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Camera…"
+                    style="@style/Sts.ActionButton.Dense" />
+                <Button android:id="@+id/btnCameraDownload"
+                    android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Score last clip"
+                    style="@style/Sts.ActionButton.Dense" />
+            </LinearLayout>
+
             <Button android:id="@+id/btnCameraProbe"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="end"

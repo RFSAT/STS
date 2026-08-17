@@ -192,90 +192,17 @@ class CrosshairView @JvmOverloads constructor(
      * shooter is told as much in Settings.
      */
     private fun drawReticle(canvas: Canvas, cx: Float, cy: Float, d: Float) {
-        if (reticle == Reticle.NONE) return
+        // ONE DRAWING ROUTINE, shared with the capture overlay. The two
+        // viewfinders had their own copies in BAS and drifted apart, which is
+        // how a shooter came to see two different reticles for one setting.
+        // The colour comes from the theme's own reticle attribute rather than
+        // the accent: this is drawn over a photograph of a target and needs
+        // contrast against paper and shadow, which is a different problem
+        // from text on a themed background.
         val r = d * sizeFraction * 0.5f
-        if (reticle == Reticle.CUSTOM) {
-            val bmp = customReticle ?: return
-            val w = bmp.width.toFloat()
-            val h = bmp.height.toFloat()
-            if (w < 1f || h < 1f) return
-            val scale = (2f * r) / max(w, h)
-            val dst = android.graphics.RectF(
-                cx - w * scale / 2f, cy - h * scale / 2f,
-                cx + w * scale / 2f, cy + h * scale / 2f
-            )
-            canvas.drawBitmap(bmp, null, dst, null)
-            return
-        }
-        val c = stateColour()
-        val thin = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = withAlpha(c, 220); style = Paint.Style.STROKE
-            strokeWidth = max(1.5f, d * 0.0035f)
-        }
-        val thick = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = withAlpha(c, 220); style = Paint.Style.STROKE
-            strokeWidth = max(3.5f, d * 0.011f)
-        }
-        val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = withAlpha(c, 235); style = Paint.Style.FILL
-        }
-        when (reticle) {
-            Reticle.CROSS -> {
-                canvas.drawLine(cx - r, cy, cx + r, cy, thin)
-                canvas.drawLine(cx, cy - r, cx, cy + r, thin)
-            }
-            Reticle.DUPLEX -> {
-                // Thick to the shoulder, thin to the middle: the shape that
-                // draws the eye in without covering the aiming mark.
-                val shoulder = r * 0.45f
-                canvas.drawLine(cx - r, cy, cx - shoulder, cy, thick)
-                canvas.drawLine(cx + shoulder, cy, cx + r, cy, thick)
-                canvas.drawLine(cx, cy - r, cx, cy - shoulder, thick)
-                canvas.drawLine(cx, cy + shoulder, cx, cy + r, thick)
-                canvas.drawLine(cx - shoulder, cy, cx + shoulder, cy, thin)
-                canvas.drawLine(cx, cy - shoulder, cx, cy + shoulder, thin)
-            }
-            Reticle.MIL_DOT -> {
-                canvas.drawLine(cx - r, cy, cx + r, cy, thin)
-                canvas.drawLine(cx, cy - r, cx, cy + r, thin)
-                val step = r / 5f
-                val rad = max(2f, d * 0.006f)
-                for (i in 1..4) {
-                    val o = step * i
-                    canvas.drawCircle(cx - o, cy, rad, dot)
-                    canvas.drawCircle(cx + o, cy, rad, dot)
-                    canvas.drawCircle(cx, cy - o, rad, dot)
-                    canvas.drawCircle(cx, cy + o, rad, dot)
-                }
-            }
-            Reticle.MOA_GRID -> {
-                val step = r / 4f
-                val faint = Paint(thin).apply { color = withAlpha(c, 110) }
-                for (i in -4..4) {
-                    val o = step * i
-                    if (i != 0) {
-                        canvas.drawLine(cx - r, cy + o, cx + r, cy + o, faint)
-                        canvas.drawLine(cx + o, cy - r, cx + o, cy + r, faint)
-                    }
-                }
-                canvas.drawLine(cx - r, cy, cx + r, cy, thin)
-                canvas.drawLine(cx, cy - r, cx, cy + r, thin)
-            }
-            Reticle.GERMAN_4 -> {
-                // Three heavy posts and an open top, which is what makes it
-                // a #4 rather than a duplex.
-                val gap = r * 0.16f
-                canvas.drawLine(cx - r, cy, cx - gap, cy, thick)
-                canvas.drawLine(cx + gap, cy, cx + r, cy, thick)
-                canvas.drawLine(cx, cy + gap, cx, cy + r, thick)
-                canvas.drawLine(cx, cy - r * 0.55f, cx, cy - gap, thin)
-            }
-            Reticle.CIRCLE_DOT -> {
-                canvas.drawCircle(cx, cy, r * 0.55f, thin)
-                canvas.drawCircle(cx, cy, max(2.5f, d * 0.008f), dot)
-            }
-            else -> Unit
-        }
+        ReticleDrawer.draw(
+            canvas, cx, cy, r, d, reticle, ReticleDrawer.colorFor(context), customReticle
+        )
     }
 
     /** The colour the guide draws in for the current state. */

@@ -77,7 +77,7 @@
                     android:text="My photo" />
             </LinearLayout>
 
-            <TextView style="@style/Sts.SectionHeading" android:text="Sight correction" />
+            <TextView style="@style/Sts.SectionHeading" android:text="Scope correction" />
             <TextView android:id="@+id/tvCorrection"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:background="@drawable/bg_card"

@@ -7,6 +7,7 @@ class Snackbar private constructor() {
     val view: android.view.View = android.view.View()
     fun setTextColor(c: Int): Snackbar = this
     fun setBackgroundTint(c: Int): Snackbar = this
+    fun setActionTextColor(c: Int): Snackbar = this
     companion object {
         const val LENGTH_SHORT = 0
         const val LENGTH_LONG = 0

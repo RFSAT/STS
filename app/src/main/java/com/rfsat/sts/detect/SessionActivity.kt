@@ -147,6 +147,11 @@ class SessionActivity : BaseActivity() {
      *  attached, so the several places that can ask cannot each start one. */
     private var opening = false
 
+    /** Held while the process is pinned to a camera's Wi-Fi, so it can be
+     *  released again — leaving it bound takes the rest of the app off the
+     *  internet. */
+    private var cameraCb: android.net.ConnectivityManager.NetworkCallback? = null
+
     private var faces: List<TargetFace> = emptyList()
     private var ruleSets: List<RuleSet> = emptyList()
 
@@ -265,6 +270,8 @@ class SessionActivity : BaseActivity() {
             if (i == 0) startCameraIfPermitted() else ensureStreamConnected("source chosen")
         }
         binding.btnCameraProbe.setOnClickListener { probeCamera() }
+        binding.btnCameraType.setOnClickListener { chooseCamera() }
+        binding.btnCameraDownload.setOnClickListener { scoreLastClip() }
         binding.btnStreamConnect.setOnClickListener {
             // Explicit reconnect: a stream that has dropped is the ordinary
             // reason to press this, so it stops whatever is nominally
@@ -522,6 +529,8 @@ class SessionActivity : BaseActivity() {
         binding.etStreamUrl.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.btnStreamConnect.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.btnCameraProbe.visibility = if (i == 0) View.GONE else View.VISIBLE
+        binding.btnCameraType.visibility = if (i == 0) View.GONE else View.VISIBLE
+        binding.btnCameraDownload.visibility = if (i == 0) View.GONE else View.VISIBLE
         binding.preview.visibility = if (i == 0) View.VISIBLE else View.GONE
         binding.streamView.visibility = if (i == 2) View.VISIBLE else View.GONE
     }
@@ -582,6 +591,95 @@ class SessionActivity : BaseActivity() {
      * writing one against a guess is how an app comes to send commands that
      * quietly do nothing.
      */
+    /**
+     * Picks the camera by name and fills the address in from its preset.
+     *
+     * The addresses these cameras use are fixed by their firmware and are not
+     * something a shooter should have to know: a Tactacam answers on
+     * 192.168.1.254 or 192.168.1.1 depending on the generation, a ShotKam on
+     * 192.168.1.1, a GoPro on 10.5.5.9. The preset fills the box in; it stays
+     * editable, because a firmware that moves the address would otherwise
+     * make the app useless with no way round it.
+     */
+    private fun chooseCamera() {
+        com.rfsat.sts.capture.CameraUi.chooseType(
+            this, com.rfsat.sts.capture.CameraConfig.type(this)
+        ) { type ->
+            com.rfsat.sts.capture.CameraConfig.setType(this, type)
+            val host = com.rfsat.sts.capture.CameraConfig.host(this, type)
+            if (type.canLive && host.isNotEmpty() &&
+                binding.etStreamUrl.text.toString().isBlank()
+            ) {
+                binding.etStreamUrl.setText("rtsp://$host:554")
+            }
+            notifyUser(buildString {
+                append("${type.label} selected. ")
+                if (type.canLive) append("It can stream live. ")
+                if (type.canDownload) append("Its recordings can be pulled off it with “Score last clip”. ")
+                if (!type.canLive && !type.canDownload) append("Score from a photo under Import. ")
+            })
+        }
+    }
+
+    /**
+     * Downloads the newest clip from the camera and scores a frame of it.
+     *
+     * FOR THE CAMERA THAT WILL NOT STREAM, which is most of them: a Tactacam
+     * or a ShotKam records to its own card and serves it over its Wi-Fi, and
+     * that recording has the whole string in it. The LAST frame is taken,
+     * because every hole made during the string is in that one and only that
+     * one, and it is handed to the Import screen — from there it is an
+     * ordinary photograph and everything the app does to one applies.
+     *
+     * The process is pinned to the camera's Wi-Fi first. Without that the
+     * download goes out over mobile data and cannot reach a 192.168 address,
+     * which is the same fault that cost three releases on the stream.
+     */
+    private fun scoreLastClip() {
+        val type = com.rfsat.sts.capture.CameraConfig.type(this)
+        if (!type.canDownload) {
+            notifyUser("${type.label} does not serve its recordings over Wi-Fi. " +
+                "Choose the camera under “Camera…”, or copy the clip across by hand.")
+            return
+        }
+        val preset = com.rfsat.sts.capture.CameraConfig.importerPreset(type)
+        val host = com.rfsat.sts.capture.CameraConfig.host(this, type)
+        notifyUser("Joining the camera's Wi-Fi and looking for the newest clip…")
+        cameraCb = com.rfsat.sts.capture.CameraWifi.acquire(this) { _ ->
+            Thread {
+                val clip = runCatching {
+                    com.rfsat.sts.capture.CameraFileImporter.downloadLatest(
+                        preset, host.ifEmpty { null }, cacheDir
+                    ) { m -> Logger.i("SessionClip", m) }
+                }.getOrNull()
+                val still = clip?.let {
+                    com.rfsat.sts.capture.ClipFrame.grab(it.absolutePath, cacheDir)
+                }
+                runOnUiThread {
+                    com.rfsat.sts.capture.CameraWifi.release(this, cameraCb); cameraCb = null
+                    when {
+                        clip == null -> notifyUser(
+                            "Nothing could be downloaded. The Log tab holds every address that " +
+                                "was tried and what it answered — send it and the right one can " +
+                                "be added."
+                        )
+                        still == null -> notifyUser(
+                            "The clip downloaded (${clip.length() / 1024} KiB) but no frame could " +
+                                "be taken from it. It may be a format this phone cannot decode."
+                        )
+                        else -> {
+                            notifyUser("Scoring the last frame of the newest clip.")
+                            startActivity(
+                                Intent(this, ImportActivity::class.java)
+                                    .putExtra(IMPORT_EXTRA_IMAGE_PATH, still.absolutePath)
+                            )
+                        }
+                    }
+                }
+            }.also { it.isDaemon = true; it.name = "sts-clip" }.start()
+        }
+    }
+
     private fun probeCamera() {
         val url = binding.etStreamUrl.text.toString().trim()
         if (url.isEmpty()) { notifyUser("Enter the stream address first."); return }
@@ -1371,7 +1469,8 @@ class SessionActivity : BaseActivity() {
             if (ScaleSettings.reticle() == com.rfsat.sts.ui.Reticle.CUSTOM &&
                 ScaleSettings.reticleFile().isNotEmpty()
             ) runCatching {
-                android.graphics.BitmapFactory.decodeFile(ScaleSettings.reticleFile())
+                ImageLoader.decodeFileSampled(
+                    ScaleSettings.reticleFile(), ImageLoader.OVERLAY_MAX_DIMENSION)
             }.getOrNull() else null
         binding.crosshair.preserveNightVision =
             com.rfsat.sts.ui.ThemeManager.mode() == com.rfsat.sts.ui.ThemeMode.NIGHT_RED

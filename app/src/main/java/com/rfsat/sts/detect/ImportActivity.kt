@@ -58,6 +58,10 @@ import com.rfsat.sts.ui.UnitsManager
  * That is the whole point of rectifying before differencing — see
  * [TargetRegistration].
  */
+/** Hands a file to the import screen: the frame taken out of a downloaded
+ *  clip, or any other picture another screen has produced. */
+const val IMPORT_EXTRA_IMAGE_PATH = "image_path"
+
 class ImportActivity : BaseActivity() {
 
     private lateinit var binding: ActivityImportBinding
@@ -124,6 +128,15 @@ class ImportActivity : BaseActivity() {
             notifyUser("This screen failed to start: ${it.message}")
         }
         setupBottomNav(R.id.nav_session)
+        // A picture handed over by another screen — the frame taken out of a
+        // clip downloaded from the camera, for instance. Loaded exactly as a
+        // gallery pick is, so everything downstream is the ordinary path.
+        intent?.getStringExtra(IMPORT_EXTRA_IMAGE_PATH)?.let { path ->
+            runCatching { onImagePicked(android.net.Uri.fromFile(java.io.File(path))) }
+                .onFailure {
+                    Logger.e("ImportActivity", "handed-over image failed to load", it)
+                }
+        }
     }
 
     private fun initScreen() {

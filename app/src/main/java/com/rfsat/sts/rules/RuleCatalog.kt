@@ -523,7 +523,7 @@ object RuleCatalog {
         gaugeDiameterMm = Gauge.CENTREFIRE_7_62,
         matchScoring = MatchScoring.SUM_OF_SHOTS,
         verified = false,
-        notes = ".223 / .308 with a telescopic sight at 100 m. Maximum 200."
+        notes = ".223 / .308 with a telescopic scope at 100 m. Maximum 200."
     )
 
     // =====================================================================
